@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace HelloTexture
+namespace _02__InitializingDirectX12
 {
     class Program
     {
