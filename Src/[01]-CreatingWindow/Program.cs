@@ -6,8 +6,7 @@ namespace _01__CreatingWindow
     {
         static void Main(string[] args)
         {
-            bool e = Equals("1" + 1, 1 + "1");
-            Console.WriteLine("1" + 1 == 1 + "1" || e);
+            using var graphics = new D3D12Graphics();
         }
     }
 }
