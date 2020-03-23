@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <RootNamespace>_03__Drawing_</RootNamespace>
+    <RootNamespace>_06__Depth_Testing</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

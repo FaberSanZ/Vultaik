@@ -1,12 +1,12 @@
 ﻿using System;
 
-namespace _02__InitializingDirectX12
+namespace _06__Depth_Testing
 {
     class Program
     {
         static void Main(string[] args)
         {
-            using var graphics = new D3D12Graphics();
+            Console.WriteLine("Hello World!");
         }
     }
 }

@@ -6,4 +6,16 @@
     <RootNamespace>_02__InitializingDirectX12</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Vortice.Direct3D12" Version="1.6.22-beta-gf78fa633fa" />
+    <PackageReference Include="Vortice.Direct3D9" Version="1.6.22-beta-gf78fa633fa" />
+    <PackageReference Include="Vortice.DirectX" Version="1.6.22-beta-gf78fa633fa" />
+    <PackageReference Include="Vortice.Dxc" Version="1.6.22-beta-gf78fa633fa" />
+    <PackageReference Include="Vortice.Runtime.COM" Version="1.6.22-beta-gf78fa633fa" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Desktop\Desktop.csproj" />
+  </ItemGroup>
+
 </Project>
