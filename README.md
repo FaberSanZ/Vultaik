@@ -1,2 +1,2 @@
-# DirectX-Graphics-Samples-.NET
-DirectX-Graphics-Samples
+# DirectX 12 graphics tutorials .NET
+
