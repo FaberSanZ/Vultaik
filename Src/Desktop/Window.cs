@@ -9,73 +9,43 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Zeckoxe.Desktop.GLFWNative;
+using System.Windows.Forms;
 
-namespace Zeckoxe.Desktop
+
+namespace Desktop
 {
-    public unsafe class Window : IDisposable
+    public class Window : Form
     {
-        private string _title;
-
-
-        public string Title
-        {
-            get => _title; 
-
-            set
-            {
-                if (value != _title)
-                {
-                    _title = value;
-                    GLFW.GlfwSetWindowTitle(pWindow, Zeckoxe.Core.Interop.String.ToPointer(value));
-                }
-            }
-        }
-
-
-
-
-
-        public int Width { get; set; }
-        public int Height { get; set; }
-        public IntPtr Win32Handle => GLFW.GlfwGetWin32Window(pWindow);
-
-
-
-
-        internal IntPtr pWindow { get; private set; }
-
+       
         public Window(string title, int width, int height)
         {
-            _title = title;
-            Width = width;
-            Height = height;
-
-            GLFW.GlfwInit();
-            GLFW.GlfwInitHint(GLFW.GLFW_VISIBLE, 0);
-
-            pWindow = GLFW.GlfwCreateWindow(width, height, _title, IntPtr.Zero, IntPtr.Zero);
+            //if()
+            this.Text = title;
+            this.Width = width;
+            this.Height = height;
+            
         }
+
+
 
         public void RenderLoop(Action render)
         {
-            
-            while (GLFW.GlfwWindowShouldClose(pWindow) == 0)
+            if (this is null)
+                throw new ArgumentNullException("Windows");
+
+            if (render is null)
+                throw new ArgumentNullException("renderCallback");
+
+            this.Show();
+
+            using var renderLoop = new RenderLoop(this)
             {
+                UseApplicationDoEvents = false,
+                //AllowWindowssKeys = true
+            };
+
+            while (renderLoop.NextFrame())
                 render();
-
-                GLFW.GlfwPollEvents();
-            }
-
-        }
-
-        public void Show()
-        {
-            GLFW.ShowWindow(pWindow);
-        }
-
-        public void Dispose()
-        {
 
         }
     }
