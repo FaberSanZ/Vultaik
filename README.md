@@ -1,2 +1,2 @@
-# DirectX 12 graphics tutorials .NET
+# DirectX 12
 
