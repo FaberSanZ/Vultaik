@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net5.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Desktop\Desktop.csproj" />
+    <ProjectReference Include="..\Renderer\Renderer.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,5 @@
 ﻿using System;
+using ClearScreen;
 using Desktop;
 
 namespace Samples
@@ -7,9 +8,8 @@ namespace Samples
     {
         static void Main(string[] args)
         {
-            Window window = new Window("", 800, 600);
-
-            window.RenderLoop(() => { });
+            using (var App = new Game())
+                App.Run();
         }
     }
 }
