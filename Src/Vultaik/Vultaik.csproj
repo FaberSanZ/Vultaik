@@ -4,6 +4,14 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="Silk.NET.GLFW" Version="2.20.0" />
+    <PackageReference Include="Vortice.Dxc" Version="3.4.1-beta" />
+    <PackageReference Include="Vortice.Vulkan" Version="1.8.3" />
+  </ItemGroup>
 
 </Project>
