@@ -1,0 +1,53 @@
+﻿// Copyright (c) Faber Leonardo. All Rights Reserved. https://github.com/FaberSanZ
+// This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Vortice.Vulkan;
+
+namespace Vultaik.Graphics
+{
+    public class FramebufferAttachment
+    {
+        public AttachmentType Type { get; set; }
+        public Image Image { get; set; }
+        public VkFormat Format { get; set; } 
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public VkSampleCountFlags Samples { get; set; } //MSAA
+
+        
+        public FramebufferAttachment(AttachmentType type, VkFormat format, int width, int height, VkSampleCountFlags samples = VkSampleCountFlags.Count1)
+        {
+            Type = type;
+            Format = format;
+            Width = width;
+            Height = height;
+            Samples = samples;
+        }
+
+
+
+        public static FramebufferAttachment[] FromSwapChain(SwapChain swapChain)
+        {
+            FramebufferAttachment[] attachment = new FramebufferAttachment[swapChain.SwapChainImages.Length];
+
+
+            for (int i = 0; i < attachment.Length; i++)
+            {
+                attachment[i] = new(AttachmentType.Color, swapChain.swapChainImageFormat, 800, 600)
+                {
+                    Image = swapChain.SwapChainImages[i],
+                };
+            }
+
+
+            return attachment;
+        }
+    }
+}
