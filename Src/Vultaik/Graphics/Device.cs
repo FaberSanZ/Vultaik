@@ -183,6 +183,58 @@ namespace Vultaik.Graphics
             vkGetDeviceQueue(device, indices.GraphicsFamily!.Value, 0, out graphics_queue);
             vkGetDeviceQueue(device, indices.PresentFamily!.Value, 0, out present_queue);
 
+
+            VkSemaphoreCreateInfo semaphoreInfo = new VkSemaphoreCreateInfo() { };
+            //semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+            VkFenceCreateInfo fenceInfo = new VkFenceCreateInfo() { };
+            //fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+            vkCreateSemaphore(device, &semaphoreInfo, null, out imageAvailableSemaphore);
+            vkCreateSemaphore(device, &semaphoreInfo, null, out renderFinishedSemaphore);
+            vkCreateFence(device, &fenceInfo, null, out inFlightFence);
+
+
+        }
+
+        internal VkSemaphore imageAvailableSemaphore;
+
+        internal VkSemaphore renderFinishedSemaphore;
+
+        internal VkFence inFlightFence;
+
+
+        public void ResetFences()
+        {
+            vkWaitForFences(device, inFlightFence, true, uint.MaxValue);
+            vkResetFences(device, inFlightFence);
+        }
+
+        public void Submit(CommandList commandList)
+        {
+
+            VkSemaphore* waitSemaphores = stackalloc[] { imageAvailableSemaphore };
+            VkSemaphore* signalSemaphores = stackalloc[] { renderFinishedSemaphore };
+            VkPipelineStageFlags* waitStages = stackalloc[] { VkPipelineStageFlags.ColorAttachmentOutput };
+            VkCommandBuffer* cmd = stackalloc[] { commandList.commandBuffer };
+
+            VkSubmitInfo submitInfo = new VkSubmitInfo()
+            {
+                signalSemaphoreCount = 1,
+                pSignalSemaphores = signalSemaphores,
+
+                waitSemaphoreCount = 1,
+                pWaitSemaphores = waitSemaphores,
+
+                pWaitDstStageMask = waitStages,
+
+
+                commandBufferCount = 1,
+                pCommandBuffers = cmd,
+            };
+
+            vkQueueSubmit(graphics_queue, 1, &submitInfo, inFlightFence).CheckResult();
         }
     }
 }

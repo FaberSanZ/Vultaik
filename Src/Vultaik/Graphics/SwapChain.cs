@@ -10,6 +10,8 @@ using Vultaik;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 using System.Net.Mail;
+using System.Reflection.Metadata;
+using Silk.NET.Core.Native;
 
 namespace Vultaik.Graphics
 {
@@ -231,6 +233,39 @@ namespace Vultaik.Graphics
                 width = (uint)Math.Max(capabilities.minImageExtent.width, Math.Min(capabilities.maxImageExtent.width, 800)),
                 height = (uint)Math.Max(capabilities.minImageExtent.height, Math.Min(capabilities.maxImageExtent.height, 600)),
             };
+        }
+
+        public uint AcquireNextImage()
+        {
+            // By setting timeout to UINT64_MAX we will always wait until the next image has been acquired or an actual error is thrown
+            // With that we don't have to handle VK_NOT_READY
+            vkAcquireNextImageKHR(Device.device, swapChain, ulong.MaxValue, Device.imageAvailableSemaphore, new VkFence(), out uint i);
+            return i;
+        }
+
+
+        public void Present(uint imageIndex)
+        {
+            VkSemaphore semaphore = Device.renderFinishedSemaphore;
+            VkSwapchainKHR _swapchain = swapChain;
+
+
+            VkPresentInfoKHR present_info = new()
+            {
+                //sType = VkStructureType.PresentInfoKHR,
+                //pNext = null,
+                //pResults = null,
+
+                waitSemaphoreCount = 1,
+                pWaitSemaphores = &semaphore,
+                swapchainCount = 1,
+                pSwapchains = &_swapchain,
+                pImageIndices = &imageIndex,
+            };
+
+
+
+            vkQueuePresentKHR(Device.present_queue, &present_info);
         }
     }
 }
