@@ -67,7 +67,7 @@ namespace Vultaik.Graphics
         }
 
 
-        public void RecordCommandBuffer(Framebuffer framebuffer, uint imageIndex, VkExtent2D extent)
+        public void RecordCommandBuffer(RenderPass framebuffer, uint imageIndex, VkExtent2D extent)
         {
             VkCommandBufferBeginInfo beginInfo = new();
             beginInfo.flags = 0; // Optional
@@ -76,15 +76,16 @@ namespace Vultaik.Graphics
             vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
 
+            VkClearValue clearColor = new VkClearValue(0.0f, 0.2f, 0.4f, 1.0f);
+
             VkRenderPassBeginInfo renderPassInfo = new();
             renderPassInfo.renderPass = framebuffer.renderPass;
             renderPassInfo.framebuffer = framebuffer.swapChainFramebuffers[imageIndex];
             renderPassInfo.renderArea.offset = new VkOffset2D(0, 0);
             renderPassInfo.renderArea.extent = extent;
-
-            VkClearValue clearColor = new VkClearValue(0.0f, 0.2f, 0.4f, 1.0f);
             renderPassInfo.clearValueCount = 1;
             renderPassInfo.pClearValues = &clearColor;
+
             vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 

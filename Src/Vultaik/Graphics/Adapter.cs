@@ -28,7 +28,7 @@ namespace Vultaik.Graphics
         public VkInstance instance;
         public VkPhysicalDevice gpu;
 
-        private bool EnableValidationLayers = true;
+        private bool EnableValidationLayers = false;
 
         private VkDebugUtilsMessengerEXT debugMessenger = VkDebugUtilsMessengerEXT.Null;
 

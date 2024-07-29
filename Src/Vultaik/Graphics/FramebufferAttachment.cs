@@ -33,17 +33,17 @@ namespace Vultaik.Graphics
 
 
 
-        public static FramebufferAttachment[] FromSwapChain(SwapChain swapChain)
+        public static List<FramebufferAttachment> FromSwapChain(SwapChain swapChain)
         {
-            FramebufferAttachment[] attachment = new FramebufferAttachment[swapChain.SwapChainImages.Length];
+            List<FramebufferAttachment> attachment = new();
 
 
-            for (int i = 0; i < attachment.Length; i++)
+            for (int i = 0; i < swapChain.SwapChainImages.Length; i++)
             {
-                attachment[i] = new(AttachmentType.Color, swapChain.swapChainImageFormat, 800, 600)
+                attachment.Add(new(AttachmentType.Color, swapChain.swapChainImageFormat, 800, 600)
                 {
                     Image = swapChain.SwapChainImages[i],
-                };
+                });
             }
 
 

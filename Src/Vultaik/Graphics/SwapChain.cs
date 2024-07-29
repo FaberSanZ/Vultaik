@@ -89,6 +89,8 @@ namespace Vultaik.Graphics
             {
                 imageCount = Math.Min(imageCount, swapChainSupport.capabilities.maxImageCount);
             }
+            imageCount = swapChainSupport.capabilities.maxImageCount - 1;
+
 
             VkSwapchainCreateInfoKHR createInfo = new VkSwapchainCreateInfoKHR()
             {

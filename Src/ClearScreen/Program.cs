@@ -17,12 +17,17 @@ public unsafe class Sample : Application, IDisposable
 {
 
 
-    Adapter adapter;
-    Surface surface;
-    Device device;
-    SwapChain swapChain;
-    Framebuffer framebuffer;
-    CommandList command;
+    public Sample()
+    {
+        
+    }
+
+    public Adapter adapter;
+    public Surface surface;
+    public Device device;
+    public SwapChain swapChain;
+    public RenderPass renderPass_color;
+    public CommandList command;
 
 
 
@@ -34,12 +39,8 @@ public unsafe class Sample : Application, IDisposable
         surface = new Surface(adapter, Window);
         device = new Device(surface); // new Device(adapter); // compute
         swapChain = new SwapChain(device);
-
-        FramebufferAttachment[] attachment = FramebufferAttachment.FromSwapChain(swapChain);
-        framebuffer = new Framebuffer(device, attachment.ToList());
-
+        renderPass_color = new RenderPass(device, FramebufferAttachment.FromSwapChain(swapChain));
         command = new CommandList(device);
-
     }
 
 
@@ -58,7 +59,7 @@ public unsafe class Sample : Application, IDisposable
         uint imageIndex = swapChain.AcquireNextImage();
 
         command.ResetCommandBuffer();
-        command.RecordCommandBuffer(framebuffer, imageIndex, swapChain.swapChainExtent);
+        command.RecordCommandBuffer(renderPass_color, imageIndex, swapChain.swapChainExtent);
 
 
         device.Submit(command);

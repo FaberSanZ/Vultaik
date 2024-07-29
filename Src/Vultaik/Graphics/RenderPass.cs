@@ -13,7 +13,7 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace Vultaik.Graphics
 {
-    public unsafe class Framebuffer
+    public unsafe class RenderPass
     {
 
 
@@ -22,7 +22,7 @@ namespace Vultaik.Graphics
         public VkFramebuffer[] swapChainFramebuffers;
 
 
-        public Framebuffer(Device device, List<FramebufferAttachment> attachments)
+        public RenderPass(Device device, List<FramebufferAttachment> attachments)
         {
             Device = device;
             ColorAttachments = attachments;

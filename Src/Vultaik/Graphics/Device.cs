@@ -141,7 +141,7 @@ namespace Vultaik.Graphics
             string[] layers =
             {
                 "VK_KHR_swapchain",
-                "VK_KHR_video_queue"
+                //"VK_KHR_video_queue"
             };
 
             VkStringArray device_extensions = new(layers);
@@ -155,7 +155,7 @@ namespace Vultaik.Graphics
                 queueCreateInfoCount = 1,
                 pEnabledFeatures = &device_features,
                 ppEnabledExtensionNames = device_extensions,
-                enabledExtensionCount = 2, // TODO: swapchain
+                enabledExtensionCount = 1, // TODO: swapchain
             };
 
 
