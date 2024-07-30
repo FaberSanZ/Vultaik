@@ -211,7 +211,7 @@ namespace Vultaik.Graphics
             vkResetFences(device, inFlightFence);
         }
 
-        public void Submit(CommandList commandList)
+        public void Submit(CommandBuffer commandList)
         {
 
             VkSemaphore* waitSemaphores = stackalloc[] { imageAvailableSemaphore };

@@ -12,13 +12,13 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace Vultaik.Graphics
 {
-    public unsafe class CommandList
+    public unsafe class CommandBuffer
     {
 
         internal VkCommandPool commandPool;
         public VkCommandBuffer commandBuffer;
 
-        public CommandList(Device device)
+        public CommandBuffer(Device device)
         {
             Device = device;
 
@@ -67,14 +67,8 @@ namespace Vultaik.Graphics
         }
 
 
-        public void RecordCommandBuffer(RenderPass framebuffer, uint imageIndex, VkExtent2D extent)
+        public void BeginRenderPass(RenderPass framebuffer, uint imageIndex, VkExtent2D extent)
         {
-            VkCommandBufferBeginInfo beginInfo = new();
-            beginInfo.flags = 0; // Optional
-            beginInfo.pInheritanceInfo = null; // Optional
-
-            vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
 
             VkClearValue clearColor = new VkClearValue(0.0f, 0.2f, 0.4f, 1.0f);
 
@@ -88,15 +82,32 @@ namespace Vultaik.Graphics
 
             vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+        }
 
+
+
+        public void EndRenderPass()
+        {
             vkCmdEndRenderPass(commandBuffer);
+        }
 
+
+        public void BeginCommandBuffer()
+        {
+            VkCommandBufferBeginInfo beginInfo = new();
+            beginInfo.flags = 0; // Optional
+            beginInfo.pInheritanceInfo = null; // Optional
+
+            vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        }
+
+
+        public void EndCommandBuffer()
+        {
             vkEndCommandBuffer(commandBuffer);
 
-
-
-
         }
+
 
 
     }

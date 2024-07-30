@@ -27,7 +27,7 @@ public unsafe class Sample : Application, IDisposable
     public Device device;
     public SwapChain swapChain;
     public RenderPass renderPass_color;
-    public CommandList command;
+    public CommandBuffer command;
 
 
 
@@ -40,7 +40,7 @@ public unsafe class Sample : Application, IDisposable
         device = new Device(surface); // new Device(adapter); // compute
         swapChain = new SwapChain(device);
         renderPass_color = new RenderPass(device, FramebufferAttachment.FromSwapChain(swapChain));
-        command = new CommandList(device);
+        command = new CommandBuffer(device);
     }
 
 
@@ -59,13 +59,21 @@ public unsafe class Sample : Application, IDisposable
         uint imageIndex = swapChain.AcquireNextImage();
 
         command.ResetCommandBuffer();
-        command.RecordCommandBuffer(renderPass_color, imageIndex, swapChain.swapChainExtent);
+        command.BeginCommandBuffer();
+
+
+        command.BeginRenderPass(renderPass_color, imageIndex, swapChain.swapChainExtent);
+
+        // draw
+
+        command.EndRenderPass();
+        command.EndCommandBuffer();
 
 
         device.Submit(command);
 
 
-        swapChain.Present(imageIndex);
+        swapChain.Present();
 
     }
 

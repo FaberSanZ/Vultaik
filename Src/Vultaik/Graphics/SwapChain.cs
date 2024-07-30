@@ -246,8 +246,9 @@ namespace Vultaik.Graphics
         }
 
 
-        public void Present(uint imageIndex)
+        public void Present()
         {
+            uint imageIndex = AcquireNextImage();
             VkSemaphore semaphore = Device.renderFinishedSemaphore;
             VkSwapchainKHR _swapchain = swapChain;
 
