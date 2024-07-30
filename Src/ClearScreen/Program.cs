@@ -39,7 +39,7 @@ public unsafe class Sample : Application, IDisposable
         surface = new Surface(adapter, Window);
         device = new Device(surface); // new Device(adapter); // compute
         swapChain = new SwapChain(device);
-        renderPass_color = new RenderPass(device, FramebufferAttachment.FromSwapChain(swapChain));
+        renderPass_color = new RenderPass(swapChain);
         command = new CommandBuffer(device);
     }
 
@@ -55,14 +55,11 @@ public unsafe class Sample : Application, IDisposable
     {
         device.ResetFences();
 
-
-        uint imageIndex = swapChain.AcquireNextImage();
-
         command.ResetCommandBuffer();
         command.BeginCommandBuffer();
 
 
-        command.BeginRenderPass(renderPass_color, imageIndex, swapChain.swapChainExtent);
+        command.BeginRenderPass(renderPass_color);
 
         // draw
 

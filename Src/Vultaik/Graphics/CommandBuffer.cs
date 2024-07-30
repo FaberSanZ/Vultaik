@@ -63,12 +63,14 @@ namespace Vultaik.Graphics
 
         public void ResetCommandBuffer()
         {
-            vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+            vkResetCommandBuffer(commandBuffer, VkCommandBufferResetFlags.None);
         }
 
 
-        public void BeginRenderPass(RenderPass framebuffer, uint imageIndex, VkExtent2D extent)
+        public void BeginRenderPass(RenderPass framebuffer)
         {
+            uint imageIndex = framebuffer.SwapChain.ImageIndex;
+            VkExtent2D extent = framebuffer.Extent;
 
             VkClearValue clearColor = new VkClearValue(0.0f, 0.2f, 0.4f, 1.0f);
 
@@ -80,7 +82,7 @@ namespace Vultaik.Graphics
             renderPassInfo.clearValueCount = 1;
             renderPassInfo.pClearValues = &clearColor;
 
-            vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+            vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VkSubpassContents.Inline);
 
         }
 

@@ -9,14 +9,13 @@ using System.Runtime.InteropServices;
 using Vultaik;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
+using System.Xml.Linq;
 
 
 namespace Vultaik.Graphics
 {
     public unsafe class RenderPass
     {
-
-
 
         public VkRenderPass renderPass;
         public VkFramebuffer[] swapChainFramebuffers;
@@ -30,8 +29,25 @@ namespace Vultaik.Graphics
             createFramebuffers();
         }
 
+
+
+        public RenderPass(SwapChain swapChain)
+        {
+            SwapChain = swapChain;
+            Device = swapChain.Device;
+            ColorAttachments = FramebufferAttachment.FromSwapChain(swapChain);
+            Extent = swapChain.swapChainExtent;
+
+            CreateRenderPass();
+            createFramebuffers();
+        }
+
+
         public Device Device { get; }
         public List<FramebufferAttachment> ColorAttachments { get; set; }
+        public SwapChain SwapChain { get; }
+        public VkExtent2D Extent { get; set; }
+
 
         private void CreateRenderPass()
         {

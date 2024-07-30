@@ -75,6 +75,10 @@ namespace Vultaik.Graphics
         public List<FramebufferAttachment> ColorAttachments { get; set; }
 
 
+        public uint ImageIndex => AcquireNextImage();
+
+
+
         private void CreateSwapChain()
         {
             var device = Device;
@@ -248,7 +252,7 @@ namespace Vultaik.Graphics
 
         public void Present()
         {
-            uint imageIndex = AcquireNextImage();
+            uint imageIndex = ImageIndex;
             VkSemaphore semaphore = Device.renderFinishedSemaphore;
             VkSwapchainKHR _swapchain = swapChain;
 
