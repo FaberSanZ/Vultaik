@@ -87,21 +87,20 @@ namespace Vultaik.Graphics
         private void CreateSwapChain()
         {
             var device = Device;
-            SwapChainSupportDetails swapChainSupport = new SwapChainSupportDetails(Device.Adapter.gpu, Device.Surface!.surface);
+            SwapChainSupportDetails swapChain_support = new SwapChainSupportDetails(Device.Adapter.gpu, Device.Surface!.surface);
 
-            VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.formats);
-            VkPresentModeKHR presentMode = ChooseSwapPresentMode(swapChainSupport.presentModes);
-            VkExtent2D extent = ChooseSwapExtent(swapChainSupport.capabilities);
+            VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChain_support.formats);
+            VkPresentModeKHR presentMode = ChooseSwapPresentMode(swapChain_support.presentModes);
+            VkExtent2D extent = ChooseSwapExtent(swapChain_support.capabilities);
 
-            uint imageCount = swapChainSupport.capabilities.minImageCount + 1;
-            if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
+            uint imageCount = swapChain_support.capabilities.minImageCount + 1;
+            if (swapChain_support.capabilities.maxImageCount > 0 && imageCount > swapChain_support.capabilities.maxImageCount)
             {
-                imageCount = Math.Min(imageCount, swapChainSupport.capabilities.maxImageCount);
+                imageCount = Math.Min(imageCount, swapChain_support.capabilities.maxImageCount);
             }
-            imageCount = 2;
 
 
-            VkSwapchainCreateInfoKHR createInfo = new VkSwapchainCreateInfoKHR()
+            VkSwapchainCreateInfoKHR swapchain_create_info = new VkSwapchainCreateInfoKHR()
             {
                 //sType = VkStructureType.SwapchainCreateInfoKHR,
                 surface = Device.Surface.surface,
@@ -111,7 +110,7 @@ namespace Vultaik.Graphics
                 imageExtent = extent,
                 imageArrayLayers = 1,
                 imageUsage = VkImageUsageFlags.ColorAttachment,
-                preTransform = swapChainSupport.capabilities.currentTransform,
+                preTransform = swapChain_support.capabilities.currentTransform,
                 compositeAlpha = VkCompositeAlphaFlagsKHR.Opaque,
                 presentMode = presentMode,
                 clipped = true,
@@ -121,21 +120,21 @@ namespace Vultaik.Graphics
 
             uint* QueueFamilyIndicesPtr = stackalloc uint[]
             {
-                (uint)device.indices.GraphicsFamily,
-                (uint)device.indices.PresentFamily,
+                device.QueueGraphicsFamily!.Value,
+                device.QueuePresentFamily!.Value,
             };
 
-            if (device.indices.GraphicsFamily != device.indices.PresentFamily) // diferent queue family
+            if (device.QueueGraphicsFamily != device.QueuePresentFamily) // diferent queue family
             {
-                createInfo.imageSharingMode = VkSharingMode.Concurrent;
-                createInfo.pQueueFamilyIndices = QueueFamilyIndicesPtr;
+                swapchain_create_info.imageSharingMode = VkSharingMode.Concurrent;
+                swapchain_create_info.pQueueFamilyIndices = QueueFamilyIndicesPtr;
             }
             else
             {
-                createInfo.imageSharingMode = VkSharingMode.Exclusive;
+                swapchain_create_info.imageSharingMode = VkSharingMode.Exclusive;
             }
 
-            vkCreateSwapchainKHR(device.device, &createInfo, null, out swapChain);
+            vkCreateSwapchainKHR(device.device, &swapchain_create_info, null, out swapChain);
 
 
             vkGetSwapchainImagesKHR(device.device, swapChain, &imageCount, null);
@@ -151,7 +150,7 @@ namespace Vultaik.Graphics
 
         internal void CreateImageViews()
         {
-            SwapChainImages = new Image[images.Length];
+            SwapChainImages = new Image[images!.Length];
 
             for (int i = 0; i < SwapChainImages.Length; i++)
             {
@@ -248,10 +247,9 @@ namespace Vultaik.Graphics
 
         public uint AcquireNextImage()
         {
-            //Device.ResetFences();
             // By setting timeout to UINT64_MAX we will always wait until the next image has been acquired or an actual error is thrown
             // With that we don't have to handle VK_NOT_READY
-            vkAcquireNextImageKHR(Device.device, swapChain, ulong.MaxValue, Device.imageAvailableSemaphore, VkFence.Null, out uint i);
+            vkAcquireNextImageKHR(Device.device, swapChain, ulong.MaxValue, Device.image_semaphore, VkFence.Null, out uint i);
             return i;
         }
 
@@ -259,7 +257,7 @@ namespace Vultaik.Graphics
         public void Present()
         {
             uint imageIndex = ImageIndex;
-            VkSemaphore semaphore = Device.renderFinishedSemaphore;
+            VkSemaphore semaphore = Device.render_semaphore;
             VkSwapchainKHR _swapchain = swapChain;
 
 

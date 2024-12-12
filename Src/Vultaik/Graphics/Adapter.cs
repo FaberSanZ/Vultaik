@@ -13,9 +13,8 @@ using static Vortice.Vulkan.Vulkan;
 namespace Vultaik.Graphics
 {
 
-    public struct QueueFamilyIndices
+    public struct PresenQueueInfo
     {
-        public uint? GraphicsFamily { get; set; }
         public uint? PresentFamily { get; set; }
         public bool IsComplete()
         {
@@ -298,10 +297,10 @@ namespace Vultaik.Graphics
 
 
 
-        public QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR? surface = null)
+        public PresenQueueInfo FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR? surface = null)
         {
 
-            QueueFamilyIndices indices = new QueueFamilyIndices();
+            PresenQueueInfo indices = new PresenQueueInfo();
             uint queueFamilityCount = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilityCount, null);
 

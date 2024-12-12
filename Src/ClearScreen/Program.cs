@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using Vultaik;
 using Vultaik.Graphics;
 
-using var App = new Sample(true);
+using var App = new Sample(false);
 App.Run();
 
 
@@ -28,7 +28,7 @@ public unsafe class Sample(bool debug) : Application, IDisposable
         surface = new Surface(adapter, Window);
         device = new Device(surface); // new Device(adapter); // compute
         swapChain = new SwapChain(device);
-        command = new CommandBuffer(device);
+        command = new CommandBuffer(device, CommandBufferType.Graphics); // default
     }
 
 

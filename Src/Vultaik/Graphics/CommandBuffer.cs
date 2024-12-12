@@ -9,39 +9,63 @@ using System.Runtime.InteropServices;
 using Vultaik;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
+using Silk.NET.GLFW;
 
 namespace Vultaik.Graphics
 {
+    public enum CommandBufferType
+    {
+        Graphics,
+
+        Compute,
+
+        Transfer,
+    }
     public unsafe class CommandBuffer
     {
 
-        internal VkCommandPool commandPool;
-        public VkCommandBuffer commandBuffer;
+        internal VkCommandPool command_pool;
+        internal VkCommandBuffer cmd;
 
-        public CommandBuffer(Device device)
+        public CommandBuffer(Device device, CommandBufferType type)
         {
             Device = device;
-
+            Type = type;
             CreateCommandPool();
             CreateCommandBuffers();
         }
 
 
         public Device Device { get; }
-
+        public CommandBufferType Type { get; }
 
         private void CreateCommandPool()
         {
             //QueueFamilyIndices indices = new QueueFamilyIndices(physicalDevice, surface);
 
-            VkCommandPoolCreateInfo poolInfo = new VkCommandPoolCreateInfo()
+            VkCommandPoolCreateInfo cmd_pool_info = new VkCommandPoolCreateInfo()
             {
-                //sType = VkStructureType.CommandPoolCreateInfo,
-                queueFamilyIndex = Device.indices.GraphicsFamily!.Value,
+                sType = VkStructureType.CommandPoolCreateInfo,
+                pNext = null,
                 flags = VkCommandPoolCreateFlags.ResetCommandBuffer,
             };
 
-            vkCreateCommandPool(Device.device, &poolInfo, null, out commandPool);
+            switch (Type)
+            {
+                case CommandBufferType.Graphics:
+                    cmd_pool_info.queueFamilyIndex = Device.QueueGraphicsFamily!.Value;
+                    break;
+                case CommandBufferType.Compute:
+                    //cmd_pool_info.queueFamilyIndex = Device.indices.Compute!.Value;
+                    break;
+                case CommandBufferType.Transfer:
+                    //cmd_pool_info.queueFamilyIndex = Device.indices.Transfer!.Value;
+                    break;
+                default:
+                    cmd_pool_info.queueFamilyIndex = Device.QueueGraphicsFamily!.Value;
+                    break;
+            }
+            vkCreateCommandPool(Device.device, &cmd_pool_info, null, out command_pool);
         }
 
         private void CreateCommandBuffers()
@@ -49,19 +73,19 @@ namespace Vultaik.Graphics
             VkCommandBufferAllocateInfo allocInfo = new VkCommandBufferAllocateInfo()
             {
                 //sType = VkStructureType.CommandBufferAllocateInfo,
-                commandPool = commandPool,
+                commandPool = command_pool,
                 level = VkCommandBufferLevel.Primary,
                 commandBufferCount = 1,
             };
             VkCommandBuffer cmd;
             vkAllocateCommandBuffers(Device.device, &allocInfo, &cmd);
-            commandBuffer = cmd;
+            this.cmd = cmd;
 
         }
 
         public void ResetCommandBuffer()
         {
-            vkResetCommandBuffer(commandBuffer, VkCommandBufferResetFlags.None);
+            vkResetCommandBuffer(cmd, VkCommandBufferResetFlags.None);
         }
 
 
@@ -80,38 +104,14 @@ namespace Vultaik.Graphics
             renderPassInfo.clearValueCount = 1;
             renderPassInfo.pClearValues = &clearColor;
 
-            vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VkSubpassContents.Inline);
+            vkCmdBeginRenderPass(cmd, &renderPassInfo, VkSubpassContents.Inline);
 
         }
 
 
-        public void insertImageMemoryBarrier(
-            VkCommandBuffer cmdbuffer,
-            VkImage image,
-            VkAccessFlags srcAccessMask,
-            VkAccessFlags dstAccessMask,
-            VkImageLayout oldImageLayout,
-            VkImageLayout newImageLayout,
-            VkPipelineStageFlags srcStageMask,
-            VkPipelineStageFlags dstStageMask,
-            VkImageSubresourceRange subresourceRange)
-        {
-            VkImageMemoryBarrier imageMemoryBarrier = new()
-            {
-                sType = VkStructureType.ImageMemoryBarrier
-            };
-            imageMemoryBarrier.srcAccessMask = srcAccessMask;
-            imageMemoryBarrier.dstAccessMask = dstAccessMask;
-            imageMemoryBarrier.oldLayout = oldImageLayout;
-            imageMemoryBarrier.newLayout = newImageLayout;
-            imageMemoryBarrier.image = image;
-            imageMemoryBarrier.subresourceRange = subresourceRange;
-
-            vkCmdPipelineBarrier(cmdbuffer, srcStageMask, dstStageMask, 0, 0, null, 0, null, 1, &imageMemoryBarrier);
-        }
 
 
-        public void CmdBeginRendering(Image ColorImage)
+        public void CmdBeginRendering(Image ColorImage, Image? depth = null)
         {
             VkImageSubresourceRange range = new()
             {
@@ -127,42 +127,53 @@ namespace Vultaik.Graphics
             int width = ColorImage.width;
             int height = ColorImage.height;
 
-            insertImageMemoryBarrier(commandBuffer, image, 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, range);
+            //TODO: sync 
+            //insert_image_memory_Barrier(cmd, image, 0, VkAccessFlags.ColorAttachmentWrite, VkImageLayout.Undefined, VkImageLayout.AttachmentOptimal, VkPipelineStageFlags.ColorAttachmentOutput, VkPipelineStageFlags.ColorAttachmentOutput, range);
 
-            VkRenderingAttachmentInfo colorAttachment = new VkRenderingAttachmentInfo();
-            colorAttachment.imageView = view;
-            colorAttachment.imageLayout = VkImageLayout.ColorAttachmentOptimal;
-            colorAttachment.loadOp = VkAttachmentLoadOp.Clear;
-            colorAttachment.storeOp = VkAttachmentStoreOp.Store;
-            colorAttachment.clearValue.color = new VkClearColorValue(0.0f, 0.2f, 0.4f, 0.0f);
+            VkRenderingAttachmentInfo color_attachment = new VkRenderingAttachmentInfo()
+            {
+                imageView = view,
+                imageLayout = VkImageLayout.ColorAttachmentOptimal,
+                loadOp = VkAttachmentLoadOp.Clear,
+                storeOp = VkAttachmentStoreOp.Store,
+            };
+            color_attachment.clearValue.color = new VkClearColorValue(0.0f, 0.2f, 0.4f, 0.0f);
 
-            VkRenderingInfo info = new()
+            VkRenderingInfo rendring_info = new()
             {
                 renderArea = new VkRect2D(0, 0, (uint)width, (uint)height),
                 layerCount = 1,
                 colorAttachmentCount = 1,
-                pColorAttachments = &colorAttachment,
+                pColorAttachments = &color_attachment,
                 //pDepthAttachment = null
             };
 
-            vkCmdBeginRendering(commandBuffer, &info);
 
-            vkCmdEndRendering(commandBuffer);
+            if (depth is not null)
+            {
+                //rendring_info.pDepthAttachment
+            }
 
-            insertImageMemoryBarrier(commandBuffer, image, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VkPipelineStageFlags.None, range);
+            vkCmdBeginRendering(cmd, &rendring_info);
+
+
+
+            //TODO: sync 
+            //vkCmdEndRendering(cmd);
+            //insert_image_memory_Barrier(cmd, image, VkAccessFlags.ColorAttachmentWrite, 0, VkImageLayout.AttachmentOptimal, VkImageLayout.PresentSrcKHR, VkPipelineStageFlags.ColorAttachmentOutput, VkPipelineStageFlags.None, range);
 
         }
 
         public void CmdEndRendering()
         {
-            //vkCmdEndRendering(commandBuffer);
+            vkCmdEndRendering(cmd);
 
         }
 
 
         public void EndRenderPass()
         {
-            vkCmdEndRenderPass(commandBuffer);
+            vkCmdEndRenderPass(cmd);
         }
 
 
@@ -172,17 +183,36 @@ namespace Vultaik.Graphics
             beginInfo.flags = 0; // Optional
             beginInfo.pInheritanceInfo = null; // Optional
 
-            vkBeginCommandBuffer(commandBuffer, &beginInfo);
+            vkBeginCommandBuffer(cmd, &beginInfo);
         }
 
 
         public void EndCommandBuffer()
         {
-            vkEndCommandBuffer(commandBuffer);
+            vkEndCommandBuffer(cmd);
 
         }
 
 
+
+
+
+
+        internal void insert_image_memory_Barrier(VkCommandBuffer cmd_buffer, VkImage image, VkAccessFlags src_access, VkAccessFlags dst_access, VkImageLayout old_image_layout, VkImageLayout new_image_layout, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkImageSubresourceRange range)
+        {
+            VkImageMemoryBarrier imageMemoryBarrier = new()
+            {
+                sType = VkStructureType.ImageMemoryBarrier,
+                srcAccessMask = src_access,
+                dstAccessMask = dst_access,
+                oldLayout = old_image_layout,
+                newLayout = new_image_layout,
+                image = image,
+                subresourceRange = range,
+            };
+
+            vkCmdPipelineBarrier(cmd_buffer, src_stage, dst_stage, 0, 0, null, 0, null, 1, &imageMemoryBarrier);
+        }
 
     }
 }

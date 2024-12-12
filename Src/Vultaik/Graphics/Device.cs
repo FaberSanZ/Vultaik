@@ -15,9 +15,13 @@ namespace Vultaik.Graphics
     public unsafe  class Device
     {
 
-        public VkDevice device;
-        public VkQueue graphics_queue;
-        public VkQueue present_queue;
+        internal VkDevice device;
+        internal VkQueue graphics_queue;
+        internal VkQueue present_queue;
+        internal VkSemaphore image_semaphore;
+        internal VkSemaphore render_semaphore;
+        internal VkFence in_flight_fence;
+
 
 
         public Device(Adapter adapter)
@@ -41,12 +45,12 @@ namespace Vultaik.Graphics
         public Surface? Surface { get; }
 
 
+        public uint? QueueGraphicsFamily { get; set; }
+        public uint? QueueComputeFamily { get; set; }
+        public uint? QueueTransferFamily { get; set; }
+        public uint? QueuePresentFamily { get; set; }
 
-        public QueueFamilyIndices indices; 
-
-
-
-
+        
 
         // checkDeviceExtensionSupport
         private void createLogicalDevice()
@@ -75,25 +79,23 @@ namespace Vultaik.Graphics
             Console.WriteLine("VideoEncode: " + queue.GetQueue(VkQueueFlags.VideoEncodeKHR).ToString());
             Console.WriteLine();
 
+            QueuePresentFamily = Adapter.FindQueueFamilies(Adapter.gpu, Surface.surface).PresentFamily;
 
+            QueueGraphicsFamily = queue.GetFamilyIndex(VkQueueFlags.Graphics);
 
-            indices = new QueueFamilyIndices();
-            indices.GraphicsFamily = queue.GetFamilyIndex(VkQueueFlags.Graphics);
-
-            indices.PresentFamily = Adapter.FindQueueFamilies(Adapter.gpu, Surface.surface).PresentFamily;
 
             //Console.WriteLine(indices.GraphicsFamily);
             //Console.WriteLine(indices.PresentFamily);
 
 
-            var uniqueQueueFamilies = new[] { indices.GraphicsFamily!.Value, indices.PresentFamily!.Value };
+            var uniqueQueueFamilies = new[] { QueueGraphicsFamily!.Value, QueuePresentFamily!.Value };
             uniqueQueueFamilies = uniqueQueueFamilies.Distinct().ToArray();
 
 
             float* pri = stackalloc float[] { 1, 1 };
 
 
-            bool new_queue = indices.GraphicsFamily!.Value != indices.PresentFamily!.Value;
+            bool new_queue = QueueGraphicsFamily!.Value != QueuePresentFamily!.Value;
             uint queue_count = 0;
 
             if (new_queue)
@@ -203,8 +205,8 @@ namespace Vultaik.Graphics
 
             vkLoadDevice(device);
 
-            vkGetDeviceQueue(device, indices.GraphicsFamily!.Value, 0, out graphics_queue);
-            vkGetDeviceQueue(device, indices.PresentFamily!.Value, 0, out present_queue);
+            vkGetDeviceQueue(device, QueueGraphicsFamily!.Value, 0, out graphics_queue);
+            vkGetDeviceQueue(device, QueuePresentFamily!.Value, 0, out present_queue);
 
 
             VkSemaphoreCreateInfo semaphoreInfo = new VkSemaphoreCreateInfo() { };
@@ -214,33 +216,28 @@ namespace Vultaik.Graphics
             fenceInfo.sType = VkStructureType.FenceCreateInfo;
             fenceInfo.flags = VkFenceCreateFlags.Signaled;
 
-            vkCreateSemaphore(device, &semaphoreInfo, null, out imageAvailableSemaphore);
-            vkCreateSemaphore(device, &semaphoreInfo, null, out renderFinishedSemaphore);
-            vkCreateFence(device, &fenceInfo, null, out inFlightFence);
+            vkCreateSemaphore(device, &semaphoreInfo, null, out image_semaphore);
+            vkCreateSemaphore(device, &semaphoreInfo, null, out render_semaphore);
+            vkCreateFence(device, &fenceInfo, null, out in_flight_fence);
 
 
         }
 
-        internal VkSemaphore imageAvailableSemaphore;
-
-        internal VkSemaphore renderFinishedSemaphore;
-
-        internal VkFence inFlightFence;
 
 
         public void ResetFences()
         {
-            vkWaitForFences(device, inFlightFence, true, uint.MaxValue);
-            vkResetFences(device, inFlightFence);
+            vkWaitForFences(device, in_flight_fence, true, uint.MaxValue);
+            vkResetFences(device, in_flight_fence);
         }
 
         public void Submit(CommandBuffer commandList)
         {
 
-            VkSemaphore* waitSemaphores = stackalloc[] { imageAvailableSemaphore };
-            VkSemaphore* signalSemaphores = stackalloc[] { renderFinishedSemaphore };
+            VkSemaphore* waitSemaphores = stackalloc[] { image_semaphore };
+            VkSemaphore* signalSemaphores = stackalloc[] { render_semaphore };
             VkPipelineStageFlags* waitStages = stackalloc[] { VkPipelineStageFlags.ColorAttachmentOutput };
-            VkCommandBuffer* cmd = stackalloc[] { commandList.commandBuffer };
+            VkCommandBuffer* cmd = stackalloc[] { commandList.cmd };
 
             VkSubmitInfo submitInfo = new VkSubmitInfo()
             {
@@ -257,7 +254,7 @@ namespace Vultaik.Graphics
                 pCommandBuffers = cmd,
             };
 
-            vkQueueSubmit(graphics_queue, 1, &submitInfo, inFlightFence).CheckResult();
+            vkQueueSubmit(graphics_queue, 1, &submitInfo, in_flight_fence).CheckResult();
         }
     }
 }
