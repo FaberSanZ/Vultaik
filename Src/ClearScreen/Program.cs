@@ -1,32 +1,21 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-using Vortice.Vulkan;
-using Vultaik;
-using Vortice.Vulkan;
-using static Vortice.Vulkan.Vulkan;
-using System.Diagnostics;
+﻿using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+using Vultaik;
 using Vultaik.Graphics;
 
-using var App = new Sample();
+using var App = new Sample(true);
 App.Run();
 
 
-public unsafe class Sample : Application, IDisposable
+
+public unsafe class Sample(bool debug) : Application, IDisposable
 {
 
-
-    public Sample()
-    {
-        
-    }
 
     public Adapter adapter;
     public Surface surface;
     public Device device;
     public SwapChain swapChain;
-    public RenderPass renderPass_color;
     public CommandBuffer command;
 
 
@@ -35,11 +24,10 @@ public unsafe class Sample : Application, IDisposable
 
     public override void Initialize()
     {
-        adapter = new Adapter();
+        adapter = new Adapter(debug);
         surface = new Surface(adapter, Window);
         device = new Device(surface); // new Device(adapter); // compute
         swapChain = new SwapChain(device);
-        renderPass_color = new RenderPass(swapChain);
         command = new CommandBuffer(device);
     }
 
@@ -59,11 +47,11 @@ public unsafe class Sample : Application, IDisposable
         command.BeginCommandBuffer();
 
 
-        command.BeginRenderPass(renderPass_color);
+        command.CmdBeginRendering(swapChain.ColorImage);
 
         // draw
 
-        command.EndRenderPass();
+        command.CmdEndRendering();
         command.EndCommandBuffer();
 
 

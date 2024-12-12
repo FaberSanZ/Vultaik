@@ -25,25 +25,20 @@ namespace Vultaik.Graphics
 
     public unsafe class Adapter
     {
-        public VkInstance instance;
-        public VkPhysicalDevice gpu;
-
-        private bool EnableValidationLayers = false;
-
-        private VkDebugUtilsMessengerEXT debugMessenger = VkDebugUtilsMessengerEXT.Null;
-
-        private readonly string[] validationLayers = new[]
-        {
-            "VK_LAYER_KHRONOS_validation"
-        };
+        internal VkInstance instance;
+        internal VkPhysicalDevice gpu;
+        private bool enable_validation_layers;
+        private VkDebugUtilsMessengerEXT debug_messenger = VkDebugUtilsMessengerEXT.Null;
+        private string[] validation_layers = ["VK_LAYER_KHRONOS_validation"];
 
 
         //private string name = string.Empty;
         private VkPhysicalDeviceType deviceType;
 
 
-        public Adapter()
+        public Adapter(bool debug = false)
         {
+            enable_validation_layers = debug;
             CreateInstance();
             pickPhysicalDevice();
         }
@@ -59,7 +54,7 @@ namespace Vultaik.Graphics
                 throw new Exception("Vulkan is not supported");
 
 
-            if (EnableValidationLayers && !CheckValidationLayerSupport())
+            if (enable_validation_layers && !CheckValidationLayerSupport())
                 throw new Exception("validation layers requested, but not available!");
 
 
@@ -67,14 +62,14 @@ namespace Vultaik.Graphics
             {
                 // sType = VkStructureType.ApplicationInfo,
                 pNext = null,
-                pApplicationName = (sbyte*)Marshal.StringToHGlobalAnsi("Hello Triangle"),
+                pApplicationName = (byte*)Marshal.StringToHGlobalAnsi("Hello Triangle"),
                 applicationVersion = new VkVersion(0, 0, 1),
-                pEngineName = (sbyte*)Marshal.StringToHGlobalAnsi("No Engine"),
+                pEngineName = (byte*)Marshal.StringToHGlobalAnsi("No Engine"),
                 engineVersion = new VkVersion(1, 0, 0),
                 apiVersion = VkVersion.Version_1_3,
             };
 
-
+            //Console.WriteLine(vkEnumerateInstanceVersion().ToString());
 
 
             IEnumerable<string> extensions = supports_extensions();
@@ -85,16 +80,16 @@ namespace Vultaik.Graphics
             {
                 // sType = VkStructureType.InstanceCreateInfo,
                 pApplicationInfo = &appInfo,
-                ppEnabledExtensionNames = (sbyte**)instance_extensions.Pointer,
+                ppEnabledExtensionNames = (byte**)instance_extensions,
                 enabledExtensionCount = (uint)extensions.Count(),
             };
 
 
 
-            if (EnableValidationLayers)
+            if (enable_validation_layers)
             {
-                createInfo.enabledLayerCount = (uint)validationLayers.Length;
-                createInfo.ppEnabledLayerNames = (sbyte**)new VkStringArray(validationLayers).Pointer;
+                createInfo.enabledLayerCount = (uint)validation_layers.Length;
+                createInfo.ppEnabledLayerNames = (byte**)new VkStringArray(validation_layers);
 
                 VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = new();
                 PopulateDebugMessengerCreateInfo(ref debugCreateInfo);
@@ -106,9 +101,6 @@ namespace Vultaik.Graphics
                 createInfo.pNext = null;
             }
 
-
-
-
             if (vkCreateInstance(&createInfo, null, out instance) != VkResult.Success)
                 throw new Exception("failed to create instance!");
 
@@ -118,13 +110,21 @@ namespace Vultaik.Graphics
 
 
         [UnmanagedCallersOnly]
-        private static uint DebugCallback(VkDebugUtilsMessageSeverityFlagsEXT messageSeverity,
-            VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-            VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-            void* userData)
+        private static uint DebugCallback(VkDebugUtilsMessageSeverityFlagsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* userData)
         {
 
-            string message = new(pCallbackData->pMessage);
+            //uint[] ignored_ids = new[]
+            //{
+            //    0xad0e15f6,
+            //};
+
+            //for (int i = 0; i < ignored_ids.Length; i++)
+            //    if ((uint)pCallbackData->messageIdNumber == ignored_ids[i])
+            //        return VK_FALSE;
+
+
+
+            string message = new((char*)pCallbackData->pMessage);
 
             Console.WriteLine($"validation layer:" + message);
 
@@ -133,16 +133,14 @@ namespace Vultaik.Graphics
 
         private void SetupDebugMessenger()
         {
-            if (!EnableValidationLayers)
+            if (!enable_validation_layers)
                 return;
 
             VkDebugUtilsMessengerCreateInfoEXT createInfo = new();
             PopulateDebugMessengerCreateInfo(ref createInfo);
 
-            if (vkCreateDebugUtilsMessengerEXT(instance, &createInfo, null, out debugMessenger) != VkResult.Success)
-            {
+            if (vkCreateDebugUtilsMessengerEXT(instance, &createInfo, null, out debug_messenger) != VkResult.Success)
                 throw new Exception("failed to set up debug messenger!");
-            }
         }
 
         private void pickPhysicalDevice()
@@ -168,26 +166,6 @@ namespace Vultaik.Graphics
                     gpu = gpus[i - 1];
                 }
             }
-
-
-            //if (!IsDeviceSuitable(gpu))
-            //{
-            //    // TODO:
-            //}
-
-
-            //vkGetPhysicalDeviceProperties(gpu, out VkPhysicalDeviceProperties props);
-            //name = new string(props.deviceName);
-            //deviceType = props.deviceType;
-
-            //Console.WriteLine($"GPU - {new string(name)}: {deviceType} - max_score: {max_score}");
-            //Console.WriteLine();
-
-
-            //FindQueueFamilies(gpu);
-
-            //IsDeviceSuitable(physicalDevice);
-
         }
 
 
@@ -195,17 +173,13 @@ namespace Vultaik.Graphics
 
         public uint device_score(VkPhysicalDevice gpu, bool force_integrated_gpu)
         {
-
             vkGetPhysicalDeviceProperties(gpu, out VkPhysicalDeviceProperties props);
-
 
             if (force_integrated_gpu && props.deviceType is VkPhysicalDeviceType.IntegratedGpu)
                 return 4;
 
-
             //if (props.apiVersion < VkVersion.Version_1_0)
             //    return 0;
-
 
             switch (props.deviceType)
             {
@@ -221,24 +195,13 @@ namespace Vultaik.Graphics
         }
 
 
-
-
-
-        //private bool IsDeviceSuitable(VkPhysicalDevice device)
-        //{
-        //    var indices = FindQueueFamilies(device);
-
-        //    return indices.IsComplete();
-        //}
-
-
-
         private bool CheckValidationLayerSupport()
         {
             ReadOnlySpan<VkLayerProperties> availableLayers = vkEnumerateInstanceLayerProperties();
 
             foreach (var layer in availableLayers)
-                if ("VK_LAYER_KHRONOS_validation" == layer.GetLayerName())
+
+                if ("VK_LAYER_KHRONOS_validation" == VkStringInterop.ConvertToManaged(layer.layerName))
                     return true;
 
             return false;
@@ -264,8 +227,8 @@ namespace Vultaik.Graphics
         {
             IEnumerable<string> instance_extensions_names = EnumerateInstanceExtension()
                                                     .ToArray()
-                                                    .Select(_ => new string(_.extensionName));
-
+                                                    .Select(_ => VkStringInterop.ConvertToManaged(_.extensionName));
+            
             List<string> InstanceExtensionsNames = new();
 
 
@@ -303,7 +266,7 @@ namespace Vultaik.Graphics
                 InstanceExtensionsNames.Add("VK_KHR_surface");
 
 
-            if (EnableValidationLayers && instance_extensions_names.Contains("VK_EXT_debug_utils")) ;
+            if (enable_validation_layers && instance_extensions_names.Contains("VK_EXT_debug_utils")) ;
             {
                 InstanceExtensionsNames.Add("VK_EXT_debug_utils");
             }

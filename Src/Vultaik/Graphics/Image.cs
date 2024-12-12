@@ -15,6 +15,8 @@ namespace Vultaik.Graphics
     {
         public VkImage image;
         public VkImageView view;
+        public int width;
+        public int height;
         public Image()
         {
             

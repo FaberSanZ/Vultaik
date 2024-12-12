@@ -5,13 +5,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
 
 
   <ItemGroup>
     <PackageReference Include="Silk.NET.GLFW" Version="2.20.0" />
     <PackageReference Include="Vortice.Dxc" Version="3.4.1-beta" />
-    <PackageReference Include="Vortice.Vulkan" Version="1.8.3" />
+    <PackageReference Include="Vortice.Vulkan" Version="2.1.0" />
   </ItemGroup>
 
 </Project>

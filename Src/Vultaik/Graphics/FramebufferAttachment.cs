@@ -19,7 +19,7 @@ namespace Vultaik.Graphics
         public VkFormat Format { get; set; } 
         public int Width { get; set; }
         public int Height { get; set; }
-        public VkSampleCountFlags Samples { get; set; } //MSAA
+        public VkSampleCountFlags Samples { get; set; }
 
         
         public FramebufferAttachment(AttachmentType type, VkFormat format, int width, int height, VkSampleCountFlags samples = VkSampleCountFlags.Count1)
@@ -43,6 +43,7 @@ namespace Vultaik.Graphics
                 attachment.Add(new(AttachmentType.Color, swapChain.swapChainImageFormat, 800, 600)
                 {
                     Image = swapChain.SwapChainImages[i],
+                    Format = swapChain.swapChainImageFormat,
                 });
             }
 

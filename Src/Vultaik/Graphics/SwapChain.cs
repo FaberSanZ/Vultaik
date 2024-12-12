@@ -47,8 +47,6 @@ namespace Vultaik.Graphics
                 vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, presentsPtr);
             }
 
-
-
         }
     }
 
@@ -56,10 +54,10 @@ namespace Vultaik.Graphics
     public unsafe class SwapChain
     {
 
-        public VkSwapchainKHR swapChain;
-        public VkImage[]? images;
-        public VkFormat swapChainImageFormat;
-        public VkExtent2D swapChainExtent;
+        internal VkSwapchainKHR swapChain;
+        internal VkImage[]? images;
+        internal VkFormat swapChainImageFormat;
+        internal VkExtent2D swapChainExtent;
 
 
         public SwapChain(Device device)
@@ -77,6 +75,13 @@ namespace Vultaik.Graphics
 
         public uint ImageIndex => AcquireNextImage();
 
+        public Image ColorImage => new Image()
+        {
+            height = (int)swapChainExtent.height, 
+            width = (int)swapChainExtent.width,
+            view = SwapChainImages[ImageIndex].view,
+            image = images![ImageIndex]
+        };
 
 
         private void CreateSwapChain()
@@ -93,7 +98,7 @@ namespace Vultaik.Graphics
             {
                 imageCount = Math.Min(imageCount, swapChainSupport.capabilities.maxImageCount);
             }
-            imageCount = swapChainSupport.capabilities.maxImageCount - 1;
+            imageCount = 2;
 
 
             VkSwapchainCreateInfoKHR createInfo = new VkSwapchainCreateInfoKHR()
@@ -236,16 +241,17 @@ namespace Vultaik.Graphics
 
             return new VkExtent2D()
             {
-                width = (uint)Math.Max(capabilities.minImageExtent.width, Math.Min(capabilities.maxImageExtent.width, 800)),
-                height = (uint)Math.Max(capabilities.minImageExtent.height, Math.Min(capabilities.maxImageExtent.height, 600)),
+                width = Math.Max(capabilities.minImageExtent.width, Math.Min(capabilities.maxImageExtent.width, 800)),
+                height = Math.Max(capabilities.minImageExtent.height, Math.Min(capabilities.maxImageExtent.height, 600)),
             };
         }
 
         public uint AcquireNextImage()
         {
+            //Device.ResetFences();
             // By setting timeout to UINT64_MAX we will always wait until the next image has been acquired or an actual error is thrown
             // With that we don't have to handle VK_NOT_READY
-            vkAcquireNextImageKHR(Device.device, swapChain, ulong.MaxValue, Device.imageAvailableSemaphore, new VkFence(), out uint i);
+            vkAcquireNextImageKHR(Device.device, swapChain, ulong.MaxValue, Device.imageAvailableSemaphore, VkFence.Null, out uint i);
             return i;
         }
 
@@ -259,10 +265,8 @@ namespace Vultaik.Graphics
 
             VkPresentInfoKHR present_info = new()
             {
-                //sType = VkStructureType.PresentInfoKHR,
-                //pNext = null,
-                //pResults = null,
-
+                sType = VkStructureType.PresentInfoKHR,
+                pNext = null,
                 waitSemaphoreCount = 1,
                 pWaitSemaphores = &semaphore,
                 swapchainCount = 1,

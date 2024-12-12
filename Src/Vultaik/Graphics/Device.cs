@@ -132,10 +132,7 @@ namespace Vultaik.Graphics
 
 
 
-            VkPhysicalDeviceFeatures device_features = new()
-            {
-                
-            };
+
 
 
             string[] layers =
@@ -148,14 +145,41 @@ namespace Vultaik.Graphics
             VkStringArray validation_layers = new(layers);
 
 
+            VkPhysicalDeviceFeatures device_features = new()
+            {
+                
+            };
+
+            vkGetPhysicalDeviceFeatures(Adapter.gpu, &device_features);
+
+            //TODO: synchronization error using dynamicRendering
+            VkPhysicalDeviceVulkan13Features vk_1_3 = new() 
+            {
+                sType = VkStructureType.PhysicalDeviceVulkan13Features,
+                dynamicRendering = VkBool32.True,
+                synchronization2 = VkBool32.False,
+                
+            };
+
+            VkPhysicalDeviceFeatures2 features2 = new()
+            {
+                sType = VkStructureType.PhysicalDeviceFeatures2,
+                pNext = &vk_1_3,
+                features = device_features,
+            };
+
+            vkGetPhysicalDeviceFeatures2(Adapter.gpu, &features2);
+
+
             VkDeviceCreateInfo device_create_info = new()
             {
-                //pNext = null,
+                pNext = &features2,
                 pQueueCreateInfos = queue_create_infos,
                 queueCreateInfoCount = 1,
-                pEnabledFeatures = &device_features,
+                pEnabledFeatures = null,
                 ppEnabledExtensionNames = device_extensions,
                 enabledExtensionCount = 1, // TODO: swapchain
+                
             };
 
 
@@ -179,7 +203,6 @@ namespace Vultaik.Graphics
 
             vkLoadDevice(device);
 
-            //Console.WriteLine(device);
             vkGetDeviceQueue(device, indices.GraphicsFamily!.Value, 0, out graphics_queue);
             vkGetDeviceQueue(device, indices.PresentFamily!.Value, 0, out present_queue);
 
@@ -188,8 +211,8 @@ namespace Vultaik.Graphics
             //semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
             VkFenceCreateInfo fenceInfo = new VkFenceCreateInfo() { };
-            //fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            fenceInfo.sType = VkStructureType.FenceCreateInfo;
+            fenceInfo.flags = VkFenceCreateFlags.Signaled;
 
             vkCreateSemaphore(device, &semaphoreInfo, null, out imageAvailableSemaphore);
             vkCreateSemaphore(device, &semaphoreInfo, null, out renderFinishedSemaphore);

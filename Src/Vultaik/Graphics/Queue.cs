@@ -121,7 +121,7 @@ namespace Vultaik.Graphics
         {
             List<VkQueueFlags> activeFlags = new List<VkQueueFlags>();
 
-            foreach (VkQueueFlags flag in Enum.GetValues(typeof(VkQueueFlags)))
+            foreach (VkQueueFlags flag in Enum.GetValues<VkQueueFlags>())
             {
                 if (flag != VkQueueFlags.None && allFlags.HasFlag(flag))
                 {
@@ -135,20 +135,21 @@ namespace Vultaik.Graphics
 
         public unsafe void FillFamilyIndices(uint[]? enabledFamilyIndices, uint familyIndexNum)
         {
-            var gpu = Adapter.gpu;
-            uint familyNum = 0;
-            vkGetPhysicalDeviceQueueFamilyProperties(gpu, &familyNum, null);
+            VkPhysicalDevice gpu = Adapter.gpu;
+            uint family_count = 0;
 
-            VkQueueFamilyProperties[] familyProps = new VkQueueFamilyProperties[familyNum];
+            vkGetPhysicalDeviceQueueFamilyProperties(gpu, &family_count, null);
+
+            VkQueueFamilyProperties[] familyProps = new VkQueueFamilyProperties[family_count];
             fixed (VkQueueFamilyProperties* queueFamiliesPtr = familyProps)
             {
-                vkGetPhysicalDeviceQueueFamilyProperties(gpu, &familyNum, queueFamiliesPtr);
+                vkGetPhysicalDeviceQueueFamilyProperties(gpu, &family_count, queueFamiliesPtr);
             }
 
 
 
 
-            for (uint i = 0; i < familyNum; i++)
+            for (uint i = 0; i < family_count; i++)
             {
                 if (enabledFamilyIndices != null)
                 {
