@@ -80,7 +80,8 @@ namespace Vultaik.Graphics
             height = (int)swapChainExtent.height, 
             width = (int)swapChainExtent.width,
             view = SwapChainImages[ImageIndex].view,
-            image = images![ImageIndex]
+            image = images![ImageIndex],
+            Format = swapChainImageFormat
         };
 
 

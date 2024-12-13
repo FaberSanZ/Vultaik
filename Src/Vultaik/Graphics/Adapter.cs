@@ -29,7 +29,7 @@ namespace Vultaik.Graphics
         private bool enable_validation_layers;
         private VkDebugUtilsMessengerEXT debug_messenger = VkDebugUtilsMessengerEXT.Null;
         private string[] validation_layers = ["VK_LAYER_KHRONOS_validation"];
-
+        internal VkVersion api_version;
 
         //private string name = string.Empty;
         private VkPhysicalDeviceType deviceType;
@@ -39,9 +39,15 @@ namespace Vultaik.Graphics
         {
             enable_validation_layers = debug;
             CreateInstance();
-            pickPhysicalDevice();
+            get_gpu();
         }
 
+        public bool Vulka_1_0_Support = false;
+        public bool Vulka_1_1_Support = false;
+        public bool Vulka_1_2_Support = false;
+        public bool Vulka_1_3_Support = false;
+        public bool Vulka_1_4_Support = false;
+        public bool SupportsPhysicalDeviceProperties2 = false;
 
 
 
@@ -57,6 +63,9 @@ namespace Vultaik.Graphics
                 throw new Exception("validation layers requested, but not available!");
 
 
+            var ins_api_version = vkEnumerateInstanceVersion();
+
+
             VkApplicationInfo appInfo = new VkApplicationInfo()
             {
                 // sType = VkStructureType.ApplicationInfo,
@@ -65,10 +74,9 @@ namespace Vultaik.Graphics
                 applicationVersion = new VkVersion(0, 0, 1),
                 pEngineName = (byte*)Marshal.StringToHGlobalAnsi("No Engine"),
                 engineVersion = new VkVersion(1, 0, 0),
-                apiVersion = VkVersion.Version_1_3,
+                apiVersion = ins_api_version,
             };
 
-            //Console.WriteLine(vkEnumerateInstanceVersion().ToString());
 
 
             IEnumerable<string> extensions = supports_extensions();
@@ -142,7 +150,7 @@ namespace Vultaik.Graphics
                 throw new Exception("failed to set up debug messenger!");
         }
 
-        private void pickPhysicalDevice()
+        private void get_gpu()
         {
             uint deviceCount = 0;
             vkEnumeratePhysicalDevices(instance, &deviceCount, null);
@@ -174,11 +182,40 @@ namespace Vultaik.Graphics
         {
             vkGetPhysicalDeviceProperties(gpu, out VkPhysicalDeviceProperties props);
 
+
+            api_version = props.apiVersion;
+
+            if (api_version >= VkVersion.Version_1_0)
+                Vulka_1_0_Support = true;
+
+            if (api_version >= VkVersion.Version_1_1)
+                Vulka_1_1_Support = true;
+
+            if (api_version >= VkVersion.Version_1_2)
+                Vulka_1_2_Support = true;
+
+            if (api_version >= VkVersion.Version_1_3)
+                Vulka_1_3_Support = true;
+
+            if (api_version >= VkVersion.Version_1_4)
+                Vulka_1_4_Support = true;
+
+
+
+            Console.WriteLine(props.apiVersion.ToString());
+            Console.WriteLine($"Vulka_1_0_Support {Vulka_1_0_Support}");
+            Console.WriteLine($"Vulka_1_1_Support {Vulka_1_1_Support}");
+            Console.WriteLine($"Vulka_1_2_Support {Vulka_1_2_Support}");
+            Console.WriteLine($"Vulka_1_3_Support {Vulka_1_3_Support}");
+            Console.WriteLine($"Vulka_1_4_Support {Vulka_1_4_Support}");
+
+
+
+
+
+
             if (force_integrated_gpu && props.deviceType is VkPhysicalDeviceType.IntegratedGpu)
                 return 4;
-
-            //if (props.apiVersion < VkVersion.Version_1_0)
-            //    return 0;
 
             switch (props.deviceType)
             {
@@ -226,10 +263,16 @@ namespace Vultaik.Graphics
         {
             IEnumerable<string> instance_extensions_names = EnumerateInstanceExtension()
                                                     .ToArray()
-                                                    .Select(_ => VkStringInterop.ConvertToManaged(_.extensionName));
+                                                    .Select(_ => VkStringInterop.ConvertToManaged(_.extensionName)!);
             
             List<string> InstanceExtensionsNames = new();
 
+
+            if (InstanceExtensionsNames.Contains("VK_KHR_get_physical_device_properties2"))
+            {
+                InstanceExtensionsNames.Add("VK_KHR_get_physical_device_properties2");
+                SupportsPhysicalDeviceProperties2 = true;
+            }
 
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

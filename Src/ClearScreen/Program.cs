@@ -47,11 +47,11 @@ public unsafe class Sample(bool debug) : Application, IDisposable
         command.BeginCommandBuffer();
 
 
-        command.CmdBeginRendering(swapChain.ColorImage);
+        command.BeginRendering(swapChain.ColorImage);
 
         // draw
 
-        command.CmdEndRendering();
+        command.EndRendering();
         command.EndCommandBuffer();
 
 
