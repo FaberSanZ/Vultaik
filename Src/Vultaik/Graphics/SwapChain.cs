@@ -72,6 +72,7 @@ namespace Vultaik.Graphics
         public Image[] SwapChainImages { get; set; }
         public List<FramebufferAttachment> ColorAttachments { get; set; }
 
+        public bool VSync = true;
 
         public uint ImageIndex => AcquireNextImage();
 
@@ -101,6 +102,14 @@ namespace Vultaik.Graphics
             }
 
 
+            VkPresentModeKHR present_mode = VkPresentModeKHR.Mailbox;
+
+            if (VSync)
+            {
+                present_mode = VkPresentModeKHR.Fifo;
+            }
+
+
             VkSwapchainCreateInfoKHR swapchain_create_info = new VkSwapchainCreateInfoKHR()
             {
                 //sType = VkStructureType.SwapchainCreateInfoKHR,
@@ -113,7 +122,7 @@ namespace Vultaik.Graphics
                 imageUsage = VkImageUsageFlags.ColorAttachment,
                 preTransform = swapChain_support.capabilities.currentTransform,
                 compositeAlpha = VkCompositeAlphaFlagsKHR.Opaque,
-                presentMode = presentMode,
+                presentMode = present_mode,
                 clipped = true,
             };
 

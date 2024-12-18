@@ -210,7 +210,7 @@ namespace Vultaik.Graphics
             Console.WriteLine($"Vulka_1_4_Support {Vulka_1_4_Support}");
 
 
-
+            Console.WriteLine(VkStringInterop.ConvertToManaged(props.deviceName));
 
 
 
