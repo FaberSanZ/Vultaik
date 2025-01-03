@@ -23,7 +23,10 @@ namespace Vultaik.Graphics
         internal VkSemaphore render_semaphore;
         internal VkFence in_flight_fence;
 
+        internal VkPhysicalDeviceVulkan11Features vk_1_1;
+        internal VkPhysicalDeviceVulkan12Features vk_1_2;
         internal VkPhysicalDeviceVulkan13Features vk_1_3;
+        internal VkPhysicalDeviceVulkan14Features vk_1_4;
         internal VkPhysicalDeviceDynamicRenderingFeatures physical_device_dynamic_rendering_features;
 
 
@@ -124,7 +127,7 @@ namespace Vultaik.Graphics
             VkDeviceQueueCreateInfo present_queue_create_info = new()
             {
                 pNext = null,
-                queueFamilyIndex = uniqueQueueFamilies[0] + 2,
+                queueFamilyIndex = uniqueQueueFamilies[0],
                 queueCount = 1,
                 //flags = VkDeviceQueueCreateFlags.Protected,
                 pQueuePriorities = pri,
@@ -138,12 +141,7 @@ namespace Vultaik.Graphics
             };
 
 
-
-
-
-
             List<string> device_extensions_list = new();
-
 
             foreach (VkExtensionProperties item in vkEnumerateDeviceExtensionProperties(Adapter.gpu))
             {
@@ -164,15 +162,25 @@ namespace Vultaik.Graphics
             }
 
 
+            vk_1_1 = new VkPhysicalDeviceVulkan11Features()
+            {
+                sType = VkStructureType.PhysicalDeviceVulkan11Features,
+            };
+            vk_1_2 = new VkPhysicalDeviceVulkan12Features()
+            {
+                sType = VkStructureType.PhysicalDeviceVulkan12Features,
+            };
             vk_1_3 = new VkPhysicalDeviceVulkan13Features()
             {
                 sType = VkStructureType.PhysicalDeviceVulkan13Features,
             };
-
-            physical_device_dynamic_rendering_features = new VkPhysicalDeviceDynamicRenderingFeatures()
+            vk_1_4 = new VkPhysicalDeviceVulkan14Features()
             {
-                sType = VkStructureType.PhysicalDeviceDynamicRenderingFeatures,
+                sType = VkStructureType.PhysicalDeviceVulkan14Features,
             };
+
+
+
 
             VkPhysicalDeviceFeatures2 features = new()
             {
@@ -184,6 +192,48 @@ namespace Vultaik.Graphics
 
 
 
+
+            if (Adapter.Vulka_1_1_Support)
+            {
+                fixed (VkPhysicalDeviceVulkan11Features* feature = &vk_1_1)
+                {
+                    *ppNext = feature;
+                    ppNext = &feature->pNext;
+                }
+            }
+            else
+            {
+                // Add ext
+            }
+
+            if (Adapter.Vulka_1_2_Support)
+            {
+                fixed (VkPhysicalDeviceVulkan12Features* feature = &vk_1_2)
+                {
+                    *ppNext = feature;
+                    ppNext = &feature->pNext;
+                }
+            }
+            else
+            {
+                // Add ext
+            }
+
+
+            if (Adapter.Vulka_1_2_Support)
+            {
+                fixed (VkPhysicalDeviceVulkan11Features* feature = &vk_1_1)
+                {
+                    *ppNext = feature;
+                    ppNext = &feature->pNext;
+                }
+            }
+            else
+            {
+                // Add ext
+            }
+
+
             if (Adapter.Vulka_1_3_Support)
             {
                 fixed (VkPhysicalDeviceVulkan13Features* feature = &vk_1_3)
@@ -192,17 +242,20 @@ namespace Vultaik.Graphics
                     ppNext = &feature->pNext;
                 }
             }
-
-
-
-            if (Dynamic_Rendering_Ext)
+            else
             {
-                fixed (VkPhysicalDeviceDynamicRenderingFeatures* feature = &physical_device_dynamic_rendering_features)
+                if (Dynamic_Rendering_Ext)
                 {
-                    *ppNext = feature;
-                    ppNext = &feature->pNext;
+                    fixed (VkPhysicalDeviceDynamicRenderingFeatures* feature = &physical_device_dynamic_rendering_features)
+                    {
+                        *ppNext = feature;
+                        ppNext = &feature->pNext;
+                    }
                 }
             }
+
+
+
 
 
 
@@ -222,26 +275,12 @@ namespace Vultaik.Graphics
 
 
 
-            if (vk_1_3.dynamicRendering)
-            {
-                Dynamic_Rendering = true;
-                Dynamic_Rendering_Ext = false;
-            }
-            else if (!vk_1_3.dynamicRendering && physical_device_dynamic_rendering_features.dynamicRendering)
-            {
-                Dynamic_Rendering = false;
-                Dynamic_Rendering_Ext = true;
-            }
-            else
-            {
-                // renderpass and framebuffers
-                Dynamic_Rendering = false;
-                Dynamic_Rendering_Ext = false;
-            }
-
-
-            //Dynamic_Rendering = false;
-            //Dynamic_Rendering_Ext = false;
+            Dynamic_Rendering = vk_1_3.dynamicRendering;
+            Dynamic_Rendering_Ext = !vk_1_3.dynamicRendering && physical_device_dynamic_rendering_features.dynamicRendering;
+            
+            bool force_renderpass = false;
+            if (force_renderpass)
+                Dynamic_Rendering = Dynamic_Rendering_Ext = !force_renderpass;
 
 
             VkStringArray device_extensions = new(device_extensions_list);
