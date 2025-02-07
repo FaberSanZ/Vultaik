@@ -13,8 +13,6 @@ namespace Vultaik
 {
     public class Application
     {
-
-
         public Application()
         {
 
@@ -25,13 +23,8 @@ namespace Vultaik
         }
 
 
-
-
-
-
         public Window Window { get; set; }
         public TimerTick Time { get; }
-
 
 
         public void Run()

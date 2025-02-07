@@ -201,19 +201,6 @@ namespace Vultaik.Graphics
                 Vulka_1_4_Support = true;
 
 
-
-            Console.WriteLine(props.apiVersion.ToString());
-            Console.WriteLine($"Vulka_1_0_Support {Vulka_1_0_Support}");
-            Console.WriteLine($"Vulka_1_1_Support {Vulka_1_1_Support}");
-            Console.WriteLine($"Vulka_1_2_Support {Vulka_1_2_Support}");
-            Console.WriteLine($"Vulka_1_3_Support {Vulka_1_3_Support}");
-            Console.WriteLine($"Vulka_1_4_Support {Vulka_1_4_Support}");
-
-
-            Console.WriteLine(VkStringInterop.ConvertToManaged(props.deviceName));
-
-
-
             if (force_integrated_gpu && props.deviceType is VkPhysicalDeviceType.IntegratedGpu)
                 return 4;
 

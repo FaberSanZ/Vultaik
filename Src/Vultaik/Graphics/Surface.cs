@@ -39,12 +39,6 @@ namespace Vultaik.Graphics
             VkSurfaceKHR _surface;
             vkCreateWin32SurfaceKHR(adapter.instance, &windowsSurfaceInfo, null, &_surface).CheckResult();
             surface = _surface;
-
-
-            //Marshal.FreeHGlobal(((nint)_surface.Handle));
-
-
-            //Console.WriteLine("Surface: " + surface.Handle.ToString("X"));
         }
 
     }

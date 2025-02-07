@@ -56,10 +56,6 @@ namespace Vultaik.Graphics
         public uint? QueueTransferFamily { get; set; }
         public uint? QueuePresentFamily { get; set; }
 
-        public bool Dynamic_Rendering = false;
-        public bool Dynamic_Rendering_Ext = false;
-
-
 
         private void createLogicalDevice()
         {
@@ -92,11 +88,9 @@ namespace Vultaik.Graphics
             QueueGraphicsFamily = queue.GetFamilyIndex(VkQueueFlags.Graphics);
 
 
-            //Console.WriteLine(indices.GraphicsFamily);
-            //Console.WriteLine(indices.PresentFamily);
 
 
-            var uniqueQueueFamilies = new[] { QueueGraphicsFamily!.Value, QueuePresentFamily!.Value };
+            uint[] uniqueQueueFamilies = new[] { QueueGraphicsFamily!.Value, QueuePresentFamily!.Value };
             uniqueQueueFamilies = uniqueQueueFamilies.Distinct().ToArray();
 
 
@@ -147,19 +141,15 @@ namespace Vultaik.Graphics
             {
                 string name = VkStringInterop.ConvertToManaged(item.extensionName)!;
 
-                if (name == "VK_KHR_dynamic_rendering")
-                {
-                    device_extensions_list.Add("VK_KHR_dynamic_rendering");
-                    Dynamic_Rendering_Ext = true;
-                }
-
-
                 if (name == "VK_KHR_swapchain")
                 {
                     device_extensions_list.Add("VK_KHR_swapchain");
                     //Swapchain = true;
                 }
             }
+            VkStringArray device_extensions = new(device_extensions_list);
+
+
 
 
             vk_1_1 = new VkPhysicalDeviceVulkan11Features()
@@ -178,9 +168,6 @@ namespace Vultaik.Graphics
             {
                 sType = VkStructureType.PhysicalDeviceVulkan14Features,
             };
-
-
-
 
             VkPhysicalDeviceFeatures2 features = new()
             {
@@ -201,10 +188,7 @@ namespace Vultaik.Graphics
                     ppNext = &feature->pNext;
                 }
             }
-            else
-            {
-                // Add ext
-            }
+
 
             if (Adapter.Vulka_1_2_Support)
             {
@@ -214,10 +198,7 @@ namespace Vultaik.Graphics
                     ppNext = &feature->pNext;
                 }
             }
-            else
-            {
-                // Add ext
-            }
+ 
 
 
             if (Adapter.Vulka_1_2_Support)
@@ -228,31 +209,17 @@ namespace Vultaik.Graphics
                     ppNext = &feature->pNext;
                 }
             }
-            else
-            {
-                // Add ext
-            }
 
 
             if (Adapter.Vulka_1_3_Support)
             {
-                fixed (VkPhysicalDeviceVulkan13Features* feature = &vk_1_3)
-                {
-                    *ppNext = feature;
-                    ppNext = &feature->pNext;
-                }
+                ////fixed (VkPhysicalDeviceVulkan13Features* feature = &vk_1_3)
+                ////{
+                ////    *ppNext = feature;
+                ////    ppNext = &feature->pNext;
+                ////}
             }
-            else
-            {
-                if (Dynamic_Rendering_Ext)
-                {
-                    fixed (VkPhysicalDeviceDynamicRenderingFeatures* feature = &physical_device_dynamic_rendering_features)
-                    {
-                        *ppNext = feature;
-                        ppNext = &feature->pNext;
-                    }
-                }
-            }
+
 
 
 
@@ -260,30 +227,17 @@ namespace Vultaik.Graphics
 
 
             if (Adapter.Vulka_1_1_Support)
-            {
                 vkGetPhysicalDeviceFeatures2(Adapter.gpu, &features);
-            }
 
             else if (Adapter.SupportsPhysicalDeviceProperties2)
-            {
                 vkGetPhysicalDeviceFeatures2KHR(Adapter.gpu, &features);
-            }
             else
-            {
                 vkGetPhysicalDeviceFeatures(Adapter.gpu, out features.features);
-            }
 
 
+            if (!vk_1_3.dynamicRendering)
+                throw new Exception("dynamicRendering is not Supported - Update Vulkan Driver");
 
-            Dynamic_Rendering = vk_1_3.dynamicRendering;
-            Dynamic_Rendering_Ext = !vk_1_3.dynamicRendering && physical_device_dynamic_rendering_features.dynamicRendering;
-            
-            bool force_renderpass = false;
-            if (force_renderpass)
-                Dynamic_Rendering = Dynamic_Rendering_Ext = !force_renderpass;
-
-
-            VkStringArray device_extensions = new(device_extensions_list);
 
             VkDeviceCreateInfo device_create_info = new()
             {
@@ -293,12 +247,7 @@ namespace Vultaik.Graphics
                 pEnabledFeatures = null,
                 ppEnabledExtensionNames = device_extensions,
                 enabledExtensionCount = device_extensions.Length, // TODO: swapchain
-                
             };
-
-
-
-
 
 
             if (false)
@@ -320,7 +269,7 @@ namespace Vultaik.Graphics
 
             vkLoadDevice(device);
 
-            vkGetDeviceQueue(device, QueueGraphicsFamily!.Value, 0, out graphics_queue);
+            vkGetDeviceQueue(device, QueueGraphicsFamily!.Value, queue.GetGraphicsQueue.QueueIndex, out graphics_queue);
             vkGetDeviceQueue(device, QueuePresentFamily!.Value, 0, out present_queue);
 
 
