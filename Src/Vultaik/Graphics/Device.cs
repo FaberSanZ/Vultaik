@@ -59,6 +59,15 @@ namespace Vultaik.Graphics
 
         private void createLogicalDevice()
         {
+
+
+            if (Adapter.instance_version >= VkVersion.Version_1_3 && Adapter.api_version >= VkVersion.Version_1_3)
+                Console.WriteLine("Vulkan 1.3 is supported");
+            else
+                throw new Exception("Vulkan 1.3 is not supported");
+
+
+
             bool present = Surface != null;
             Queue queue = new Queue(Adapter);
 
@@ -178,8 +187,6 @@ namespace Vultaik.Graphics
             void** ppNext = &features.pNext;
 
 
-
-
             if (Adapter.Vulka_1_1_Support)
             {
                 fixed (VkPhysicalDeviceVulkan11Features* feature = &vk_1_1)
@@ -198,32 +205,16 @@ namespace Vultaik.Graphics
                     ppNext = &feature->pNext;
                 }
             }
- 
 
 
-            if (Adapter.Vulka_1_2_Support)
+            if (Adapter.Vulka_1_3_Support)
             {
-                fixed (VkPhysicalDeviceVulkan11Features* feature = &vk_1_1)
+                fixed (VkPhysicalDeviceVulkan13Features* feature = &vk_1_3)
                 {
                     *ppNext = feature;
                     ppNext = &feature->pNext;
                 }
             }
-
-
-            if (Adapter.Vulka_1_3_Support)
-            {
-                ////fixed (VkPhysicalDeviceVulkan13Features* feature = &vk_1_3)
-                ////{
-                ////    *ppNext = feature;
-                ////    ppNext = &feature->pNext;
-                ////}
-            }
-
-
-
-
-
 
 
             if (Adapter.Vulka_1_1_Support)
@@ -235,8 +226,12 @@ namespace Vultaik.Graphics
                 vkGetPhysicalDeviceFeatures(Adapter.gpu, out features.features);
 
 
+            if (!vk_1_2.descriptorIndexing)
+                throw new Exception("DescriptorIndexing is not Supported - Update Vulkan Driver");
+
+
             if (!vk_1_3.dynamicRendering)
-                throw new Exception("dynamicRendering is not Supported - Update Vulkan Driver");
+                throw new Exception("DynamicRendering is not Supported - Update Vulkan Driver");
 
 
             VkDeviceCreateInfo device_create_info = new()

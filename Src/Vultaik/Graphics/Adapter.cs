@@ -29,11 +29,11 @@ namespace Vultaik.Graphics
         private bool enable_validation_layers;
         private VkDebugUtilsMessengerEXT debug_messenger = VkDebugUtilsMessengerEXT.Null;
         private string[] validation_layers = ["VK_LAYER_KHRONOS_validation"];
+        internal VkVersion instance_version;
         internal VkVersion api_version;
 
         //private string name = string.Empty;
         private VkPhysicalDeviceType deviceType;
-
 
         public Adapter(bool debug = false)
         {
@@ -48,7 +48,7 @@ namespace Vultaik.Graphics
         public bool Vulka_1_3_Support = false;
         public bool Vulka_1_4_Support = false;
         public bool SupportsPhysicalDeviceProperties2 = false;
-
+        
 
 
         private void CreateInstance()
@@ -63,7 +63,7 @@ namespace Vultaik.Graphics
                 throw new Exception("validation layers requested, but not available!");
 
 
-            var ins_api_version = vkEnumerateInstanceVersion();
+            instance_version = vkEnumerateInstanceVersion();
 
 
             VkApplicationInfo appInfo = new VkApplicationInfo()
@@ -74,7 +74,7 @@ namespace Vultaik.Graphics
                 applicationVersion = new VkVersion(0, 0, 1),
                 pEngineName = (byte*)Marshal.StringToHGlobalAnsi("No Engine"),
                 engineVersion = new VkVersion(1, 0, 0),
-                apiVersion = ins_api_version,
+                apiVersion = instance_version,
             };
 
 

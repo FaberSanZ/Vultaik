@@ -11,14 +11,11 @@ App.Run();
 public class Sample(bool debug) : Application, IDisposable
 {
 
-
     public Adapter adapter;
     public Surface surface;
     public Device device;
     public SwapChain swapChain;
     public CommandBuffer command;
-
-
 
 
 
@@ -30,7 +27,6 @@ public class Sample(bool debug) : Application, IDisposable
         swapChain = new SwapChain(device);
         command = new CommandBuffer(device, CommandBufferType.Graphics); // default
     }
-
 
 
 
