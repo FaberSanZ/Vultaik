@@ -5,11 +5,11 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PublishAot>true</PublishAot>
-
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  
   <ItemGroup>
     <PackageReference Include="Vortice.Vulkan" Version="2.1.0" />
   </ItemGroup>
@@ -17,5 +17,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Vultaik\Vultaik.csproj" />
   </ItemGroup>
+
 
 </Project>

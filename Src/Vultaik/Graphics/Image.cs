@@ -13,15 +13,15 @@ namespace Vultaik.Graphics
 {
     public unsafe class Image
     {
-        public VkImage image;
-        public VkImageView view;
-        public int width;
-        public int height;
-        public VkFormat Format;
+        internal VkImage _image;
+        internal VkImageView _view;
+        internal int _width;
+        internal int _height;
 
         public Image()
         {
             
         }
+        public VkFormat Format { get; set; }
     }
 }

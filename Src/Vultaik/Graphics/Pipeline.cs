@@ -14,5 +14,18 @@ namespace Vultaik.Graphics
 {
     public class Pipeline
     {
+        private VkPipeline _pipeline;
+        private VkPipelineLayout _pipelineLayout;
+
+
+        public Pipeline(int data)
+        {
+            byte[] code1 = new byte[128];   
+            byte[] code2 = new byte[128];
+
+            string vs = "VS"; 
+            string ps = "PS";
+            string datar = code1 + vs + ps;
+        }
     }
 }

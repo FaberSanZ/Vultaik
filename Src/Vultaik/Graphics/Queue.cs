@@ -133,7 +133,7 @@ namespace Vultaik.Graphics
         }
 
 
-        public unsafe void FillFamilyIndices(uint[]? enabledFamilyIndices, uint familyIndexNum)
+        public unsafe void FillFamilyIndices(uint[]? enabledFamilyIndices, uint familyIndexNum, Surface? surface = null)
         {
             VkPhysicalDevice gpu = Adapter.gpu;
             uint family_count = 0;
@@ -177,7 +177,13 @@ namespace Vultaik.Graphics
                 bool video_encode = (flags & VkQueueFlags.VideoEncodeKHR) != 0;
                 bool video_decode = (flags & VkQueueFlags.VideoDecodeKHR) != 0;
                 bool opticalFlow = (flags & VkQueueFlags.OpticalFlowNV) != 0;
-
+                VkBool32 presentSupport = false;
+                
+                if(surface != null)
+                {
+                    vkGetPhysicalDeviceSurfaceSupportKHR(gpu, i, surface!._surface, &presentSupport);
+                }
+ 
 
 
                 score = (byte)((graphics ? 100 : 0) + (compute ? 10 : 0) + (copy ? 10 : 0) + (sparse ? 5 : 0) + (opticalFlow ? 2 : 0) + (video_decode ? 1 : 0) + (video_encode ? 1 : 0) + (protect ? 1 : 0));

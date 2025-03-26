@@ -22,7 +22,7 @@ namespace Vultaik.Graphics
         }
     }
 
-    public unsafe class Adapter
+    public unsafe class Adapter : IDisposable
     {
         internal VkInstance instance;
         internal VkPhysicalDevice gpu;
@@ -59,6 +59,7 @@ namespace Vultaik.Graphics
                 throw new Exception("Vulkan is not supported");
 
 
+
             if (enable_validation_layers && !CheckValidationLayerSupport())
                 throw new Exception("validation layers requested, but not available!");
 
@@ -85,7 +86,7 @@ namespace Vultaik.Graphics
 
             VkInstanceCreateInfo createInfo = new VkInstanceCreateInfo()
             {
-                // sType = VkStructureType.InstanceCreateInfo,
+                sType = VkStructureType.InstanceCreateInfo,
                 pApplicationInfo = &appInfo,
                 ppEnabledExtensionNames = (byte**)instance_extensions,
                 enabledExtensionCount = (uint)extensions.Count(),
@@ -373,8 +374,15 @@ namespace Vultaik.Graphics
 
             return indices;
         }
+        public void Dispose()
+        {
+            if (debug_messenger != VkDebugUtilsMessengerEXT.Null)
+                vkDestroyDebugUtilsMessengerEXT(instance, debug_messenger);
 
 
+            if (instance != VkInstance.Null)
+                vkDestroyInstance(instance);
+        }
 
     }
 }

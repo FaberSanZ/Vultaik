@@ -7,25 +7,23 @@ using var App = new Sample(false);
 App.Run();
 
 
-
-public class Sample(bool debug) : Application, IDisposable
+public unsafe class Sample(bool debug) : Application, IDisposable
 {
 
-    public Adapter adapter;
-    public Surface surface;
-    public Device device;
-    public SwapChain swapChain;
-    public CommandBuffer command;
-
+    private Adapter? _adapter;
+    private Surface? _surface;
+    private Device? _device;
+    private SwapChain? _swapChain;
+    private CommandBuffer? _command;
 
 
     public override void Initialize()
     {
-        adapter = new Adapter(debug);
-        surface = new Surface(adapter, Window);
-        device = new Device(surface); // new Device(adapter); // compute
-        swapChain = new SwapChain(device);
-        command = new CommandBuffer(device, CommandBufferType.Graphics); // default
+        _adapter = new Adapter(debug);
+        _surface = new Surface(_adapter, Window);
+        _device = new Device(_surface); // new Device(adapter); // compute
+        _swapChain = new SwapChain(_device);
+        _command = new CommandBuffer(_device, CommandBufferType.Graphics); // default
     }
 
 
@@ -38,36 +36,39 @@ public class Sample(bool debug) : Application, IDisposable
 
     public override void Draw(TimerTick time)
     {
-        device.ResetFences();
+        _device!.ResetFences();
 
-        command.ResetCommandBuffer();
-        command.BeginCommandBuffer();
+        _command!.ResetCommandBuffer();
+        _command.BeginCommandBuffer();
 
 
-        command.BeginRendering(swapChain.ColorImage);
+        _command.BeginRendering(_swapChain!.ColorImage);
 
         // draw
 
-        command.EndRendering();
-        command.EndCommandBuffer();
+        _command.EndRendering();
+        _command.EndCommandBuffer();
 
 
-        device.Submit(command);
+        _device.Submit(_command);
 
 
-        swapChain.Present();
+        _swapChain!.Present();
 
     }
 
     public void Dispose()
     {
+        //TODO: Sync
         //vkDeviceWaitIdle(device);
+
+        _swapChain!.Dispose();
+        _command!.Dispose();
+        _device!.Dispose();
+        _surface!.Dispose();
+        _adapter!.Dispose();
+
         Window.Dispose();
 
     }
 }
-
-
-
-
-

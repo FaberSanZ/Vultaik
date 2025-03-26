@@ -13,21 +13,21 @@ using System.Reflection.Metadata;
 
 namespace Vultaik.Graphics
 {
-    public unsafe  class Device
+    public unsafe  class Device : IDisposable
     {
 
-        internal VkDevice device;
-        internal VkQueue graphics_queue;
-        internal VkQueue present_queue;
-        internal VkSemaphore image_semaphore;
-        internal VkSemaphore render_semaphore;
-        internal VkFence in_flight_fence;
+        internal VkDevice _device;
+        internal VkQueue _graphicsQueue;
+        internal VkQueue _presentQueue;
+        internal VkSemaphore _imageSemaphore;
+        internal VkSemaphore _renderSemaphore;
+        internal VkFence _inFlightFence;
 
         internal VkPhysicalDeviceVulkan11Features vk_1_1;
         internal VkPhysicalDeviceVulkan12Features vk_1_2;
         internal VkPhysicalDeviceVulkan13Features vk_1_3;
         internal VkPhysicalDeviceVulkan14Features vk_1_4;
-        internal VkPhysicalDeviceDynamicRenderingFeatures physical_device_dynamic_rendering_features;
+        internal VkPhysicalDeviceDynamicRenderingFeatures _physicalDeviceDynamicRenderingFeatures;
 
 
         public Device(Adapter adapter)
@@ -41,7 +41,7 @@ namespace Vultaik.Graphics
 
         public Device(Surface surface)
         {
-            Adapter = surface.adapter;
+            Adapter = surface._adapter;
             Surface = surface;
 
             createLogicalDevice();
@@ -60,19 +60,21 @@ namespace Vultaik.Graphics
         private void createLogicalDevice()
         {
 
+            var consoloColor = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Green;
 
             if (Adapter.instance_version >= VkVersion.Version_1_3 && Adapter.api_version >= VkVersion.Version_1_3)
-                Console.WriteLine("Vulkan 1.3 is supported");
+                Console.WriteLine("--Vulkan 1.3 is supported \n \n");
             else
                 throw new Exception("Vulkan 1.3 is not supported");
 
+            Console.ForegroundColor = consoloColor;
 
 
             bool present = Surface != null;
             Queue queue = new Queue(Adapter);
 
             queue.FillFamilyIndices(null, 0);
-
 
             Console.WriteLine("Graphics: " + queue.GetQueue(VkQueueFlags.Graphics).ToString());
             Console.WriteLine();
@@ -92,7 +94,7 @@ namespace Vultaik.Graphics
             Console.WriteLine("VideoEncode: " + queue.GetQueue(VkQueueFlags.VideoEncodeKHR).ToString());
             Console.WriteLine();
 
-            QueuePresentFamily = Adapter.FindQueueFamilies(Adapter.gpu, Surface.surface).PresentFamily;
+            QueuePresentFamily = Adapter.FindQueueFamilies(Adapter.gpu, Surface._surface).PresentFamily;
 
             QueueGraphicsFamily = queue.GetFamilyIndex(VkQueueFlags.Graphics);
 
@@ -111,7 +113,7 @@ namespace Vultaik.Graphics
 
             if (new_queue)
             {
-
+                queue_count++;
             }
 
             //Console.WriteLine("queue_count: " + queue_count);
@@ -217,13 +219,8 @@ namespace Vultaik.Graphics
             }
 
 
-            if (Adapter.Vulka_1_1_Support)
-                vkGetPhysicalDeviceFeatures2(Adapter.gpu, &features);
+            vkGetPhysicalDeviceFeatures2(Adapter.gpu, &features);
 
-            else if (Adapter.SupportsPhysicalDeviceProperties2)
-                vkGetPhysicalDeviceFeatures2KHR(Adapter.gpu, &features);
-            else
-                vkGetPhysicalDeviceFeatures(Adapter.gpu, out features.features);
 
 
             if (!vk_1_2.descriptorIndexing)
@@ -258,26 +255,31 @@ namespace Vultaik.Graphics
 
 
 
-            if (vkCreateDevice(Adapter.gpu, &device_create_info, null, out device) != VK_SUCCESS)
+            if (vkCreateDevice(Adapter.gpu, &device_create_info, null, out _device) != VK_SUCCESS)
                 throw new Exception("failed to create logical device!");
 
 
-            vkLoadDevice(device);
+            vkLoadDevice(_device);
 
-            vkGetDeviceQueue(device, QueueGraphicsFamily!.Value, queue.GetGraphicsQueue.QueueIndex, out graphics_queue);
-            vkGetDeviceQueue(device, QueuePresentFamily!.Value, 0, out present_queue);
+            vkGetDeviceQueue(_device, QueueGraphicsFamily!.Value, queue.GetGraphicsQueue.QueueIndex, out _graphicsQueue);
+            vkGetDeviceQueue(_device, QueuePresentFamily!.Value, 0, out _presentQueue);
 
 
-            VkSemaphoreCreateInfo semaphoreInfo = new VkSemaphoreCreateInfo() { };
-            //semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            VkSemaphoreCreateInfo semaphoreInfo = new VkSemaphoreCreateInfo()
+            {
+                sType = VkStructureType.SemaphoreCreateInfo,
+                flags = VkSemaphoreCreateFlags.None,
+            };
+            vkCreateSemaphore(_device, &semaphoreInfo, null, out _imageSemaphore);
+            vkCreateSemaphore(_device, &semaphoreInfo, null, out _renderSemaphore);
 
-            VkFenceCreateInfo fenceInfo = new VkFenceCreateInfo() { };
-            fenceInfo.sType = VkStructureType.FenceCreateInfo;
-            fenceInfo.flags = VkFenceCreateFlags.Signaled;
 
-            vkCreateSemaphore(device, &semaphoreInfo, null, out image_semaphore);
-            vkCreateSemaphore(device, &semaphoreInfo, null, out render_semaphore);
-            vkCreateFence(device, &fenceInfo, null, out in_flight_fence);
+            VkFenceCreateInfo fenceInfo = new VkFenceCreateInfo()
+            {
+                sType = VkStructureType.FenceCreateInfo,
+                flags = VkFenceCreateFlags.Signaled,
+            };
+            vkCreateFence(_device, &fenceInfo, null, out _inFlightFence);
 
 
         }
@@ -286,17 +288,17 @@ namespace Vultaik.Graphics
 
         public void ResetFences()
         {
-            vkWaitForFences(device, in_flight_fence, true, uint.MaxValue);
-            vkResetFences(device, in_flight_fence);
+            vkWaitForFences(_device, _inFlightFence, true, uint.MaxValue);
+            vkResetFences(_device, _inFlightFence);
         }
 
         public void Submit(CommandBuffer commandList)
         {
 
-            VkSemaphore* waitSemaphores = stackalloc[] { image_semaphore };
-            VkSemaphore* signalSemaphores = stackalloc[] { render_semaphore };
+            VkSemaphore* waitSemaphores = stackalloc[] { _imageSemaphore };
+            VkSemaphore* signalSemaphores = stackalloc[] { _renderSemaphore };
             VkPipelineStageFlags* waitStages = stackalloc[] { VkPipelineStageFlags.ColorAttachmentOutput };
-            VkCommandBuffer* cmd = stackalloc[] { commandList.cmd };
+            VkCommandBuffer* cmd = stackalloc[] { commandList._commandBuffer };
 
             VkSubmitInfo submitInfo = new VkSubmitInfo()
             {
@@ -313,7 +315,20 @@ namespace Vultaik.Graphics
                 pCommandBuffers = cmd,
             };
 
-            vkQueueSubmit(graphics_queue, 1, &submitInfo, in_flight_fence).CheckResult();
+            vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFence).CheckResult();
+        }
+
+        public void Dispose()
+        {
+            //TODO: Sync
+            vkDestroySemaphore(_device, _imageSemaphore, null);
+            vkDestroySemaphore(_device, _imageSemaphore, null);
+            vkDestroyFence(_device, _inFlightFence, null);
+
+
+
+            if (_device != VkDevice.Null)
+                vkDestroyDevice(_device, null);
         }
     }
 }

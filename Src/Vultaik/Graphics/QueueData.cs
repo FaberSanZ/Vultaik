@@ -26,12 +26,13 @@ namespace Vultaik.Graphics
             TimestampValidBits = timestampValidBits;
             MinImageTransferGranularity = minImageTransferGranularity;
         }
+
         public uint FamilyIndex { get; set; }
         public VkQueueFlags Type { get; set; }
         public uint QueueIndex { get; set; }
         public uint TimestampValidBits { get; set; }
         public VkExtent3D MinImageTransferGranularity { get; set; }
-
+        public bool PresentSupport { get; set; }
 
         public override string ToString()
         {

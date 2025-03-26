@@ -12,19 +12,21 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace Vultaik.Graphics
 {
-    public unsafe class Surface
+    public unsafe class Surface : IDisposable
     {
-        internal Adapter adapter;
-        internal VkSurfaceKHR surface;
+        internal Adapter _adapter;
+        internal VkSurfaceKHR _surface;
 
         public Surface(Adapter adapter, Window window)
         {
-            this.adapter = adapter;
+            _adapter = adapter;
             Window = window;
             createSurface();
         }
 
         public Window Window { get; }
+
+
 
         private void createSurface()
         {
@@ -36,10 +38,18 @@ namespace Vultaik.Graphics
             };
 
 
-            VkSurfaceKHR _surface;
-            vkCreateWin32SurfaceKHR(adapter.instance, &windowsSurfaceInfo, null, &_surface).CheckResult();
-            surface = _surface;
+            VkSurfaceKHR surface;
+            vkCreateWin32SurfaceKHR(_adapter.instance, &windowsSurfaceInfo, null, &surface).CheckResult();
+            _surface = surface;
         }
 
+
+
+        public void Dispose()
+        {
+            
+            if (_surface != VkSurfaceKHR.Null)
+                vkDestroySurfaceKHR(_adapter.instance, _surface);
+        }
     }
 }

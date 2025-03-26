@@ -15,7 +15,7 @@ using Silk.NET.Core.Native;
 
 namespace Vultaik.Graphics
 {
-    public ref struct SwapChainSupportDetails
+    public ref struct SwapChainSupportDetails : IDisposable
     {
         public VkSurfaceCapabilitiesKHR capabilities;
         public VkSurfaceFormatKHR[] formats;
@@ -48,10 +48,14 @@ namespace Vultaik.Graphics
             }
 
         }
+
+        public void Dispose()
+        {
+        }
     }
 
 
-    public unsafe class SwapChain
+    public unsafe class SwapChain : IDisposable
     {
 
         internal VkSwapchainKHR swapChain;
@@ -78,10 +82,10 @@ namespace Vultaik.Graphics
 
         public Image ColorImage => new Image()
         {
-            height = (int)swapChainExtent.height, 
-            width = (int)swapChainExtent.width,
-            view = SwapChainImages[ImageIndex].view,
-            image = images![ImageIndex],
+            _height = (int)swapChainExtent.height, 
+            _width = (int)swapChainExtent.width,
+            _view = SwapChainImages[ImageIndex]._view,
+            _image = images![ImageIndex],
             Format = swapChainImageFormat
         };
 
@@ -89,7 +93,7 @@ namespace Vultaik.Graphics
         private void CreateSwapChain()
         {
             var device = Device;
-            SwapChainSupportDetails swapChain_support = new SwapChainSupportDetails(Device.Adapter.gpu, Device.Surface!.surface);
+            SwapChainSupportDetails swapChain_support = new SwapChainSupportDetails(Device.Adapter.gpu, Device.Surface!._surface);
 
             VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChain_support.formats);
             VkPresentModeKHR presentMode = ChooseSwapPresentMode(swapChain_support.presentModes);
@@ -113,7 +117,7 @@ namespace Vultaik.Graphics
             VkSwapchainCreateInfoKHR swapchain_create_info = new VkSwapchainCreateInfoKHR()
             {
                 //sType = VkStructureType.SwapchainCreateInfoKHR,
-                surface = Device.Surface.surface,
+                surface = Device.Surface._surface,
                 minImageCount = imageCount,
                 imageFormat = surfaceFormat.format,
                 imageColorSpace = surfaceFormat.colorSpace,
@@ -144,14 +148,14 @@ namespace Vultaik.Graphics
                 swapchain_create_info.imageSharingMode = VkSharingMode.Exclusive;
             }
 
-            vkCreateSwapchainKHR(device.device, &swapchain_create_info, null, out swapChain);
+            vkCreateSwapchainKHR(device._device, &swapchain_create_info, null, out swapChain);
 
 
-            vkGetSwapchainImagesKHR(device.device, swapChain, &imageCount, null);
+            vkGetSwapchainImagesKHR(device._device, swapChain, &imageCount, null);
             images = new VkImage[imageCount];
 
             fixed (VkImage* img = images)
-                vkGetSwapchainImagesKHR(device.device, swapChain, &imageCount, img);
+                vkGetSwapchainImagesKHR(device._device, swapChain, &imageCount, img);
 
             swapChainImageFormat = surfaceFormat.format;
             swapChainExtent = extent;
@@ -166,7 +170,7 @@ namespace Vultaik.Graphics
             {
                 SwapChainImages[i] = new Image()
                 {
-                    image = images[i],
+                    _image = images[i],
                 };
 
                 VkImageViewCreateInfo createInfo = new VkImageViewCreateInfo()
@@ -192,7 +196,7 @@ namespace Vultaik.Graphics
                     }
                 };
 
-                vkCreateImageView(Device.device, &createInfo, null, out SwapChainImages[i].view).CheckResult();
+                vkCreateImageView(Device._device, &createInfo, null, out SwapChainImages[i]._view).CheckResult();
             }
         }
 
@@ -259,7 +263,7 @@ namespace Vultaik.Graphics
         {
             // By setting timeout to UINT64_MAX we will always wait until the next image has been acquired or an actual error is thrown
             // With that we don't have to handle VK_NOT_READY
-            vkAcquireNextImageKHR(Device.device, swapChain, ulong.MaxValue, Device.image_semaphore, VkFence.Null, out uint i);
+            vkAcquireNextImageKHR(Device._device, swapChain, ulong.MaxValue, Device._imageSemaphore, VkFence.Null, out uint i);
             return i;
         }
 
@@ -267,7 +271,7 @@ namespace Vultaik.Graphics
         public void Present()
         {
             uint imageIndex = ImageIndex;
-            VkSemaphore semaphore = Device.render_semaphore;
+            VkSemaphore semaphore = Device._renderSemaphore;
             VkSwapchainKHR _swapchain = swapChain;
 
 
@@ -284,7 +288,16 @@ namespace Vultaik.Graphics
 
 
 
-            vkQueuePresentKHR(Device.present_queue, &present_info);
+            vkQueuePresentKHR(Device._presentQueue, &present_info);
+        }
+
+        public void Dispose()
+        {
+            foreach (Image view in SwapChainImages)
+                vkDestroyImageView(Device._device, view._view, null);
+
+            if (swapChain != VkSwapchainKHR.Null)
+                vkDestroySwapchainKHR(Device._device, swapChain);
         }
     }
 }
