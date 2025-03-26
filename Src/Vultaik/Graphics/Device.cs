@@ -51,99 +51,107 @@ namespace Vultaik.Graphics
         public Surface? Surface { get; }
 
 
-        public uint? QueueGraphicsFamily { get; set; }
-        public uint? QueueComputeFamily { get; set; }
-        public uint? QueueTransferFamily { get; set; }
-        public uint? QueuePresentFamily { get; set; }
+        public uint QueueGraphicsFamily { get; set; }
+        public uint QueueComputeFamily { get; set; }
+        public uint QueueTransferFamily { get; set; }
+        public uint QueuePresentFamily { get; set; }
 
 
         private void createLogicalDevice()
         {
 
-            var consoloColor = Console.ForegroundColor;
-            Console.ForegroundColor = ConsoleColor.Green;
+
 
             if (Adapter.instance_version >= VkVersion.Version_1_3 && Adapter.api_version >= VkVersion.Version_1_3)
                 Console.WriteLine("--Vulkan 1.3 is supported \n \n");
             else
                 throw new Exception("Vulkan 1.3 is not supported");
 
-            Console.ForegroundColor = consoloColor;
-
 
             bool present = Surface != null;
             Queue queue = new Queue(Adapter);
-
             queue.FillFamilyIndices(null, 0);
 
-            Console.WriteLine("Graphics: " + queue.GetQueue(VkQueueFlags.Graphics).ToString());
-            Console.WriteLine();
+            
 
-            Console.WriteLine("Compute: " + queue.GetQueue(VkQueueFlags.Compute).ToString());
-            Console.WriteLine();
-
-            Console.WriteLine("Transfer: " + queue.GetQueue(VkQueueFlags.Transfer).ToString());
-            Console.WriteLine();
-
-            Console.WriteLine("SparseBinding: " + queue.GetQueue(VkQueueFlags.SparseBinding).ToString());
-            Console.WriteLine();
-
-            Console.WriteLine("VideoDecode: " + queue.GetQueue(VkQueueFlags.VideoDecodeKHR).ToString());
-            Console.WriteLine();
-
-            Console.WriteLine("VideoEncode: " + queue.GetQueue(VkQueueFlags.VideoEncodeKHR).ToString());
-            Console.WriteLine();
-
-            QueuePresentFamily = Adapter.FindQueueFamilies(Adapter.gpu, Surface._surface).PresentFamily;
 
             QueueGraphicsFamily = queue.GetFamilyIndex(VkQueueFlags.Graphics);
+            QueueComputeFamily = queue.GetFamilyIndex(VkQueueFlags.Compute);
+            QueueTransferFamily = queue.GetFamilyIndex(VkQueueFlags.Transfer);
+            QueuePresentFamily = Adapter.FindQueueFamilies(Adapter.gpu, Surface!._surface).PresentFamily!.Value; // swapchain
 
-
-
-
-            uint[] uniqueQueueFamilies = new[] { QueueGraphicsFamily!.Value, QueuePresentFamily!.Value };
-            uniqueQueueFamilies = uniqueQueueFamilies.Distinct().ToArray();
-
-
-            float* pri = stackalloc float[] { 1, 1 };
-
-
-            bool new_queue = QueueGraphicsFamily!.Value != QueuePresentFamily!.Value;
+            //TODO: Queue count
+            VkDeviceQueueCreateInfo* queue_create_infos = stackalloc VkDeviceQueueCreateInfo[3];
+            float default_queue_priority = 1.0f;
+            float graphics_queue_prio = 0.5f;
+            float transfer_queue_prio = 1.0f;
+            float compute_queue_prio = 1.0f;
             uint queue_count = 0;
 
-            if (new_queue)
+            if (QueueGraphicsFamily != uint.MinValue)
             {
+
+                VkDeviceQueueCreateInfo queue_info = new()
+                {
+                    sType = VkStructureType.DeviceQueueCreateInfo,
+                    queueFamilyIndex = QueueGraphicsFamily,
+                    queueCount = 1,
+                    pQueuePriorities = &default_queue_priority
+                };
+
+                queue_create_infos[0] = queue_info;
                 queue_count++;
             }
-
-            //Console.WriteLine("queue_count: " + queue_count);
-
-            VkDeviceQueueCreateInfo queue_create_info = new()
+            else
             {
-                pNext = null,
-                flags = VkDeviceQueueCreateFlags.None,
-                queueFamilyIndex = uniqueQueueFamilies[0],
-                queueCount = 1, // TODO: graphics, present ?
-                pQueuePriorities = pri,
-            };
+                QueueGraphicsFamily = uint.MinValue;
+            }
 
-
-
-            VkDeviceQueueCreateInfo present_queue_create_info = new()
+            // Dedicated compute queue
+            if (QueueComputeFamily != QueueGraphicsFamily)
             {
-                pNext = null,
-                queueFamilyIndex = uniqueQueueFamilies[0],
-                queueCount = 1,
-                //flags = VkDeviceQueueCreateFlags.Protected,
-                pQueuePriorities = pri,
-            };
+                // If compute family index differs, we need an additional queue create info for the compute queue
+                VkDeviceQueueCreateInfo queue_info = new()
+                {
+                    sType = VkStructureType.DeviceQueueCreateInfo,
+                    queueFamilyIndex = QueueComputeFamily,
+                    queueCount = 1,
+                    pQueuePriorities = &default_queue_priority
+                };
 
-
-            VkDeviceQueueCreateInfo* queue_create_infos = stackalloc VkDeviceQueueCreateInfo[]
+                queue_create_infos[1] = queue_info;
+                queue_count++;
+            }
+            else
             {
-                queue_create_info,
-                //new_queue ? present_queue_create_info : 0
-            };
+                // Else we use the same queue
+                QueueComputeFamily = QueueGraphicsFamily;
+            }
+
+
+
+            // Dedicated transfer queue
+            if (QueueTransferFamily != QueueGraphicsFamily && QueueTransferFamily != QueueComputeFamily)
+            {
+                // If compute family index differs, we need an additional queue create info for the compute queue
+                VkDeviceQueueCreateInfo queue_info = new()
+                {
+                    sType = VkStructureType.DeviceQueueCreateInfo,
+                    queueFamilyIndex = QueueComputeFamily,
+                    queueCount = 1,
+                    pQueuePriorities = &default_queue_priority
+                };
+
+                queue_create_infos[2] = queue_info;
+                queue_count++;
+            }
+            else
+            {
+                // Else we use the same queue
+                QueueComputeFamily = QueueGraphicsFamily;
+            }
+
+
 
 
             List<string> device_extensions_list = new();
@@ -235,7 +243,7 @@ namespace Vultaik.Graphics
             {
                 pNext = &features,
                 pQueueCreateInfos = queue_create_infos,
-                queueCreateInfoCount = 1,
+                queueCreateInfoCount = queue_count,
                 pEnabledFeatures = null,
                 ppEnabledExtensionNames = device_extensions,
                 enabledExtensionCount = device_extensions.Length, // TODO: swapchain
@@ -261,8 +269,8 @@ namespace Vultaik.Graphics
 
             vkLoadDevice(_device);
 
-            vkGetDeviceQueue(_device, QueueGraphicsFamily!.Value, queue.GetGraphicsQueue.QueueIndex, out _graphicsQueue);
-            vkGetDeviceQueue(_device, QueuePresentFamily!.Value, 0, out _presentQueue);
+            vkGetDeviceQueue(_device, QueueGraphicsFamily, queue.GetGraphicsQueue.QueueIndex, out _graphicsQueue);
+            vkGetDeviceQueue(_device, QueuePresentFamily, 0, out _presentQueue);
 
 
             VkSemaphoreCreateInfo semaphoreInfo = new VkSemaphoreCreateInfo()
