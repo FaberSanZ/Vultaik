@@ -88,7 +88,7 @@ namespace Vultaik.Graphics
             float compute_queue_prio = 1.0f;
             uint queue_count = 0;
 
-            if (QueueGraphicsFamily != uint.MinValue)
+            if (true)
             {
 
                 VkDeviceQueueCreateInfo queue_info = new()
@@ -101,6 +101,7 @@ namespace Vultaik.Graphics
 
                 queue_create_infos[0] = queue_info;
                 queue_count++;
+                Console.WriteLine("gra");
             }
             else
             {
@@ -137,7 +138,7 @@ namespace Vultaik.Graphics
                 VkDeviceQueueCreateInfo queue_info = new()
                 {
                     sType = VkStructureType.DeviceQueueCreateInfo,
-                    queueFamilyIndex = QueueComputeFamily,
+                    queueFamilyIndex = QueueTransferFamily,
                     queueCount = 1,
                     pQueuePriorities = &default_queue_priority
                 };
@@ -148,10 +149,12 @@ namespace Vultaik.Graphics
             else
             {
                 // Else we use the same queue
-                QueueComputeFamily = QueueGraphicsFamily;
+                QueueTransferFamily = QueueGraphicsFamily;
             }
 
-
+            Console.WriteLine(QueueGraphicsFamily);
+            Console.WriteLine(QueueComputeFamily);
+            Console.WriteLine(QueueTransferFamily);
 
 
             List<string> device_extensions_list = new();
@@ -269,7 +272,7 @@ namespace Vultaik.Graphics
 
             vkLoadDevice(_device);
 
-            vkGetDeviceQueue(_device, QueueGraphicsFamily, queue.GetGraphicsQueue.QueueIndex, out _graphicsQueue);
+            vkGetDeviceQueue(_device, QueueGraphicsFamily, 0, out _graphicsQueue);
             vkGetDeviceQueue(_device, QueuePresentFamily, 0, out _presentQueue);
 
 

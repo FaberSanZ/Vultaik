@@ -134,8 +134,8 @@ namespace Vultaik.Graphics
 
             uint* QueueFamilyIndicesPtr = stackalloc uint[]
             {
-                device.QueueGraphicsFamily!.Value,
-                device.QueuePresentFamily!.Value,
+                device.QueueGraphicsFamily,
+                device.QueuePresentFamily,
             };
 
             if (device.QueueGraphicsFamily != device.QueuePresentFamily) // diferent queue family

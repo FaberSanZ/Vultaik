@@ -54,16 +54,16 @@ namespace Vultaik.Graphics
             switch (Type)
             {
                 case CommandBufferType.Graphics:
-                    cmd_pool_info.queueFamilyIndex = Device.QueueGraphicsFamily!.Value;
+                    cmd_pool_info.queueFamilyIndex = Device.QueueGraphicsFamily;
                     break;
                 case CommandBufferType.Compute:
-                    cmd_pool_info.queueFamilyIndex = Device.QueueComputeFamily!.Value;
+                    cmd_pool_info.queueFamilyIndex = Device.QueueComputeFamily;
                     break;
                 case CommandBufferType.Transfer:
-                    cmd_pool_info.queueFamilyIndex = Device.QueueTransferFamily!.Value;
+                    cmd_pool_info.queueFamilyIndex = Device.QueueTransferFamily;
                     break;
                 default:
-                    cmd_pool_info.queueFamilyIndex = Device.QueueGraphicsFamily!.Value;
+                    cmd_pool_info.queueFamilyIndex = Device.QueueGraphicsFamily;
                     break;
             }
 
@@ -79,6 +79,7 @@ namespace Vultaik.Graphics
                 level = VkCommandBufferLevel.Primary,
                 commandBufferCount = 1,
             };
+
             VkCommandBuffer commandBuffer;
             vkAllocateCommandBuffers(Device._device, &allocInfo, &commandBuffer);
             _commandBuffer = commandBuffer;
