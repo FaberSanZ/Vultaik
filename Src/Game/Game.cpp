@@ -2,19 +2,38 @@
 //
 
 #include <iostream>
+#include <WindowsApp.h>
+
+using namespace Desktop;
 
 int main()
 {
-    std::cout << "Hello Game Engine [Vultaik] {DirectX 12}!\n";
+	WindowsApp app(1280, 720, L"Game Engine [Vultaik] {DirectX 12}!");
+	if (!app.Initialize(GetModuleHandle(nullptr)))
+	{
+		
+		std::cerr << "Failed to initialize the application.\n";
+		return -1;
+	}
+	app.SetOnUpdate([]() 
+	{
+		// Update logic here
+	});
+	app.SetOnRender([]() 
+	{
+		// Render logic here
+	});
+	app.SetOnResize([](UINT width, UINT height) 
+	{
+		// Handle window resize
+		std::cout << "Window resized to: " << width << "x" << height << "\n";
+	});
+
+	int result = app.Run();
+
+	if (result < 0)
+	{
+		std::cerr << "Application exited with error code: " << result << "\n";
+	}
+	return result;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
