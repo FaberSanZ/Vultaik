@@ -50,7 +50,7 @@ public:
 
 	double GetTotalTime() const { return totalTime; }
 
-	// Tiempo entre el frame anterior y este (delta time)
+
 	double GetDeltaTime() const { return deltaTime; }
 
 private:
@@ -165,7 +165,6 @@ public:
 		return true;
 	}
 
-	// Nuevo: solo procesa mensajes UNA VEZ por frame
 	void PumpMessages()
 	{
 		MSG msg = {};
@@ -378,7 +377,6 @@ public:
 	RenderSystem(std::shared_ptr<GraphicsDevice> gfx)
 		: gfx(gfx)
 	{
-		// Color inicial azul
 		clearColor[0] = 0.1f;
 		clearColor[1] = 0.2f;
 		clearColor[2] = 0.4f;
@@ -392,7 +390,6 @@ public:
 		gfx->Clear(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
 	}
 
-	// Nuevo método para cambiar el color
 	void SetClearColor(float r, float g, float b, float a)
 	{
 		clearColor[0] = r;
@@ -408,7 +405,7 @@ public:
 
 public:
 	std::shared_ptr<GraphicsDevice> gfx;
-	float clearColor[4]; // RGBA
+	float clearColor[4];
 };
 
 class AsyncScript
@@ -506,7 +503,6 @@ public:
 	{
 		std::cout << "MySyncScript inicializado!\n";
 		counter = 0;
-		// Intentar obtener RenderSystem, pero no requerirlo
 		renderSystem = services->GetService<RenderSystem>();
 		if (!renderSystem)
 		{
@@ -518,7 +514,7 @@ public:
 	{
 		counter++;
 
-			std::cout << "\033[32m"; // Verde
+			std::cout << "\033[32m"; 
 			std::cout << "Sync Update " << counter << " t=" << gameTime.GetTotalTime() << "s\n";
 		
 
@@ -561,7 +557,7 @@ public:
 	void Update(float deltaTime) override
 	{
 		counter++;
-		std::cout << "\033[31m"; // Rojo
+		std::cout << "\033[31m"; 
 		std::cout << "Update " << counter << " dt=" << deltaTime << "s\n";
 
 	}
@@ -577,7 +573,7 @@ public:
 	void AddScript(std::shared_ptr<AsyncScript> script)
 	{
 		scripts.push_back(script);
-		script->Run(); // corre el script en un hilo aparte
+		script->Run(); 
 	}
 
 	void Update(const GameTime&) override
@@ -610,7 +606,6 @@ class Game : public GameBase
 public:
 	Game(std::shared_ptr<ServiceProvider> context) : GameBase(context)
 	{
-		// Recuperar servicios del "ServiceProvider"
 		graphicsDevice = services->GetService<GraphicsDevice>();
 		window = services->GetService<GameWindow>();
 		input = services->GetRequiredService<InputManager>();
@@ -618,30 +613,25 @@ public:
 		syncScripts = services->GetRequiredService<SyncScriptSystem>();
 		sceneSystem = services->GetRequiredService<SceneSystem>();
 
-		// Usar las MISMAS instancias (shared_ptr)
 		if (input)       gameSystems.push_back(input);
 		if (script)      gameSystems.push_back(script);
 		if (syncScripts) gameSystems.push_back(syncScripts);
 		if (sceneSystem) gameSystems.push_back(sceneSystem);
 
-		// RenderSystem se crea nuevo
 		if (graphicsDevice)
 		{
 			renderSystem = std::make_shared<RenderSystem>(graphicsDevice);
 			gameSystems.push_back(renderSystem);
 
-			// REGISTRAR el RenderSystem como servicio
 			services->AddService(renderSystem);
 		}
 	}
 
-	// Inicializa el juego
 	void Initialize() override
 	{
 		std::cout << "[Game] Initialize\n";
 		GameBase::Initialize();
 
-		// Ahora syncScripts es la MISMA instancia que está en gameSystems
 		auto scriptSystem = services->GetRequiredService<ScriptSystem>();
 		scriptSystem->AddScript(std::make_shared<MyScript>(services.get()));
 
@@ -654,7 +644,6 @@ public:
 		std::cout << "[Game] BeginRun\n";
 		if (window && window->Initialize())
 		{
-			// Inicializar DirectX
 			if (graphicsDevice)
 			{
 				if (!graphicsDevice->Initialize(window->GetHWND(), window->GetWidth(), window->GetHeight()))
@@ -666,19 +655,16 @@ public:
 		}
 	}
 
-	// Comienza el frame de render
 	void BeginDraw() override
 	{
-		GameBase::BeginDraw(); // aquí RenderSystem hará el Clear()
+		GameBase::BeginDraw(); 
 	}
 
-	// Termina el frame de render
 	void EndDraw() override
 	{
-		GameBase::EndDraw(); // RenderSystem ya dibujó
+		GameBase::EndDraw();
 	}
 
-	// Termina el loop principal
 	void EndRun() override
 	{
 		if (window) window->Exit();
@@ -698,7 +684,6 @@ int main()
 {
 	auto services = std::make_shared<ServiceProvider>();
 
-	// Crear y registrar todos los servicios
 	auto graphicsDevice = std::make_shared<GraphicsDevice>();
 	services->AddService(graphicsDevice);
 
