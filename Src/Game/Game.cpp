@@ -75,7 +75,6 @@ public:
 	virtual void EndDraw() = 0;
 };
 
-
 class ServiceProvider
 {
 public:
@@ -114,7 +113,6 @@ public:
 	virtual void Load(const std::string& assetName) = 0;
 };
 
-
 class IGame : public IGameSystem
 {
 public:
@@ -122,7 +120,7 @@ public:
 
 	virtual ServiceProvider* GetServices() = 0;
 	virtual IContentManager* GetContent() = 0;
-	virtual std::vector<std::unique_ptr<IGameSystem>>& GetGameSystems() = 0;
+	virtual std::vector<std::shared_ptr<IGameSystem>>& GetGameSystems() = 0;
 	virtual const GameTime& GetTime() const = 0;
 	virtual bool IsRunning() const = 0;
 
@@ -207,7 +205,6 @@ private:
 	}
 };
 
-
 class GameBase : public IGame
 {
 public:
@@ -219,8 +216,8 @@ public:
 	virtual ~GameBase() = default;
 
 	ServiceProvider* GetServices() override { return services.get(); }
-	IContentManager* GetContent() override { return nullptr; } // simplificado
-	std::vector<std::unique_ptr<IGameSystem>>& GetGameSystems() override { return gameSystems; }
+	IContentManager* GetContent() override { return nullptr; }
+	std::vector<std::shared_ptr<IGameSystem>>& GetGameSystems() override { return gameSystems; } // QUITADO el = 0
 	const GameTime& GetTime() const override { return gameTime; }
 	bool IsRunning() const override { return running; }
 
@@ -241,10 +238,9 @@ public:
 protected:
 	std::shared_ptr<ServiceProvider> services;
 	GameTime gameTime;
-	std::vector<std::unique_ptr<IGameSystem>> gameSystems;
+	std::vector<std::shared_ptr<IGameSystem>> gameSystems;
 	bool running;
 };
-
 
 void GameBase::Run()
 {
@@ -300,7 +296,6 @@ void GameBase::EndDraw()
 		sys->EndDraw();
 }
 
-// dummies de los sistemas
 class GraphicsDevice
 {
 public:
@@ -377,40 +372,44 @@ public:
 	void EndDraw() override {}
 };
 
-
 class RenderSystem : public IGameSystem
 {
 public:
-	RenderSystem(std::shared_ptr<GraphicsDevice> gfx) : gfx(gfx) {}
+	RenderSystem(std::shared_ptr<GraphicsDevice> gfx)
+		: gfx(gfx)
+	{
+		// Color inicial azul
+		clearColor[0] = 0.1f;
+		clearColor[1] = 0.2f;
+		clearColor[2] = 0.4f;
+		clearColor[3] = 1.0f;
+	}
 
 	void Update(const GameTime&) override {}
 
 	void BeginDraw() override
 	{
-		gfx->Clear(0.1f, 0.2f, 0.4f, 1.0f); // azulito
+		gfx->Clear(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
 	}
 
-
-	void BeginDraw2()
+	// Nuevo método para cambiar el color
+	void SetClearColor(float r, float g, float b, float a)
 	{
-		gfx->Clear(1.1f, 1.2f, 1.4f, 1.0f); // azulito
+		clearColor[0] = r;
+		clearColor[1] = g;
+		clearColor[2] = b;
+		clearColor[3] = a;
+		std::cout << "RenderSystem - Color cambiado a: "
+			<< r << ", " << g << ", " << b << std::endl;
 	}
 
-
-
-	void Draw(const GameTime&) override
-	{
-	}
-
-	void EndDraw() override
-	{
-		gfx->Present();
-	}
+	void Draw(const GameTime&) override {}
+	void EndDraw() override { gfx->Present(); }
 
 public:
 	std::shared_ptr<GraphicsDevice> gfx;
+	float clearColor[4]; // RGBA
 };
-
 
 class AsyncScript
 {
@@ -457,30 +456,87 @@ private:
 };
 
 
-
-class MyScript : public AsyncScript
+class SyncScript
 {
 public:
-	using AsyncScript::AsyncScript; 
+	SyncScript(ServiceProvider* services = nullptr)
+		: services(services)
+	{
+	}
+
+	virtual ~SyncScript() = default;
+
+	virtual void Initialize() {}
+	virtual void Update(const GameTime& gameTime) {}
+
+protected:
+	ServiceProvider* services = nullptr;
+};
+
+class SyncScriptSystem : public IGameSystem
+{
+public:
+	void AddScript(std::shared_ptr<SyncScript> script)
+	{
+		scripts.push_back(script);
+		script->Initialize();
+	}
+
+	void Update(const GameTime& gameTime) override
+	{
+		for (auto& s : scripts)
+			s->Update(gameTime);
+	}
+
+	void BeginDraw() override {}
+	void Draw(const GameTime&) override {}
+	void EndDraw() override {}
+
+private:
+	std::vector<std::shared_ptr<SyncScript>> scripts;
+};
+
+
+class MySyncScript : public SyncScript
+{
+public:
+	using SyncScript::SyncScript;
 
 	void Initialize() override
 	{
-		std::cout << "MyScript inicializado!\n";
+		std::cout << "MySyncScript inicializado!\n";
 		counter = 0;
+		// Intentar obtener RenderSystem, pero no requerirlo
 		renderSystem = services->GetService<RenderSystem>();
+		if (!renderSystem)
+		{
+			std::cout << "RenderSystem no disponible\n";
+		}
 	}
 
-	void Update(float deltaTime) override
+	void Update(const GameTime& gameTime) override
 	{
 		counter++;
-		std::cout << "Update " << counter << " dt=" << deltaTime << "s\n";
 
-		if (counter % 2)
+			std::cout << "\033[32m"; // Verde
+			std::cout << "Sync Update " << counter << " t=" << gameTime.GetTotalTime() << "s\n";
+		
+
+
+		if (renderSystem) 
 		{
-			//Stop();
-
-			if (renderSystem)
-				renderSystem->gfx->Clear(0.8f, 0.8f, 0.8f, 1.0f); // rojo
+			if (counter % 30 == 0)
+			{
+				renderSystem->SetClearColor(0.2f, 0.4f, 0.8f, 1.0f);
+			}
+			else if (counter % 20 == 0)
+			{
+				renderSystem->SetClearColor(0.5f, 1.0f, 0.5f, 1.0f);
+			}
+			else if (counter % 10 == 0)
+			{
+				renderSystem->SetClearColor(1.0f, 0.5f, 0.5f, 1.0f);
+			}
 		}
 	}
 
@@ -489,6 +545,31 @@ private:
 	std::shared_ptr<RenderSystem> renderSystem;
 };
 
+
+class MyScript : public AsyncScript
+{
+public:
+	using AsyncScript::AsyncScript; 
+
+	void Initialize() override
+	{
+		std::cout << "My AsyncScript Initialize!\n";
+		counter = 0;
+		renderSystem = services->GetService<RenderSystem>();
+	}
+
+	void Update(float deltaTime) override
+	{
+		counter++;
+		std::cout << "\033[31m"; // Rojo
+		std::cout << "Update " << counter << " dt=" << deltaTime << "s\n";
+
+	}
+
+private:
+	int counter = 0;
+	std::shared_ptr<RenderSystem> renderSystem;
+};
 
 class ScriptSystem : public IGameSystem
 {
@@ -524,8 +605,6 @@ private:
 	std::vector<std::shared_ptr<AsyncScript>> scripts;
 };
 
-
-
 class Game : public GameBase
 {
 public:
@@ -536,13 +615,24 @@ public:
 		window = services->GetService<GameWindow>();
 		input = services->GetRequiredService<InputManager>();
 		script = services->GetRequiredService<ScriptSystem>();
+		syncScripts = services->GetRequiredService<SyncScriptSystem>();
 		sceneSystem = services->GetRequiredService<SceneSystem>();
 
-		// Agregar sistemas al motor (composición del juego)
-		if (input)       gameSystems.push_back(std::make_unique<InputManager>(*input));
-		if (script)      gameSystems.push_back(std::make_unique<ScriptSystem>(*script));
-		if (sceneSystem) gameSystems.push_back(std::make_unique<SceneSystem>(*sceneSystem));
-		if (graphicsDevice) gameSystems.push_back(std::make_unique<RenderSystem>(graphicsDevice));
+		// Usar las MISMAS instancias (shared_ptr)
+		if (input)       gameSystems.push_back(input);
+		if (script)      gameSystems.push_back(script);
+		if (syncScripts) gameSystems.push_back(syncScripts);
+		if (sceneSystem) gameSystems.push_back(sceneSystem);
+
+		// RenderSystem se crea nuevo
+		if (graphicsDevice)
+		{
+			renderSystem = std::make_shared<RenderSystem>(graphicsDevice);
+			gameSystems.push_back(renderSystem);
+
+			// REGISTRAR el RenderSystem como servicio
+			services->AddService(renderSystem);
+		}
 	}
 
 	// Inicializa el juego
@@ -551,15 +641,13 @@ public:
 		std::cout << "[Game] Initialize\n";
 		GameBase::Initialize();
 
-
+		// Ahora syncScripts es la MISMA instancia que está en gameSystems
 		auto scriptSystem = services->GetRequiredService<ScriptSystem>();
-
-
-
 		scriptSystem->AddScript(std::make_shared<MyScript>(services.get()));
 
+		auto syncSystem = services->GetRequiredService<SyncScriptSystem>();
+		syncSystem->AddScript(std::make_shared<MySyncScript>(services.get()));
 	}
-
 
 	void BeginRun() override
 	{
@@ -598,30 +686,33 @@ public:
 
 private:
 	std::shared_ptr<GraphicsDevice> graphicsDevice;
+	std::shared_ptr<RenderSystem> renderSystem; // Ahora lo guardamos
 	std::shared_ptr<GameWindow> window;
 	std::shared_ptr<InputManager> input;
 	std::shared_ptr<ScriptSystem> script;
+	std::shared_ptr<SyncScriptSystem> syncScripts;
 	std::shared_ptr<SceneSystem> sceneSystem;
 };
 
-
-
 int main()
 {
-
-
 	auto services = std::make_shared<ServiceProvider>();
-	services->AddService(std::make_shared<GraphicsDevice>());
-	services->AddService(std::make_shared<RenderSystem>());
+
+	// Crear y registrar todos los servicios
+	auto graphicsDevice = std::make_shared<GraphicsDevice>();
+	services->AddService(graphicsDevice);
+
 	services->AddService(std::make_shared<GameWindow>());
 	services->AddService(std::make_shared<InputManager>());
 	services->AddService(std::make_shared<ScriptSystem>());
+	services->AddService(std::make_shared<SyncScriptSystem>());
 	services->AddService(std::make_shared<SceneSystem>());
+
+	auto renderSystem = std::make_shared<RenderSystem>(graphicsDevice);
+	services->AddService(renderSystem);
 
 	Game game(services);
 	game.Run();
-
-	return 0;
 
 	return 0;
 }
