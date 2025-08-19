@@ -118,23 +118,19 @@ public:
 class IGame : public IGameSystem
 {
 public:
-	//class IServiceProvider;
 	virtual ~IGame() = default;
 
-	// Propiedades estilo C#
 	virtual ServiceProvider* GetServices() = 0;
 	virtual IContentManager* GetContent() = 0;
 	virtual std::vector<std::unique_ptr<IGameSystem>>& GetGameSystems() = 0;
 	virtual const GameTime& GetTime() const = 0;
 	virtual bool IsRunning() const = 0;
 
-	// Métodos
 	virtual void Run() = 0;
 	virtual void Exit() = 0;
 	virtual void Tick() = 0;
 	virtual void Initialize() = 0;
 
-	// Simulación de LoadContentAsync en C++ (future/async)
 	virtual std::future<void> LoadContentAsync() = 0;
 
 	virtual void BeginRun() = 0;
@@ -465,7 +461,7 @@ private:
 class MyScript : public AsyncScript
 {
 public:
-	using AsyncScript::AsyncScript; // hereda el constructor
+	using AsyncScript::AsyncScript; 
 
 	void Initialize() override
 	{
@@ -477,12 +473,10 @@ public:
 	void Update(float deltaTime) override
 	{
 		counter++;
-		std::cout << "Update " << counter
-			<< " dt=" << deltaTime << "s\n";
+		std::cout << "Update " << counter << " dt=" << deltaTime << "s\n";
 
 		if (counter % 2)
 		{
-			std::cout << "Terminando script...\n";
 			//Stop();
 
 			if (renderSystem)
@@ -507,15 +501,12 @@ public:
 
 	void Update(const GameTime&) override
 	{
-		// Aquí podrías manejar scripts sincrónicos si quisieras
-		// Por ahora solo verificamos si algún script terminó
 		scripts.erase(
 			std::remove_if(scripts.begin(), scripts.end(),
 				[](auto& s) { return !s->IsRunning(); }),
 			scripts.end()
 		);
 
-		//std::cout << "[ScriptSystem] Update, scripts activos: " << scripts.size() << "\n";
 	}
 
 	void BeginDraw() override {}
