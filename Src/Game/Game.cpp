@@ -377,7 +377,7 @@ public:
 
 
 		int texWidth, texHeight, texChannels;
-		unsigned char* pixels = stbi_load("../../../../Assets/Textures/rollingBall_sheet.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		unsigned char* pixels = stbi_load("../../../../Assets/Textures/rollingBall_sheet2.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
 		if (!pixels)
 		{
@@ -701,8 +701,6 @@ struct IComponent
 	virtual ~IComponent() = default;
 };
 
-
-
 struct TransformComponent : public IComponent
 {
 	int2 position;
@@ -718,10 +716,8 @@ struct SpriteComponent : public IComponent
 	SpriteComponent(const Sprite& s) : value(s) {}
 };
 
-
 using Entity = uint32_t;
 constexpr Entity INVALID_ENTITY = 0;
-
 
 class ComponentManager
 {
@@ -901,6 +897,7 @@ public:
 	{
 		scene = services->GetRequiredService<SceneSystem>();
 		input = services->GetRequiredService<InputManager>();
+		renderSystem = services->GetRequiredService<RenderSystem>();
 
 		leftPaddle = scene->CreateEntity();
 		scene->AddComponent(leftPaddle, TransformComponent({ 50, 300 }));
@@ -912,9 +909,9 @@ public:
 
 		ball = scene->CreateEntity();
 		scene->AddComponent(ball, TransformComponent({ 640, 360 }));
-		scene->AddComponent(ball, SpriteComponent(Sprite(640, 360, 32, 32, 64, 0, 1)));
+		scene->AddComponent(ball, SpriteComponent(Sprite(640, 360, 128, 128, 320, 544, 0.5f)));
 
-		ballVel = { 200.0f, 150.0f };
+		ballVel = { 300.0f * 1.2f, 150.0f * 1.2f };
 	}
 
 	void Update(const GameTime& gt) override
@@ -936,22 +933,23 @@ public:
 		ballT->position.x += int(ballVel.x * dt);
 		ballT->position.y += int(ballVel.y * dt);
 
-		if (ballT->position.y <= 0 || ballT->position.y >= 720 - 32) ballVel.y *= -1;
+		if (ballT->position.y <= 0 || ballT->position.y >= 720 - 64) ballVel.y *= -1;
 
-		if (CheckCollision(ballT->position, { 32,32 }, leftT->position, { 32,128 }) ||
-			CheckCollision(ballT->position, { 32,32 }, rightT->position, { 32,128 }))
+		if (CheckCollision(ballT->position, { 64,64 }, leftT->position, { 32,128 }) ||
+			CheckCollision(ballT->position, { 64,64 }, rightT->position, { 32,128 }))
 			ballVel.x *= -1;
 
-		if (ballT->position.x <= 0 || ballT->position.x >= 1280 - 32)
+		if (ballT->position.x <= 0 || ballT->position.x >= renderSystem->gfx->viewport.Width - 64)
 		{
 			ballT->position = { 640,360 };
-			ballVel = { 200.0f * ((ballVel.x < 0) ? 1 : -1),150.0f };
+			ballVel = { 200.0f * 1.2f * ((ballVel.x < 0) ? 1 : -1), 150.0f * 1.2f };
 		}
 	}
 
 private:
 	std::shared_ptr<SceneSystem> scene;
 	std::shared_ptr<InputManager> input;
+	std::shared_ptr<RenderSystem> renderSystem;
 
 	Entity leftPaddle = INVALID_ENTITY;
 	Entity rightPaddle = INVALID_ENTITY;
@@ -967,6 +965,7 @@ private:
 
 };
 
+//TODO: MULTITHREADING
 class MyScript : public AsyncScript
 {
 public:
@@ -974,23 +973,74 @@ public:
 
 	void Initialize() override
 	{
-		std::cout << "My AsyncScript Initialize!\n";
-		counter = 0;
-		renderSystem = services->GetService<RenderSystem>();
-		input = services->GetRequiredService<InputManager>();
+		//scene = services->GetRequiredService<SceneSystem>();
+		//input = services->GetRequiredService<InputManager>();
+		//renderSystem = services->GetRequiredService<RenderSystem>();
+
+		//leftPaddle = scene->CreateEntity();
+		//scene->AddComponent(leftPaddle, TransformComponent({ 50, 300 }));
+		//scene->AddComponent(leftPaddle, SpriteComponent(Sprite(50, 300, 32, 128, 0, 128, 1)));
+
+		//rightPaddle = scene->CreateEntity();
+		//scene->AddComponent(rightPaddle, TransformComponent({ 1180, 300 }));
+		//scene->AddComponent(rightPaddle, SpriteComponent(Sprite(1180, 300, 32, 128, 0, 128, 1)));
+
+		//ball = scene->CreateEntity();
+		//scene->AddComponent(ball, TransformComponent({ 640, 360 }));
+		//scene->AddComponent(ball, SpriteComponent(Sprite(640, 360, 128, 128, 320, 544, 0.5f)));
+
+		//ballVel = { 300.0f * 1.2f, 150.0f * 1.2f };
 	}
 
 	void Update(float deltaTime) override
 	{
+		//float dt = deltaTime;
 
+		//auto* leftT = scene->GetComponent<TransformComponent>(leftPaddle);
+		//auto* rightT = scene->GetComponent<TransformComponent>(rightPaddle);
+
+		//if (input->IsKeyDown('W')) leftT->position.y -= int(400 * dt);
+		//if (input->IsKeyDown('S')) leftT->position.y += int(400 * dt);
+		//if (input->IsKeyDown(VK_UP)) rightT->position.y -= int(400 * dt);
+		//if (input->IsKeyDown(VK_DOWN)) rightT->position.y += int(400 * dt);
+
+		//leftT->position.y = std::clamp(leftT->position.y, 0, 720 - 128);
+		//rightT->position.y = std::clamp(rightT->position.y, 0, 720 - 128);
+
+		//auto* ballT = scene->GetComponent<TransformComponent>(ball);
+		//ballT->position.x += int(ballVel.x * dt);
+		//ballT->position.y += int(ballVel.y * dt);
+
+		//if (ballT->position.y <= 0 || ballT->position.y >= 720 - 64) ballVel.y *= -1;
+
+		//if (CheckCollision(ballT->position, { 64,64 }, leftT->position, { 32,128 }) ||
+		//	CheckCollision(ballT->position, { 64,64 }, rightT->position, { 32,128 }))
+		//	ballVel.x *= -1;
+
+		//if (ballT->position.x <= 0 || ballT->position.x >= renderSystem->gfx->viewport.Width - 64)
+		//{
+		//	ballT->position = { 640,360 };
+		//	ballVel = { 200.0f * 1.2f * ((ballVel.x < 0) ? 1 : -1), 150.0f * 1.2f };
+		//}
 
 	}
 
 private:
-	Sprite playerSprite;
-	int counter = 0;
-	std::shared_ptr<RenderSystem> renderSystem;
-	std::shared_ptr<InputManager> input;
+	//std::shared_ptr<SceneSystem> scene;
+	//std::shared_ptr<InputManager> input;
+	//std::shared_ptr<RenderSystem> renderSystem;
+
+	//Entity leftPaddle = INVALID_ENTITY;
+	//Entity rightPaddle = INVALID_ENTITY;
+	//Entity ball = INVALID_ENTITY;
+
+	//struct { float x, y; } ballVel;
+
+	//bool CheckCollision(int2 posA, int2 sizeA, int2 posB, int2 sizeB)
+	//{
+	//	return posA.x < posB.x + sizeB.x && posA.x + sizeA.x > posB.x &&
+	//		posA.y < posB.y + sizeB.y && posA.y + sizeA.y > posB.y;
+	//}
 };
 
 class ScriptSystem : public IGameSystem
