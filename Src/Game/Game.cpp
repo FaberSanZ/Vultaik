@@ -585,15 +585,11 @@ public:
 	{
 		counter++;
 
-			//std::cout << "\033[32m"; 
-			//std::cout << "Sync Update " << counter << " t=" << gameTime.GetTotalTime() << "s\n";
-		
+		//if (input->IsKeyPressed(VK_SPACE))
+		//	std::cout << "Run player!\n";
 
-		if (input->IsKeyPressed(VK_SPACE))
-			std::cout << "Saltando!\n";
-
-		//if (input->IsMouseButtonDown(1))
-		std::cout << "Click en (" << input->GetMouseX() << ", " << input->GetMouseY() << ")\n";
+		////if (input->IsMouseButtonDown(1))
+		//std::cout << "POS: " << input->GetMouseX() << ", " << input->GetMouseY() << "\n";
 	}
 
 private:
@@ -624,12 +620,10 @@ public:
 
 
 
+		if (input->IsKeyPressed(VK_SPACE))
+			std::cout << "Run player!\n";
 
-		//if (input->IsKeyPressed(VK_SPACE))
-		//	std::cout << "Saltando!\n";
-
-		////if (input->IsMouseButtonDown(1))
-		//	std::cout << "Click en (" << input->GetMouseX() << ", " << input->GetMouseY() << ")\n";
+		std::cout << "POS: " << input->GetMouseX() << ", " << input->GetMouseY() << "\n";
 
 	}
 
@@ -723,7 +717,7 @@ public:
 			{
 				if (!graphicsDevice->Initialize(window->GetHWND(), window->GetWidth(), window->GetHeight()))
 				{
-					std::cerr << "[Game] Error: GraphicsDevice no se pudo inicializar.\n";
+					std::cerr << "[Game] Error: .\n";
 					return;
 				}
 			}
@@ -747,7 +741,7 @@ public:
 
 private:
 	std::shared_ptr<GraphicsDevice> graphicsDevice;
-	std::shared_ptr<RenderSystem> renderSystem; // Ahora lo guardamos
+	std::shared_ptr<RenderSystem> renderSystem;
 	std::shared_ptr<GameWindow> window;
 	std::shared_ptr<InputManager> input;
 	std::shared_ptr<ScriptSystem> script;
