@@ -14,13 +14,23 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
+#define GAMEINPUT_API_VERSION 2
+#include <GameInput.h>
+
+
+#include <unordered_set>
+
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "GameInput.lib")
 
 
 
 using namespace Desktop;
+using namespace Microsoft::WRL;
+using namespace GameInput::v2;
+using Microsoft::WRL::ComPtr;
 
 class GameTime
 {
@@ -352,14 +362,83 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> rtv;
 };
 
+
+
 class InputManager : public IGameSystem
 {
 public:
-	void Update(const GameTime&) override {  }
+
+	void Initialize(HWND hwnd)
+	{
+		this->hwnd = hwnd;
+	
+	}
+
+	void Update(const GameTime&) override
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+
+		// --- Teclado ---
+		previousKeys = currentKeys;
+		currentKeys.clear();
+
+		for (int vk = 0; vk < 256; ++vk)
+		{
+			if (GetAsyncKeyState(vk) & 0x8000)
+				currentKeys.insert(static_cast<uint8_t>(vk));
+		}
+
+		// --- Mouse ---
+		POINT p;
+		if (GetCursorPos(&p))
+		{
+			ScreenToClient(hwnd, &p); // coordenadas relativas a la ventana
+			mouseX = p.x;
+			mouseY = p.y;
+		}
+
+		mouseButtons = 0;
+		if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) mouseButtons |= 1;
+		if (GetAsyncKeyState(VK_RBUTTON) & 0x8000) mouseButtons |= 2;
+		if (GetAsyncKeyState(VK_MBUTTON) & 0x8000) mouseButtons |= 4;
+	}
+
 	void BeginDraw() override {}
 	void Draw(const GameTime&) override {}
 	void EndDraw() override {}
+
+	// --- API ---
+	bool IsKeyDown(uint8_t vk) const
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+		return currentKeys.find(vk) != currentKeys.end();
+	}
+
+	bool IsKeyPressed(uint8_t vk) const
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+		return currentKeys.find(vk) != currentKeys.end() &&
+			previousKeys.find(vk) == previousKeys.end();
+	}
+
+	bool IsMouseButtonDown(uint32_t button) const
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+		return (mouseButtons & button) != 0;
+	}
+
+	int GetMouseX() const { std::lock_guard<std::mutex> lock(mutex); return mouseX; }
+	int GetMouseY() const { std::lock_guard<std::mutex> lock(mutex); return mouseY; }
+
+private:
+	HWND hwnd;
+	mutable std::mutex mutex;
+	std::unordered_set<uint8_t> currentKeys;
+	std::unordered_set<uint8_t> previousKeys;
+	int mouseX = 0, mouseY = 0;
+	uint32_t mouseButtons = 0;
 };
+
 
 class SceneSystem : public IGameSystem
 {
@@ -395,8 +474,6 @@ public:
 		clearColor[1] = g;
 		clearColor[2] = b;
 		clearColor[3] = a;
-		std::cout << "RenderSystem - Color cambiado a: "
-			<< r << ", " << g << ", " << b << std::endl;
 	}
 
 	void Draw(const GameTime&) override {}
@@ -498,44 +575,32 @@ public:
 
 	void Initialize() override
 	{
-		std::cout << "MySyncScript inicializado!\n";
+		std::cout << "MySyncScript! Initialize\n";
 		counter = 0;
 		renderSystem = services->GetService<RenderSystem>();
-		if (!renderSystem)
-		{
-			std::cout << "RenderSystem no disponible\n";
-		}
+		input = services->GetRequiredService<InputManager>();
 	}
 
 	void Update(const GameTime& gameTime) override
 	{
 		counter++;
 
-			std::cout << "\033[32m"; 
-			std::cout << "Sync Update " << counter << " t=" << gameTime.GetTotalTime() << "s\n";
+			//std::cout << "\033[32m"; 
+			//std::cout << "Sync Update " << counter << " t=" << gameTime.GetTotalTime() << "s\n";
 		
 
+		if (input->IsKeyPressed(VK_SPACE))
+			std::cout << "Saltando!\n";
 
-		if (renderSystem) 
-		{
-			if (counter % 30 == 0)
-			{
-				renderSystem->SetClearColor(0.2f, 0.4f, 0.8f, 1.0f);
-			}
-			else if (counter % 20 == 0)
-			{
-				renderSystem->SetClearColor(0.5f, 1.0f, 0.5f, 1.0f);
-			}
-			else if (counter % 10 == 0)
-			{
-				renderSystem->SetClearColor(1.0f, 0.5f, 0.5f, 1.0f);
-			}
-		}
+		//if (input->IsMouseButtonDown(1))
+		std::cout << "Click en (" << input->GetMouseX() << ", " << input->GetMouseY() << ")\n";
 	}
 
 private:
 	int counter = 0;
 	std::shared_ptr<RenderSystem> renderSystem;
+	std::shared_ptr<InputManager> input;
+
 };
 
 class MyScript : public AsyncScript
@@ -548,19 +613,30 @@ public:
 		std::cout << "My AsyncScript Initialize!\n";
 		counter = 0;
 		renderSystem = services->GetService<RenderSystem>();
+		input = services->GetRequiredService<InputManager>();
 	}
 
 	void Update(float deltaTime) override
 	{
-		counter++;
-		std::cout << "\033[31m"; 
-		std::cout << "Update " << counter << " dt=" << deltaTime << "s\n";
+		//counter++;
+		//std::cout << "\033[31m"; 
+		//std::cout << "Update " << counter << " dt=" << deltaTime << "s\n";
+
+
+
+
+		//if (input->IsKeyPressed(VK_SPACE))
+		//	std::cout << "Saltando!\n";
+
+		////if (input->IsMouseButtonDown(1))
+		//	std::cout << "Click en (" << input->GetMouseX() << ", " << input->GetMouseY() << ")\n";
 
 	}
 
 private:
 	int counter = 0;
 	std::shared_ptr<RenderSystem> renderSystem;
+	std::shared_ptr<InputManager> input;
 };
 
 class ScriptSystem : public IGameSystem
@@ -621,6 +697,7 @@ public:
 
 			services->AddService(renderSystem);
 		}
+
 	}
 
 	void Initialize() override
@@ -640,6 +717,8 @@ public:
 		std::cout << "[Game] BeginRun\n";
 		if (window && window->Initialize())
 		{
+			input->Initialize(window->GetHWND());
+
 			if (graphicsDevice)
 			{
 				if (!graphicsDevice->Initialize(window->GetHWND(), window->GetWidth(), window->GetHeight()))
