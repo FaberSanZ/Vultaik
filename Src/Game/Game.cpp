@@ -1,5 +1,4 @@
 // Game.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
 
 #include <iostream>
 #include <WindowsApp.h>
@@ -452,7 +451,6 @@ private:
 	std::future<void> worker;
 };
 
-
 class SyncScript
 {
 public:
@@ -492,7 +490,6 @@ public:
 private:
 	std::vector<std::shared_ptr<SyncScript>> scripts;
 };
-
 
 class MySyncScript : public SyncScript
 {
@@ -540,7 +537,6 @@ private:
 	int counter = 0;
 	std::shared_ptr<RenderSystem> renderSystem;
 };
-
 
 class MyScript : public AsyncScript
 {
