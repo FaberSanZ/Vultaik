@@ -14,4 +14,4 @@
 
 ## Low-level rendering backend
 The rendering backend focuses entirely on DirectX 12, so it reuses DX12 enums and data structures where appropriate. However, the API greatly simplifies the more painful points of writing straight DirectX 12
--
+
