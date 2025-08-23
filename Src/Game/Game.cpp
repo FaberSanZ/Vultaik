@@ -1295,7 +1295,6 @@ private:
 
 int main()
 {
-	// Crear servicios compartidos
 	auto services = std::make_shared<ServiceProvider>();
 
 	auto graphicsDevice = std::make_shared<GraphicsDevice>();
@@ -1316,7 +1315,7 @@ int main()
 	auto syncScripts = std::make_shared<SyncScriptSystem>();
 	services->AddService(syncScripts);
 
-	auto asyncScripts = std::make_shared<ScriptSystem>();
+	auto asyncScripts = std::make_shared<AsyncScriptSystem>();
 	services->AddService(asyncScripts);
 
 	auto renderSystem = std::make_shared<RenderSystem>(graphicsDevice);
