@@ -1188,24 +1188,22 @@ private:
 };
 
 
-class ScriptSystem : public IGameSystem
+class AsyncScriptSystem : public IGameSystem
 {
 public:
 	void AddScript(std::shared_ptr<AsyncScript> script)
 	{
 		scripts.push_back(script);
-		script->Initialize(); // init una sola vez
+		script->Initialize();
 	}
 
 	void Update(const GameTime& gt) override
 	{
 		const float dt = static_cast<float>(gt.GetDeltaTime());
 
-		// Encolar todos los updates en paralelo
 		for (auto& s : scripts)
 			s->UpdateAsync(dt);
 
-		// Esperar a que todos los jobs terminen antes de pasar a Draw
 		JobSystem::Get().WaitAll();
 		JobSystem::Get().PrintStats();
 
@@ -1230,18 +1228,16 @@ class Game : public GameBase
 public:
 	Game(std::shared_ptr<ServiceProvider> services) : GameBase(services)
 	{
-		// Tomamos los sistemas ya creados
 		window = services->GetRequiredService<GameWindow>();
 		input = services->GetRequiredService<InputManager>();
-		scriptSystem = services->GetRequiredService<ScriptSystem>();
+		asyncScripts = services->GetRequiredService<AsyncScriptSystem>();
 		syncScripts = services->GetRequiredService<SyncScriptSystem>();
 		sceneSystem = services->GetRequiredService<SceneSystem>();
-		graphicsDevice = services->GetRequiredService<GraphicsDevice>();  // <--- CORRECTO
+		graphicsDevice = services->GetRequiredService<GraphicsDevice>(); 
 		renderSystem = services->GetRequiredService<RenderSystem>();
 
-		// Agregamos a gameSystems para actualizar y dibujar
 		gameSystems.push_back(input);
-		gameSystems.push_back(scriptSystem);
+		gameSystems.push_back(asyncScripts);
 		gameSystems.push_back(syncScripts);
 		gameSystems.push_back(sceneSystem);
 		gameSystems.push_back(renderSystem);
@@ -1271,10 +1267,10 @@ public:
 
 
 		auto myAsyncScript = std::make_shared<PongAsyncScript>(services.get());
-		scriptSystem->AddScript(myAsyncScript);
+		asyncScripts->AddScript(myAsyncScript);
 
 		auto myIAAsyncScript = std::make_shared<PongAIAsyncScript>(services.get());
-		scriptSystem->AddScript(myIAAsyncScript);
+		asyncScripts->AddScript(myIAAsyncScript);
 
 
 		auto mySyncScript = std::make_shared<PongSyncScript>(services.get());
@@ -1292,7 +1288,7 @@ private:
 	std::shared_ptr<RenderSystem> renderSystem;
 	std::shared_ptr<GameWindow> window;
 	std::shared_ptr<InputManager> input;
-	std::shared_ptr<ScriptSystem> scriptSystem;
+	std::shared_ptr<AsyncScriptSystem> asyncScripts;
 	std::shared_ptr<SyncScriptSystem> syncScripts;
 	std::shared_ptr<SceneSystem> sceneSystem;
 };
