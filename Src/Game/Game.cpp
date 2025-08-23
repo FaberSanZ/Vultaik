@@ -181,16 +181,15 @@ private:
 			if (job)
 			{
 				auto start = std::chrono::high_resolution_clock::now();
-				job(); // <-- ejecución real
+				job(); 
 				auto end = std::chrono::high_resolution_clock::now();
 
 				double ms = std::chrono::duration<double, std::milli>(end - start).count();
 
-				// actualizar estadísticas de forma segura
+	
 				jobStats[jobType].totalJobs.fetch_add(1, std::memory_order_relaxed);
 
 				{
-					// solo aquí usamos mutex para proteger double
 					std::lock_guard<std::mutex> lock(jobStats[jobType].timeMutex);
 					jobStats[jobType].totalTimeMs += ms;
 				}
@@ -1037,7 +1036,7 @@ public:
 		// Pelota
 		ball = ecs->CreateEntity();
 		ecs->AddComponent(ball, TransformComponent({ 640, 360 }));
-		ecs->AddComponent(ball, SpriteComponent(Sprite(640, 360, 64, 64, 320, 544, 1)));
+		ecs->AddComponent(ball, SpriteComponent(Sprite(640, 360, 128, 128, 320, 544, 0.5f)));
 
 		// Velocidad inicial de la pelota
 		ballVel = { 300.0f, 150.0f };
