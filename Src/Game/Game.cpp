@@ -1023,22 +1023,18 @@ public:
 
 	void InitializeBaseEntities()
 	{
-		// Paleta izquierda
 		leftPaddle = ecs->CreateEntity();
 		ecs->AddComponent(leftPaddle, TransformComponent({ 50, 300 }));
 		ecs->AddComponent(leftPaddle, SpriteComponent(Sprite(50, 300, 32, 128, 0, 128, 1)));
 
-		// Paleta derecha
 		rightPaddle = ecs->CreateEntity();
 		ecs->AddComponent(rightPaddle, TransformComponent({ 1180, 300 }));
 		ecs->AddComponent(rightPaddle, SpriteComponent(Sprite(1180, 300, 32, 128, 0, 128, 1)));
 
-		// Pelota
 		ball = ecs->CreateEntity();
 		ecs->AddComponent(ball, TransformComponent({ 640, 360 }));
 		ecs->AddComponent(ball, SpriteComponent(Sprite(640, 360, 128, 128, 320, 544, 0.5f)));
 
-		// Velocidad inicial de la pelota
 		ballVel = { 300.0f, 150.0f };
 	}
 
