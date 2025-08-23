@@ -45,14 +45,15 @@ enum class JobType
 	General,
 	Physics,
 	AI,
-	RenderPrep // default job type in thread pool for render preparation tasks
+	RenderPrep
 };
 
 struct JobStats
 {
-	size_t activeJobs = 0;        // Cantidad de jobs activos actualmente
-	size_t totalJobs = 0;         // Total de jobs ejecutados
-	double totalTimeMs = 0.0;     // Tiempo total de ejecución acumulado (ms)
+	std::atomic<size_t> activeJobs { 0 };
+	std::atomic<size_t> totalJobs { 0 };
+	double totalTimeMs = 0.0;
+	std::mutex timeMutex;
 };
 
 class JobSystem
@@ -84,8 +85,10 @@ public:
 
 	void WaitAll()
 	{
-		std::unique_lock<std::mutex> lock(mtx);
-		doneCv.wait(lock, [this]() { return AllEmpty() && activeJobs == 0; });
+		while (!AllEmpty() || activeJobs.load(std::memory_order_relaxed) > 0)
+		{
+			std::this_thread::yield();
+		}
 	}
 
 	void Stop()
@@ -107,22 +110,31 @@ public:
 		std::cout << "=== JobSystem Stats ===\n";
 		for (auto& [type, stats] : jobStats)
 		{
-			std::string typeName;
-			switch (type)
-			{
-			case JobType::General: typeName = "General"; break;
-			case JobType::Physics: typeName = "Physics"; break;
-			case JobType::AI: typeName = "AI"; break;
-			case JobType::RenderPrep: typeName = "RenderPrep"; break;
-			}
-
 			double avgMs = stats.totalJobs > 0 ? stats.totalTimeMs / stats.totalJobs : 0.0;
-			std::cout << typeName << ":\n";
+			std::cout << JobTypeToString(type) << ":\n";
 			std::cout << "  Active Jobs: " << stats.activeJobs << "\n";
 			std::cout << "  Total Jobs: " << stats.totalJobs << "\n";
 			std::cout << "  Avg Update: " << avgMs << " ms\n";
+
+			stats.totalJobs = 0;
+			std::lock_guard<std::mutex> tlock(stats.timeMutex);
+			stats.totalTimeMs = 0.0;
 		}
 		std::cout << "======================\n";
+	}
+
+
+
+	const char* JobTypeToString(JobType type)
+	{
+		switch (type)
+		{
+		case JobType::General:    return "General";
+		case JobType::Physics:    return "Physics";
+		case JobType::AI:         return "AI";
+		case JobType::RenderPrep: return "RenderPrep";
+		default:                  return "Unknown";
+		}
 	}
 
 private:
@@ -141,7 +153,7 @@ private:
 		while (true)
 		{
 			std::function<void()> job;
-			JobType jobType = JobType::General; // valor por defecto
+			JobType jobType = JobType::General;
 
 			{
 				std::unique_lock<std::mutex> lock(mtx);
@@ -156,8 +168,11 @@ private:
 						job = std::move(q.front());
 						q.pop();
 						jobType = type;
-						activeJobs++;
-						jobStats[type].activeJobs++;
+
+						// ahora con atomic
+						activeJobs.fetch_add(1, std::memory_order_relaxed);
+						jobStats[type].activeJobs.fetch_add(1, std::memory_order_relaxed);
+
 						break;
 					}
 				}
@@ -166,23 +181,24 @@ private:
 			if (job)
 			{
 				auto start = std::chrono::high_resolution_clock::now();
-				job();
+				job(); // <-- ejecución real
 				auto end = std::chrono::high_resolution_clock::now();
+
 				double ms = std::chrono::duration<double, std::milli>(end - start).count();
 
-				// Guardar stats
+				// actualizar estadísticas de forma segura
+				jobStats[jobType].totalJobs.fetch_add(1, std::memory_order_relaxed);
+
 				{
-					std::lock_guard<std::mutex> lock(mtx);
-					jobStats[jobType].totalJobs++;
+					// solo aquí usamos mutex para proteger double
+					std::lock_guard<std::mutex> lock(jobStats[jobType].timeMutex);
 					jobStats[jobType].totalTimeMs += ms;
-					jobStats[jobType].activeJobs--;
 				}
+
+				jobStats[jobType].activeJobs.fetch_sub(1, std::memory_order_relaxed);
 			}
 
-			{
-				std::unique_lock<std::mutex> lock(mtx);
-				activeJobs--;
-			}
+			activeJobs.fetch_sub(1, std::memory_order_relaxed);
 			doneCv.notify_all();
 		}
 	}
@@ -193,7 +209,7 @@ private:
 	std::mutex mtx;
 	std::condition_variable cv, doneCv;
 	bool stop = false;
-	size_t activeJobs = 0;
+	std::atomic<size_t> activeJobs { 0 };
 	std::unordered_map<JobType, JobStats> jobStats;
 
 };
@@ -430,8 +446,6 @@ void GameBase::Run()
 
 		gameTime.Update();
 		Tick();
-
-		//std::this_thread::sleep_for(std::chrono::milliseconds(16)); // 60fps
 	}
 
 	EndRun();
@@ -451,7 +465,6 @@ void GameBase::Update(const GameTime& gt)
 	for (auto& sys : gameSystems)
 		sys->Update(gt);
 
-	JobSystem::Get().PrintStats();
 
 
 }
@@ -701,10 +714,6 @@ private:
 
 };
 
-
-
-
-
 class InputManager : public IGameSystem
 {
 public:
@@ -780,8 +789,6 @@ private:
 	uint32_t mouseButtons = 0;
 };
 
-
-
 class AsyncScript
 {
 public:
@@ -800,7 +807,7 @@ public:
 		JobSystem::Get().Queue([this, deltaTime]()
 			{
 				Update(deltaTime);
-			}, jobType);  // ?? se encola en la cola correcta
+			}, jobType); 
 	}
 
 protected:
@@ -869,6 +876,7 @@ struct SpriteComponent : public IComponent
 };
 
 using Entity = uint32_t;
+
 constexpr Entity INVALID_ENTITY = 0;
 
 class ComponentManager
@@ -1009,20 +1017,32 @@ public:
 class SceneSystem : public IGameSystem
 {
 public:
-	SceneSystem(std::shared_ptr<ECS> ecs) : ecs(ecs) {}
-
-	Entity CreateEntity()
+	SceneSystem(std::shared_ptr<ECS> ecs) : ecs(ecs) 
 	{
-		Entity e = ecs->CreateEntity();
-		entities.push_back(e);
-		return e;
+	
 	}
 
-	template<typename T>
-	void AddComponent(Entity e, T component)
+	void InitializeBaseEntities()
 	{
-		ecs->AddComponent<T>(e, component);
+		// Paleta izquierda
+		leftPaddle = ecs->CreateEntity();
+		ecs->AddComponent(leftPaddle, TransformComponent({ 50, 300 }));
+		ecs->AddComponent(leftPaddle, SpriteComponent(Sprite(50, 300, 32, 128, 0, 128, 1)));
+
+		// Paleta derecha
+		rightPaddle = ecs->CreateEntity();
+		ecs->AddComponent(rightPaddle, TransformComponent({ 1180, 300 }));
+		ecs->AddComponent(rightPaddle, SpriteComponent(Sprite(1180, 300, 32, 128, 0, 128, 1)));
+
+		// Pelota
+		ball = ecs->CreateEntity();
+		ecs->AddComponent(ball, TransformComponent({ 640, 360 }));
+		ecs->AddComponent(ball, SpriteComponent(Sprite(640, 360, 64, 64, 320, 544, 1)));
+
+		// Velocidad inicial de la pelota
+		ballVel = { 300.0f, 150.0f };
 	}
+
 
 	template<typename T>
 	T* GetComponent(Entity e)
@@ -1030,14 +1050,28 @@ public:
 		return ecs->GetComponent<T>(e);
 	}
 
+	Entity GetLeftPaddle() const { return leftPaddle; }
+	Entity GetRightPaddle() const { return rightPaddle; }
+	Entity GetBall() const { return ball; }
+
+	std::pair<float, float> GetBallVelocity() const { return ballVel; }
+	void SetBallVelocity(std::pair<float, float> vel) { ballVel = vel; }
+
 	void Update(const GameTime&) override {}
-	void BeginDraw() override {}
+	void BeginDraw() override 
+	{
+	
+	
+	}
 	void Draw(const GameTime&) override {}
 	void EndDraw() override {}
 
 private:
 	std::shared_ptr<ECS> ecs;
-	std::vector<Entity> entities;
+	Entity leftPaddle = INVALID_ENTITY;
+	Entity rightPaddle = INVALID_ENTITY;
+	Entity ball = INVALID_ENTITY;
+	std::pair<float, float> ballVel;
 };
 
 class MySyncScript : public SyncScript
@@ -1117,43 +1151,24 @@ private:
 
 };
 
-class MyAscript : public AsyncScript
+
+class PongSyncScript : public SyncScript
 {
 public:
-	using AsyncScript::AsyncScript; 
-
-	MyAscript(ServiceProvider* services) : AsyncScript(services, JobType::AI)
-	{
-
-	}
+	using SyncScript::SyncScript;
 
 	void Initialize() override
 	{
 		scene = services->GetRequiredService<SceneSystem>();
 		input = services->GetRequiredService<InputManager>();
-		renderSystem = services->GetRequiredService<RenderSystem>();
-
-		leftPaddle = scene->CreateEntity();
-		scene->AddComponent(leftPaddle, TransformComponent({ 50, 300 }));
-		scene->AddComponent(leftPaddle, SpriteComponent(Sprite(50, 300, 32, 128, 0, 128, 1)));
-
-		rightPaddle = scene->CreateEntity();
-		scene->AddComponent(rightPaddle, TransformComponent({ 1180, 300 }));
-		scene->AddComponent(rightPaddle, SpriteComponent(Sprite(1180, 300, 32, 128, 0, 128, 1)));
-
-		ball = scene->CreateEntity();
-		scene->AddComponent(ball, TransformComponent({ 640, 360 }));
-		scene->AddComponent(ball, SpriteComponent(Sprite(640, 360, 128, 128, 320, 544, 0.5f)));
-
-		ballVel = { 300.0f * 1.2f, 150.0f * 1.2f };
 	}
 
-	void Update(float deltaTime) override
+	void Update(const GameTime& gt) override
 	{
-		float dt = deltaTime;
+		float dt = static_cast<float>(gt.GetDeltaTime());
 
-		auto* leftT = scene->GetComponent<TransformComponent>(leftPaddle);
-		auto* rightT = scene->GetComponent<TransformComponent>(rightPaddle);
+		auto* leftT = scene->GetComponent<TransformComponent>(scene->GetLeftPaddle());
+		auto* rightT = scene->GetComponent<TransformComponent>(scene->GetRightPaddle());
 
 		if (input->IsKeyDown('W')) leftT->position.y -= int(400 * dt);
 		if (input->IsKeyDown('S')) leftT->position.y += int(400 * dt);
@@ -1162,35 +1177,59 @@ public:
 
 		leftT->position.y = std::clamp(leftT->position.y, 0, 720 - 128);
 		rightT->position.y = std::clamp(rightT->position.y, 0, 720 - 128);
-
-		auto* ballT = scene->GetComponent<TransformComponent>(ball);
-		ballT->position.x += int(ballVel.x * dt);
-		ballT->position.y += int(ballVel.y * dt);
-
-		if (ballT->position.y <= 0 || ballT->position.y >= 720 - 64) ballVel.y *= -1;
-
-		if (CheckCollision(ballT->position, { 64,64 }, leftT->position, { 32,128 }) ||
-			CheckCollision(ballT->position, { 64,64 }, rightT->position, { 32,128 }))
-			ballVel.x *= -1;
-
-		if (ballT->position.x <= 0 || ballT->position.x >= renderSystem->gfx->viewport.Width - 64)
-		{
-			ballT->position = { 640,360 };
-			ballVel = { 200.0f * 1.2f * ((ballVel.x < 0) ? 1 : -1), 150.0f * 1.2f };
-		}
-
 	}
 
 private:
 	std::shared_ptr<SceneSystem> scene;
 	std::shared_ptr<InputManager> input;
-	std::shared_ptr<RenderSystem> renderSystem;
+};
 
-	Entity leftPaddle = INVALID_ENTITY;
-	Entity rightPaddle = INVALID_ENTITY;
-	Entity ball = INVALID_ENTITY;
 
-	struct { float x, y; } ballVel;
+class PongAsyncScript : public AsyncScript
+{
+public:
+	PongAsyncScript(ServiceProvider* services) : AsyncScript(services, JobType::Physics) {}
+
+	void Initialize() override
+	{
+		scene = services->GetRequiredService<SceneSystem>();
+	}
+
+	void Update(float deltaTime) override
+	{
+		auto* ballT = scene->GetComponent<TransformComponent>(scene->GetBall());
+		auto vel = scene->GetBallVelocity();
+
+		// Mover pelota
+		ballT->position.x += int(vel.first * deltaTime);
+		ballT->position.y += int(vel.second * deltaTime);
+
+		// Rebote superior e inferior
+		if (ballT->position.y <= 0 || ballT->position.y >= 720 - 64)
+			vel.second *= -1;
+
+		// Rebote con paletas
+		auto* leftT = scene->GetComponent<TransformComponent>(scene->GetLeftPaddle());
+		auto* rightT = scene->GetComponent<TransformComponent>(scene->GetRightPaddle());
+
+		if (CheckCollision(ballT->position, { 64,64 }, leftT->position, { 32,128 }) ||
+			CheckCollision(ballT->position, { 64,64 }, rightT->position, { 32,128 }))
+		{
+			vel.first *= -1;
+		}
+
+		// Reset si sale de los bordes
+		if (ballT->position.x <= 0 || ballT->position.x >= 1280 - 64)
+		{
+			ballT->position = { 640, 360 };
+			vel = { vel.first > 0 ? -300.0f : 300.0f, 150.0f };
+		}
+
+		scene->SetBallVelocity(vel);
+	}
+
+private:
+	std::shared_ptr<SceneSystem> scene;
 
 	bool CheckCollision(int2 posA, int2 sizeA, int2 posB, int2 sizeB)
 	{
@@ -1199,35 +1238,41 @@ private:
 	}
 };
 
-class TestAsyncScript : public AsyncScript
+
+class PongAIAsyncScript : public AsyncScript
 {
 public:
-	using AsyncScript::AsyncScript;
-
-	TestAsyncScript(ServiceProvider* services) : AsyncScript(services, JobType::Physics)
-	{
-
-	}
+	PongAIAsyncScript(ServiceProvider* services) : AsyncScript(services, JobType::AI) {}
 
 	void Initialize() override
 	{
 		scene = services->GetRequiredService<SceneSystem>();
-		input = services->GetRequiredService<InputManager>();
-		renderSystem = services->GetRequiredService<RenderSystem>();
-
 	}
 
 	void Update(float deltaTime) override
 	{
+		auto* aiPaddle = scene->GetComponent<TransformComponent>(scene->GetRightPaddle());
+		auto* ball = scene->GetComponent<TransformComponent>(scene->GetBall());
 
+		// IA “humana”: se mueve hacia la posición de la pelota con un pequeño retraso
+		float speed = 300.0f;
+		float paddleCenter = aiPaddle->position.y + 64; // mitad de la paleta
+		float target = ball->position.y + 32;           // mitad de la pelota
+
+		// Movimiento con suavizado (no instantáneo)
+		if (paddleCenter < target)
+			aiPaddle->position.y += int(speed * deltaTime);
+		else if (paddleCenter > target)
+			aiPaddle->position.y -= int(speed * deltaTime);
+
+		// Limitar a la pantalla
+		aiPaddle->position.y = std::clamp(aiPaddle->position.y, 0, 720 - 128);
 	}
 
 private:
 	std::shared_ptr<SceneSystem> scene;
-	std::shared_ptr<InputManager> input;
-	std::shared_ptr<RenderSystem> renderSystem;
-
 };
+
 
 class ScriptSystem : public IGameSystem
 {
@@ -1248,7 +1293,10 @@ public:
 
 		// Esperar a que todos los jobs terminen antes de pasar a Draw
 		JobSystem::Get().WaitAll();
+		JobSystem::Get().PrintStats();
+
 	}
+
 
 	void BeginDraw() override {}
 	void Draw(const GameTime&) override {}
@@ -1290,7 +1338,6 @@ public:
 	{
 		std::cout << "[Game] BeginRun\n";
 
-		// --- ARRANCAR JobSystem ---
 		JobSystem::Get().Start();
 
 		if (window && window->Initialize())
@@ -1306,21 +1353,23 @@ public:
 			}
 		}
 
-		auto myAsyncScript = std::make_shared<MyAscript>(services.get());
+		sceneSystem->InitializeBaseEntities();
+
+
+		auto myAsyncScript = std::make_shared<PongAsyncScript>(services.get());
 		scriptSystem->AddScript(myAsyncScript);
 
-		auto testAsyncScript = std::make_shared<TestAsyncScript>(services.get());
-		scriptSystem->AddScript(testAsyncScript);
+		auto myIAAsyncScript = std::make_shared<PongAIAsyncScript>(services.get());
+		scriptSystem->AddScript(myIAAsyncScript);
 
-		auto mySyncScript = std::make_shared<MySyncScript>(services.get());
+
+		auto mySyncScript = std::make_shared<PongSyncScript>(services.get());
 		syncScripts->AddScript(mySyncScript);
 	}
 
 	void EndRun() override
 	{
-		std::cout << "[Game] EndRun\n";
 
-		// --- APAGAR JobSystem ---
 		JobSystem::Get().Stop();
 	}
 
