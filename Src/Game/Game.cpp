@@ -1171,18 +1171,15 @@ public:
 		auto* aiPaddle = scene->GetComponent<TransformComponent>(scene->GetRightPaddle());
 		auto* ball = scene->GetComponent<TransformComponent>(scene->GetBall());
 
-		// IA “humana”: se mueve hacia la posición de la pelota con un pequeño retraso
 		float speed = 300.0f;
-		float paddleCenter = aiPaddle->position.y + 64; // mitad de la paleta
-		float target = ball->position.y + 32;           // mitad de la pelota
+		float paddleCenter = aiPaddle->position.y + 64; 
+		float target = ball->position.y + 32;
 
-		// Movimiento con suavizado (no instantáneo)
 		if (paddleCenter < target)
 			aiPaddle->position.y += int(speed * deltaTime);
 		else if (paddleCenter > target)
 			aiPaddle->position.y -= int(speed * deltaTime);
 
-		// Limitar a la pantalla
 		aiPaddle->position.y = std::clamp(aiPaddle->position.y, 0, 720 - 128);
 	}
 
