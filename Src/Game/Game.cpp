@@ -1069,82 +1069,7 @@ private:
 	std::pair<float, float> ballVel;
 };
 
-class MySyncScript : public SyncScript
-{
-public:
-	using SyncScript::SyncScript;
 
-	void Initialize() override
-	{
-		//scene = services->GetRequiredService<SceneSystem>();
-		//input = services->GetRequiredService<InputManager>();
-		//renderSystem = services->GetRequiredService<RenderSystem>();
-
-		//leftPaddle = scene->CreateEntity();
-		//scene->AddComponent(leftPaddle, TransformComponent({ 50, 300 }));
-		//scene->AddComponent(leftPaddle, SpriteComponent(Sprite(50, 300, 32, 128, 0, 128, 1)));
-
-		//rightPaddle = scene->CreateEntity();
-		//scene->AddComponent(rightPaddle, TransformComponent({ 1180, 300 }));
-		//scene->AddComponent(rightPaddle, SpriteComponent(Sprite(1180, 300, 32, 128, 0, 128, 1)));
-
-		//ball = scene->CreateEntity();
-		//scene->AddComponent(ball, TransformComponent({ 640, 360 }));
-		//scene->AddComponent(ball, SpriteComponent(Sprite(640, 360, 128, 128, 320, 544, 0.5f)));
-
-		//ballVel = { 300.0f * 1.2f, 150.0f * 1.2f };
-	}
-
-	void Update(const GameTime& gt) override
-	{
-		//float dt = static_cast<float>(gt.GetDeltaTime());
-
-		//auto* leftT = scene->GetComponent<TransformComponent>(leftPaddle);
-		//auto* rightT = scene->GetComponent<TransformComponent>(rightPaddle);
-
-		//if (input->IsKeyDown('W')) leftT->position.y -= int(400 * dt);
-		//if (input->IsKeyDown('S')) leftT->position.y += int(400 * dt);
-		//if (input->IsKeyDown(VK_UP)) rightT->position.y -= int(400 * dt);
-		//if (input->IsKeyDown(VK_DOWN)) rightT->position.y += int(400 * dt);
-
-		//leftT->position.y = std::clamp(leftT->position.y, 0, 720 - 128);
-		//rightT->position.y = std::clamp(rightT->position.y, 0, 720 - 128);
-
-		//auto* ballT = scene->GetComponent<TransformComponent>(ball);
-		//ballT->position.x += int(ballVel.x * dt);
-		//ballT->position.y += int(ballVel.y * dt);
-
-		//if (ballT->position.y <= 0 || ballT->position.y >= 720 - 64) ballVel.y *= -1;
-
-		//if (CheckCollision(ballT->position, { 64,64 }, leftT->position, { 32,128 }) ||
-		//	CheckCollision(ballT->position, { 64,64 }, rightT->position, { 32,128 }))
-		//	ballVel.x *= -1;
-
-		//if (ballT->position.x <= 0 || ballT->position.x >= renderSystem->gfx->viewport.Width - 64)
-		//{
-		//	ballT->position = { 640,360 };
-		//	ballVel = { 200.0f * 1.2f * ((ballVel.x < 0) ? 1 : -1), 150.0f * 1.2f };
-		//}
-	}
-
-private:
-	std::shared_ptr<SceneSystem> scene;
-	std::shared_ptr<InputManager> input;
-	std::shared_ptr<RenderSystem> renderSystem;
-
-	Entity leftPaddle = INVALID_ENTITY;
-	Entity rightPaddle = INVALID_ENTITY;
-	Entity ball = INVALID_ENTITY;
-
-	struct { float x, y; } ballVel;
-
-	bool CheckCollision(int2 posA, int2 sizeA, int2 posB, int2 sizeB)
-	{
-		return posA.x < posB.x + sizeB.x && posA.x + sizeA.x > posB.x &&
-			posA.y < posB.y + sizeB.y && posA.y + sizeA.y > posB.y;
-	}
-
-};
 
 
 class PongSyncScript : public SyncScript
@@ -1195,15 +1120,13 @@ public:
 		auto* ballT = scene->GetComponent<TransformComponent>(scene->GetBall());
 		auto vel = scene->GetBallVelocity();
 
-		// Mover pelota
+		// move the ball
 		ballT->position.x += int(vel.first * deltaTime);
 		ballT->position.y += int(vel.second * deltaTime);
 
-		// Rebote superior e inferior
 		if (ballT->position.y <= 0 || ballT->position.y >= 720 - 64)
 			vel.second *= -1;
 
-		// Rebote con paletas
 		auto* leftT = scene->GetComponent<TransformComponent>(scene->GetLeftPaddle());
 		auto* rightT = scene->GetComponent<TransformComponent>(scene->GetRightPaddle());
 
@@ -1213,7 +1136,6 @@ public:
 			vel.first *= -1;
 		}
 
-		// Reset si sale de los bordes
 		if (ballT->position.x <= 0 || ballT->position.x >= 1280 - 64)
 		{
 			ballT->position = { 640, 360 };
