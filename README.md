@@ -4,7 +4,7 @@
    <img src="Logo/vultaik-logo 2.PNG" width=410>
 
   
-  ##              Vultaik is a 2D/3D Game Engine implemented in DX12® [DX12®]([))
+  ## Vultaik is a 2D/3D Game Engine implemented in DX12® [DX12®]([))
   
 </h1>
 
