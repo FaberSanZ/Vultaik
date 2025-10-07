@@ -487,6 +487,7 @@ void GameBase::EndDraw()
 }
 
 struct int2 { int x, y; };
+struct float2 { float x, y; };
 
 class Sprite
 {
@@ -512,6 +513,8 @@ public:
 	int2 size;
 	int2 atlasPos;
 	float scale = 1.0f;
+	float rotationn;
+	float2 pivot;
 };
 
 class GraphicsDevice
@@ -663,9 +666,12 @@ public:
 	D3D11_VIEWPORT viewport;
 
 	Sprite* spriteBatch;
-
+	float rotation = 0.0f;
 	void SetSprites(Sprite* sprites, uint16_t count)
 	{
+		rotation += 0.02f;
+		sprites->rotationn = rotation;
+		sprites->pivot = { 0.0f, 1.0f };
 		spriteCount = count;
 		D3D11_MAPPED_SUBRESOURCE spriteBufferMSR;
 		context->Map(spriteBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &spriteBufferMSR);
@@ -960,18 +966,21 @@ public:
 
 	void Update(const GameTime&) override
 	{
-		sprites.clear();
-		if (!ecs) return;
+		//sprites.clear();
+		//if (!ecs) return;
 
-		for (auto& [entity, spriteComp] : ecs->GetAllComponents<SpriteComponent>())
-		{
-			if (auto* transform = ecs->GetComponent<TransformComponent>(entity))
-			{
-				auto* realSprite = ecs->GetComponent<SpriteComponent>(entity);
-				realSprite->value.screenPos = transform->position;
-				sprites.push_back(realSprite->value);
-			}
-		}
+		//for (auto& [entity, spriteComp] : ecs->GetAllComponents<SpriteComponent>())
+		//{
+		//	if (auto* transform = ecs->GetComponent<TransformComponent>(entity))
+		//	{
+		//		auto* realSprite = ecs->GetComponent<SpriteComponent>(entity);
+		//		realSprite->value.screenPos = transform->position;
+		//		sprites.push_back(realSprite->value);
+		//	}
+		//}
+		sprites.clear();
+		sprites.push_back(Sprite(50, 300, 32, 128, 0, 128, 1));
+
 	}
 
 	void BeginDraw() override
@@ -1270,10 +1279,10 @@ public:
 		asyncScripts->AddScript(myAsyncScript);
 
 		auto myIAAsyncScript = std::make_shared<PongAIAsyncScript>(services.get());
-		asyncScripts->AddScript(myIAAsyncScript);
+		//asyncScripts->AddScript(myIAAsyncScript);
 
 
-		auto mySyncScript = std::make_shared<PongSyncScript>(services.get());
+		auto mySyncScript = std::make_shared<PongSyncScript>(services.get());  
 		syncScripts->AddScript(mySyncScript);
 	}
 
