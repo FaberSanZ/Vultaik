@@ -12,6 +12,7 @@ const char* vertexShader = R"(
 struct VSOutput 
 {
     float4 pos : SV_POSITION;
+    float2 uv : TEXCOORD;
 };
 
 VSOutput vs(uint vid : SV_VERTEXID) 
@@ -19,26 +20,33 @@ VSOutput vs(uint vid : SV_VERTEXID)
     uint x = vid & 1;
     uint y = (vid >> 1) & 1;
     
-    // convert 0,1 a -0.5,0.5
+    // Posición
     float2 pos = float2(x, y) - 0.5;
-
-    // TODO: DIRECTX ? 
-    // pos.y = -pos.y;
+    pos.y = -pos.y;
+    
+    // UVs
+    float2 uv = float2(x, y);
     
     VSOutput output;
     output.pos = float4(pos, 0, 1);
+    output.uv = uv;
     return output;
 }
 )";
 
 const char* pixelShader = R"(
+
 struct VSOutput 
 {
     float4 pos : SV_POSITION;
+    float2 uv : TEXCOORD;
 };
+
 float4 ps(VSOutput input) : SV_TARGET 
 {
-    return float4(0, 1, 0, 1); // Verde
+    // cehss pattern
+    float3 color = (input.uv.x > 0.5) != (input.uv.y > 0.5) ? 1 : 0;
+    return float4(color, 1);
 }
 )";
 
