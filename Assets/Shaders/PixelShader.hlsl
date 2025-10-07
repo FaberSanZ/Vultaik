@@ -20,6 +20,7 @@ struct pixel
     float2 uv : UV;
 };
 
+
 StructuredBuffer<sprite> spritebuffer : register(t0);
 Texture2D<float4> atlastexture : register(t1);
 SamplerState pointsampler : register(s0);
