@@ -7,29 +7,43 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "D3Dcompiler.lib")
 
+
 const char* vertexShader = R"(
-struct VSOutput {
+struct VSOutput 
+{
     float4 pos : SV_POSITION;
 };
-VSOutput vs(uint vid : SV_VERTEXID) {
-    float2 vertices[3] = {
-        float2(0.0, 0.5),
-        float2(0.5, -0.5), 
-        float2(-0.5, -0.5)
-    };
+
+VSOutput vs(uint vid : SV_VERTEXID) 
+{
+    uint x = vid & 1;
+    uint y = (vid >> 1) & 1;
+    
+    // convert 0,1 a -0.5,0.5
+    float2 pos = float2(x, y) - 0.5;
+
+    // TODO: DIRECTX ? 
+    // pos.y = -pos.y;
+    
     VSOutput output;
-    output.pos = float4(vertices[vid], 0, 1);
+    output.pos = float4(pos, 0, 1);
     return output;
 }
 )";
 
 const char* pixelShader = R"(
-float4 ps() : SV_TARGET {
-    return float4(1, 0, 0, 1);
+struct VSOutput 
+{
+    float4 pos : SV_POSITION;
+};
+float4 ps(VSOutput input) : SV_TARGET 
+{
+    return float4(0, 1, 0, 1); // Verde
 }
 )";
 
-int main() {
+int main() 
+{
     // Crear ventana
     WNDCLASS wc = {};
     wc.lpfnWndProc = [](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT 
@@ -94,7 +108,8 @@ int main() {
     UINT rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
 
-    for (UINT i = 0; i < 2; i++) {
+    for (UINT i = 0; i < 2; i++) 
+    {
         swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTargets[i]));
         device->CreateRenderTargetView(renderTargets[i], nullptr, rtvHandle);
         rtvHandle.ptr += rtvDescriptorSize;
@@ -167,11 +182,11 @@ int main() {
 
             commandList->OMSetRenderTargets(1, &currentRTV, FALSE, nullptr);
 
-            float clearColor[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+            float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
             commandList->ClearRenderTargetView(currentRTV, clearColor, 0, nullptr);
 
-            commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            commandList->DrawInstanced(3, 1, 0, 0);
+            commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+            commandList->DrawInstanced(4, 1, 0, 0);
 
             commandList->Close();
 
