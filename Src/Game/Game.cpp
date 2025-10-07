@@ -17,18 +17,20 @@ struct VSOutput
 
 VSOutput vs(uint vid : SV_VERTEXID) 
 {
+    float2 screenSize = float2(800, 600); // TODO: pass as uniform or root constant
     uint x = vid & 1;
     uint y = (vid >> 1) & 1;
     
-    // Posición
-    float2 pos = float2(x, y) - 0.5;
-    pos.y = -pos.y;
+    // center and scale
+    float2 pixelPos = float2(400, 300) + (float2(x, y) - 0.5) * 100.0;
     
-    // UVs
+    // Convertir a coordenadas de clip
+    float2 clipPos = (pixelPos / screenSize) * float2(2.0, -2.0) + float2(-1.0, 1.0);
+    
     float2 uv = float2(x, y);
     
     VSOutput output;
-    output.pos = float4(pos, 0, 1);
+    output.pos = float4(clipPos, 0, 1);
     output.uv = uv;
     return output;
 }
