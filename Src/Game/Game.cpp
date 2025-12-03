@@ -211,10 +211,7 @@ public:
 
 
 
-        constantBuffer.Initialize(device, Graphics::BufferType::ConstantBuffer, &cameraData, sizeof(CameraBuffer));
-
-
-
+        constantBuffer.Initialize(device, Graphics::BufferType::ConstantBuffer, nullptr, sizeof(CameraBuffer));
         instanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * 256 * 256 * 8, sizeof(DirectX::XMMATRIX));
 
     }
@@ -224,11 +221,13 @@ public:
 	float dimension = 1.6f;
     void UpdateCamera()
     {
+		// Update the constant buffer with the latest camera data
+        commandList.UpdateBuffer(constantBuffer, &cameraData, sizeof(CameraBuffer));
+
+
         m_CubeRotation += 0.01f;
 
-        constantBuffer.Update(device.GetContext(), &cameraData, sizeof(CameraBuffer));
-
-
+		// Update instance buffer with world matrices for each instance
         std::vector<DirectX::XMMATRIX> dataArray(numInstances);
         uint32_t dim = static_cast<uint32_t>(std::cbrt(numInstances)); // using cube root to determine the dimension of the grid
         DirectX::XMFLOAT3 offset = { dimension, dimension, dimension };
@@ -269,14 +268,13 @@ public:
                     DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(position.x, position.y, position.z);
                     DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(cubeRotation.x, cubeRotation.y, cubeRotation.z);
                     DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
-                    DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale);
+					DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
                     dataArray[index] = world;
                 }
             }
         }
 
-        instanceBuffer.Update(device.GetContext(), dataArray.data(), sizeof(DirectX::XMMATRIX) * static_cast<uint32_t>(dataArray.size()));
-
+		commandList.UpdateBuffer(instanceBuffer, dataArray.data(), sizeof(DirectX::XMMATRIX) * static_cast<uint32_t>(dataArray.size()));
     }
 
 
@@ -285,50 +283,15 @@ public:
 
     void Cleanup()
     {
-        //if (constantBuffer.data)
-        //    constantBuffer.data = nullptr;
 
-        //if (constantBuffer.buffer)
-        //    constantBuffer.buffer->Release();
-
-        //if (pipeline.rasterState)
-        //    pipeline.rasterState->Release();
-
-        //if (pipeline.depthStencilState)
-        //    pipeline.depthStencilState->Release();
-
-        //if (renderDevice.depthStencilView)
-        //    renderDevice.depthStencilView->Release();
-
-        //if (renderDevice.depthStencilBuffer)
-        //    renderDevice.depthStencilBuffer->Release();
-
-        //if (indexBuffer.buffer)
-        //    indexBuffer.buffer->Release();
-
-        //if (vertexBuffer.buffer)
-        //    vertexBuffer.buffer->Release();
-
-        //if (pipeline.inputLayout)
-        //    pipeline.inputLayout->Release();
-
-        //if (pipeline.vertexShader)
-        //    pipeline.vertexShader->Release();
-
-        //if (pipeline.pixelShader)
-        //    pipeline.pixelShader->Release();
-
-        //if (renderDevice.swapChain)
-        //    renderDevice.swapChain->Release();
-
-        //if (renderDevice.renderTargetView)
-        //    renderDevice.renderTargetView->Release();
-
-        //if (renderDevice.deviceContext)
-        //    renderDevice.deviceContext->Release();
-
-        //if (renderDevice.device)
-        //    renderDevice.device->Release();
+		indexBuffer.Release();
+		vertexBuffer.Release();
+		constantBuffer.Release();
+		instanceBuffer.Release();
+		pipeline.Release();
+		commandList.Release();
+		swapChain.Release();
+		device.Release();
     }
 
 };

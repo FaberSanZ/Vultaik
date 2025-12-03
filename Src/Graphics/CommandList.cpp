@@ -154,6 +154,40 @@ namespace Graphics
 		}
 	}
 
+	void CommandList::UpdateBuffer(Buffer& buffer, const void* data, uint32_t size)
+	{
+
+		if (!buffer.GetBuffer())
+			return;
+
+		if (buffer.GetType() == BufferType::ConstantBuffer)
+		{
+			D3D11_MAPPED_SUBRESOURCE mapped = {};
+			HRESULT hr = m_Context->Map(buffer.GetBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+			if (SUCCEEDED(hr))
+			{
+				memcpy(mapped.pData, data, size);
+				m_Context->Unmap(buffer.GetBuffer(), 0);
+			}
+			else
+			{
+				std::cerr << "[Buffer] Failed to map constant buffer.\n";
+			}
+		}
+
+
+		else if (buffer.GetType() ==  BufferType::StructuredBuffer)
+		{
+
+			D3D11_MAPPED_SUBRESOURCE mapped = {};
+			m_Context->Map(buffer.GetBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+
+			memcpy(mapped.pData, data, size);
+
+			m_Context->Unmap(buffer.GetBuffer(), 0);
+		}
+
+	}
 
 
 

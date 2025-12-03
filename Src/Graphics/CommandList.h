@@ -6,6 +6,7 @@
 #include "Texture.h"
 #include "RenderPass.h"
 #include "Pipeline.h"
+#include "Buffer.h"
 
 #include <iostream>
 #include <dxgi.h>
@@ -20,6 +21,7 @@ namespace Graphics
 {
 	class RenderPass;
 	class Pipeline;
+	class Buffer;
 
 	class CommandList
 	{
@@ -41,6 +43,7 @@ namespace Graphics
 		void DrawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation);
 
 		void SetPipelineState(const Pipeline& pipelineState);
+		void UpdateBuffer(Buffer& buffer, const void* data, uint32_t size);
 
 
 

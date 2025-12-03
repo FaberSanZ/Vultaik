@@ -38,7 +38,7 @@ namespace Graphics
                 desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
                 desc.SemanticName = "COLOR";
                 desc.SemanticIndex = 0;
-                desc.AlignedByteOffset = currentOffset; // 4 * 4 bytes
+                desc.AlignedByteOffset = currentOffset;
                 break;
             }
 

@@ -13,23 +13,39 @@ namespace Graphics
 
 		D3D11_BUFFER_DESC desc = {};
 		desc.ByteWidth = size;
-		desc.Usage = (type == BufferType::ConstantBuffer) ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT;
-
-		desc.BindFlags =
-			(type == BufferType::VertexBuffer) ? D3D11_BIND_VERTEX_BUFFER :
-			(type == BufferType::IndexBuffer) ? D3D11_BIND_INDEX_BUFFER :
-			D3D11_BIND_CONSTANT_BUFFER;
-
-		desc.CPUAccessFlags = (type == BufferType::ConstantBuffer) ? D3D11_CPU_ACCESS_WRITE : 0;
 
 		if (type == BufferType::StructuredBuffer)
 		{
 			desc.Usage = D3D11_USAGE_DYNAMIC;
 			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 			desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-			desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-			desc.StructureByteStride = stride;  
+			desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED; // required for structured buffers
+			desc.StructureByteStride = stride;  // required for structured buffers
 		}
+		else if (type == BufferType::ConstantBuffer)
+		{
+			desc.Usage = D3D11_USAGE_DYNAMIC;
+			desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+			desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		}
+		else if (type == BufferType::VertexBuffer)
+		{
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+			desc.CPUAccessFlags = 0;
+		}
+		else if (type == BufferType::IndexBuffer)
+		{
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+			desc.CPUAccessFlags = 0;
+		}
+		else
+		{
+			std::cerr << "[Buffer] Unknown buffer type specified.\n";
+			return false;
+		}
+
 
 
 		D3D11_SUBRESOURCE_DATA initData = {};
@@ -88,8 +104,9 @@ namespace Graphics
 
 		case BufferType::StructuredBuffer:
 			context->VSSetShaderResources(slot, 1, &m_SRV);
-			//context->CSSetShaderResources(slot, 1, &m_SRV);
+
 			//context->PSSetShaderResources(slot, 1, &m_SRV);
+			//context->CSSetShaderResources(slot, 1, &m_SRV);
 
 			break;
 
@@ -99,12 +116,11 @@ namespace Graphics
 		}
 	}
 
-	void Buffer::Update(ID3D11DeviceContext* context, const void* data, uint32_t size)
+	void Buffer::SetData(ID3D11DeviceContext* context, const void* data, uint32_t size)
 	{
 		if (!m_Buffer || !context)
 			return;
 
-		// Para ConstantBuffers (dynamic)
 		if (m_Type == BufferType::ConstantBuffer)
 		{
 			D3D11_MAPPED_SUBRESOURCE mapped = {};
@@ -130,7 +146,6 @@ namespace Graphics
 			memcpy(mapped.pData, data, size);
 
 			context->Unmap(m_Buffer, 0);
-
 		}
 	}
 
@@ -148,7 +163,7 @@ namespace Graphics
 			m_Buffer = nullptr;
 		}
 
-		m_Type = BufferType::VertexBuffer; // Reset to default
+		m_Type = (BufferType)0; // Reset to default
 		m_Stride = 0;
 	}
 

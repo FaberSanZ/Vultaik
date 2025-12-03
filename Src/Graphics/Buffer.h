@@ -25,7 +25,7 @@ namespace Graphics
 
 		bool Initialize(const Device& device, BufferType type, const void* data, uint32_t size, uint32_t stride = 0);
 		void Bind(ID3D11DeviceContext* context, uint32_t slot = 0);
-		void Update(ID3D11DeviceContext* context, const void* newData, uint32_t size);
+		void SetData(ID3D11DeviceContext* context, const void* newData, uint32_t size);
 
 		void Release();
 

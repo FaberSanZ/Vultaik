@@ -76,6 +76,35 @@ namespace Graphics
         return S_OK;
     }
 
+    void Pipeline::Release()
+    {
+        if (m_InputLayout)
+        {
+            m_InputLayout->Release();
+            m_InputLayout = nullptr;
+        }
+        if (m_VertexShader)
+        {
+            m_VertexShader->Release();
+            m_VertexShader = nullptr;
+        }
+        if (m_PixelShader)
+        {
+            m_PixelShader->Release();
+            m_PixelShader = nullptr;
+        }
+        if (m_DepthStencilState)
+        {
+            m_DepthStencilState->Release();
+            m_DepthStencilState = nullptr;
+        }
+        if (m_RasterizerState)
+        {
+            m_RasterizerState->Release();
+            m_RasterizerState = nullptr;
+        }
+	}
+
 
 
 
