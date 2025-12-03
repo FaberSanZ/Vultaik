@@ -222,6 +222,28 @@ public:
 
         float rotation = time.GetTotalTime() * 2.0f;
 
+        if(GameInput::IsKeyDown(GameInput::KeyCode::W))
+        {
+            dimension += 0.1f;
+		}
+        if (GameInput::IsKeyDown(GameInput::KeyCode::S))
+        {
+            dimension -= 0.1f;
+		}
+
+        if (GameInput::IsKeyDown(GameInput::KeyCode::A))
+        {
+            numInstances += 256;
+            if (numInstances > 256 * 256 * 8)
+                numInstances = 256 * 256 * 8;
+        }
+        if (GameInput::IsKeyDown(GameInput::KeyCode::D))
+        {
+                numInstances -= 256;
+                if( numInstances < 256)
+					numInstances = 256;
+		}
+
         // Update instance buffer with world matrices for each instance
         std::vector<DirectX::XMMATRIX> dataArray(numInstances);
         uint32_t dim = static_cast<uint32_t>(std::cbrt(numInstances)); // using cube root to determine the dimension of the grid
@@ -270,6 +292,8 @@ public:
         }
 
         commandList.UpdateBuffer(instanceBuffer, dataArray.data(), sizeof(DirectX::XMMATRIX) * static_cast<uint32_t>(dataArray.size()));
+
+		std::cout << "Instances: " << numInstances << " Dimension: " << dimension << "\r";
     }
 
     void OnUpdate(GameTime time)
