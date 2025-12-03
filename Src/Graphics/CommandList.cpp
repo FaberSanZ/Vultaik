@@ -121,7 +121,8 @@ namespace Graphics
 
 	void CommandList::SetVertexBuffer(ID3D11Buffer* buffer, uint32_t slot, uint32_t size, uint32_t stride, void* data)
 	{
-		if (m_Context && buffer && data)
+		
+		if (m_Context and buffer and data)
 		{
 			D3D11_MAPPED_SUBRESOURCE mappedResource;
 			if (SUCCEEDED(m_Context->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource)))
@@ -135,14 +136,14 @@ namespace Graphics
 
 	void CommandList::SetIndexBuffer(ID3D11Buffer* buffer, DXGI_FORMAT format, uint32_t offset)
 	{
-		if (m_Context && buffer)
+		if (m_Context and buffer)
 		{
 			m_Context->IASetIndexBuffer(buffer, format, offset);
 		}
 	}
 	void CommandList::SetConstantBuffer(ID3D11Buffer* buffer, uint32_t slot, uint32_t size, uint32_t stride, void* data)
 	{
-		if (m_Context && buffer && data)
+		if (m_Context and buffer and data)
 		{
 			D3D11_MAPPED_SUBRESOURCE mappedResource;
 			if (SUCCEEDED(m_Context->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource)))
@@ -157,10 +158,10 @@ namespace Graphics
 	void CommandList::UpdateBuffer(Buffer& buffer, const void* data, uint32_t size)
 	{
 
-		if (!buffer.GetBuffer())
+		if (!buffer.GetBuffer() and data)
 			return;
 
-		if (buffer.GetType() == BufferType::ConstantBuffer)
+		if (buffer.GetType() == BufferType::ConstantBuffer or buffer.GetType() == BufferType::StructuredBuffer)
 		{
 			D3D11_MAPPED_SUBRESOURCE mapped = {};
 			HRESULT hr = m_Context->Map(buffer.GetBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
@@ -171,22 +172,9 @@ namespace Graphics
 			}
 			else
 			{
-				std::cerr << "[Buffer] Failed to map constant buffer.\n";
+				std::cerr << "[Buffer] Failed to map buffer.\n";
 			}
 		}
-
-
-		else if (buffer.GetType() ==  BufferType::StructuredBuffer)
-		{
-
-			D3D11_MAPPED_SUBRESOURCE mapped = {};
-			m_Context->Map(buffer.GetBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-
-			memcpy(mapped.pData, data, size);
-
-			m_Context->Unmap(buffer.GetBuffer(), 0);
-		}
-
 	}
 
 

@@ -21,7 +21,7 @@ namespace Graphics
 		Texture() = default;
 		~Texture() = default;
 
-		void InitializeFromSwapChain(const TextureData& data, ID3D11RenderTargetView* renderTargetView, ID3D11DepthStencilView* depthStencilVie, ID3D11Texture2D* handle)
+		void InitializeFromSwapChain(const TextureData& data, ID3D11RenderTargetView* renderTargetView, ID3D11DepthStencilView* depthStencilView, ID3D11Texture2D* handle)
 		{
 			m_Data = data;
 			m_Handle = handle;
@@ -31,7 +31,7 @@ namespace Graphics
 
 
 			if (data.isDepthStencil())
-				m_depthStencilView = depthStencilVie;
+				m_depthStencilView = depthStencilView;
 		}
 
 		ID3D11RenderTargetView* GetRenderTargetView() const { return m_renderTargetView; }

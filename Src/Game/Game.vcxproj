@@ -156,6 +156,9 @@
       <Project>{0966a5e2-345f-4519-b589-22605e5426a9}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RenderSystem.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\Microsoft.GameInput.2.1.26100.6068\build\native\targets\Microsoft.GameInput.targets" Condition="Exists('..\packages\Microsoft.GameInput.2.1.26100.6068\build\native\targets\Microsoft.GameInput.targets')" />

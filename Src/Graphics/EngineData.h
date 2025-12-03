@@ -30,10 +30,11 @@ namespace Graphics
         uint32_t height = 0;
         TextureFlags flags = TextureFlags::None;
 		bool iswapChain{ true }; // TODO: 
+		//uint8_t* data = nullptr; 
 
         bool HasFlag(TextureFlags flag) const
         {
-            return (static_cast<int>(flags) & static_cast<int>(flag)) != 0;
+            return (static_cast<int>(flags) bitand static_cast<int>(flag)) != 0;
         }
 
         bool isRenderTarget() const { return HasFlag(TextureFlags::RenderTarget); }

@@ -96,7 +96,7 @@ namespace Graphics
 		TextureData data = {};
 		data.width = static_cast<float>(width);
 		data.height = static_cast<float>(height);
-		data.flags = static_cast<TextureFlags>(static_cast<int>(TextureFlags::RenderTarget) | static_cast<int>(TextureFlags::DepthStencil));
+		data.flags = static_cast<TextureFlags>(static_cast<int>(TextureFlags::RenderTarget) bitor static_cast<int>(TextureFlags::DepthStencil));
 		data.iswapChain = true;
 
 
