@@ -1,3 +1,10 @@
+cbuffer MatrrixBuffer
+{
+    float4x4 World;
+    float4x4 View;
+    float4x4 Projection;
+};
+
 struct VertexInputType
 {
     float4 position : POSITION;
@@ -14,9 +21,15 @@ struct PixelInputType
 
 PixelInputType VS(VertexInputType input)
 {
+    // Change the position vector to be 4 units for proper matrix calculations.
+    input.position.w = 1.0f; // Ensure w is set to 1 for proper transformation ?
+    
     PixelInputType output;
 
-    output.Pos = input.position;
+    output.Pos = mul(input.position, World);
+    output.Pos = mul(output.Pos, View);
+    output.Pos = mul(output.Pos, Projection);
+    
     output.Color = input.color;
 
 

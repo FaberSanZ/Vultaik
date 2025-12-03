@@ -1,210 +1,321 @@
+// main.cpp : This file contains the 'main' function. Program execution begins and ends there.
+//
+
 #include <windows.h>
-#include <d3d12.h>
-#include <dxgi1_6.h>
-#include <D3Dcompiler.h>
+#include <fstream>
+#include <iostream>
+#include <d3d11.h>
+#include <d3dcompiler.h>
+#include <DirectXMath.h>
+#include "Adapter.h"
+#include "Device.h"
+#include "SwapChain.h"
+#include "CommandList.h"
+#include "Buffer.h"
+#include "Texture.h"
+#include "Pipeline.h"
+#include "GameWindows.h"
 
-#pragma comment(lib, "d3d12.lib")
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "D3Dcompiler.lib")
+
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "D3DCompiler.lib")
 
 
-const char* vertexShader = R"(
-struct VSOutput 
+class RenderSystem
 {
-    float4 pos : SV_POSITION;
-    float2 uv : TEXCOORD;
-};
+private:
 
-VSOutput vs(uint vid : SV_VERTEXID) 
-{
-    float2 screenSize = float2(800, 600); // TODO: pass as uniform or root constant
-    uint x = vid & 1;
-    uint y = (vid >> 1) & 1;
-    
-    // center and scale
-    float2 pixelPos = float2(400, 300) + (float2(x, y) - 0.5) * 100.0;
-    
-    // Convertir a coordenadas de clip
-    float2 clipPos = (pixelPos / screenSize) * float2(2.0, -2.0) + float2(-1.0, 1.0);
-    
-    float2 uv = float2(x, y);
-    
-    VSOutput output;
-    output.pos = float4(clipPos, 0, 1);
-    output.uv = uv;
-    return output;
-}
-)";
 
-const char* pixelShader = R"(
 
-struct VSOutput 
-{
-    float4 pos : SV_POSITION;
-    float2 uv : TEXCOORD;
-};
-
-float4 ps(VSOutput input) : SV_TARGET 
-{
-    // cehss pattern
-    float3 color = (input.uv.x > 0.5) != (input.uv.y > 0.5) ? 1 : 0;
-    return float4(color, 1);
-}
-)";
-
-int main() 
-{
-    // Crear ventana
-    WNDCLASS wc = {};
-    wc.lpfnWndProc = [](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT 
+    // Define a struct for the camera matrices (must match HLSL cbuffer layout)
+    struct CameraBuffer
     {
-        if (msg == WM_DESTROY) 
-            PostQuitMessage(0);
+        DirectX::XMMATRIX word;
+        DirectX::XMMATRIX view;
+        DirectX::XMMATRIX projection;
+    } cameraData, cameraData2;
 
-        return DefWindowProc(hwnd, msg, wParam, lParam);
-    };
-    wc.hInstance = GetModuleHandle(nullptr);
-    wc.lpszClassName = L"Ventana";
-    RegisterClass(&wc);
+    float m_CubeRotation = 0.0f; // Rotation angle for the cube (tools for game)
 
-    HWND hwnd = CreateWindow(wc.lpszClassName, L"triangle DX12", WS_OVERLAPPEDWINDOW,
-        100, 100, 800, 600, nullptr, nullptr, wc.hInstance, nullptr);
-    ShowWindow(hwnd, SW_SHOW);
-
-    // Inicializar DX12
-    ID3D12Device* device = nullptr;
-    IDXGISwapChain3* swapChain = nullptr;
-    ID3D12CommandQueue* commandQueue = nullptr;
-    ID3D12CommandAllocator* commandAllocator = nullptr;
-    ID3D12GraphicsCommandList* commandList = nullptr;
-    ID3D12RootSignature* rootSignature = nullptr;
-    ID3D12PipelineState* pipelineState = nullptr;
-    ID3D12DescriptorHeap* rtvHeap = nullptr;
-    ID3D12Resource* renderTargets[2] = {};
-
-    // Factory y Device
-    IDXGIFactory4* factory = nullptr;
-    CreateDXGIFactory1(IID_PPV_ARGS(&factory));
-    D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device));
-
-    // Command Queue
-    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-    device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue));
-
-    // Swap Chain
-    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-    swapChainDesc.BufferCount = 2;
-    swapChainDesc.Width = 800;
-    swapChainDesc.Height = 600;
-    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    swapChainDesc.SampleDesc.Count = 1;
-
-    IDXGISwapChain1* tempSwapChain = nullptr;
-    factory->CreateSwapChainForHwnd(commandQueue, hwnd, &swapChainDesc, nullptr, nullptr, &tempSwapChain);
-    tempSwapChain->QueryInterface(IID_PPV_ARGS(&swapChain));
-    tempSwapChain->Release();
-    factory->Release();
-
-    // RTV Heap
-    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-    rtvHeapDesc.NumDescriptors = 2;
-    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap));
-
-	// create RTVs
-    UINT rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-
-    for (UINT i = 0; i < 2; i++) 
+public:
+    RenderSystem()
     {
-        swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTargets[i]));
-        device->CreateRenderTargetView(renderTargets[i], nullptr, rtvHandle);
-        rtvHandle.ptr += rtvDescriptorSize;
     }
 
-    // Command Allocator y List
-    device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
-    device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, IID_PPV_ARGS(&commandList));
+    uint32_t m_Width{ 1200 }; // Width of the render target
+    uint32_t m_Height{ 820 }; // Height of the render target
 
-    // Root Signature
-    D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-    rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-    ID3DBlob* signatureBlob = nullptr;
-    D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, nullptr);
-    device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
-    signatureBlob->Release();
+    Graphics::Adapter adapter;
+    Graphics::Device device;
+    Graphics::SwapChain swapChain;
+    Graphics::CommandList commandList;
+    Graphics::Pipeline pipeline;
+    Graphics::Buffer vertexBuffer;
+    Graphics::Buffer indexBuffer;
+    Graphics::Buffer constantBuffer;
+    Graphics::Buffer constantBuffer2;
 
-    // shaders
-    ID3DBlob* vsBlob = nullptr;
-    ID3DBlob* psBlob = nullptr;
-    D3DCompile(vertexShader, strlen(vertexShader), nullptr, nullptr, nullptr, "vs", "vs_5_0", 0, 0, &vsBlob, nullptr);
-    D3DCompile(pixelShader, strlen(pixelShader), nullptr, nullptr, nullptr, "ps", "ps_5_0", 0, 0, &psBlob, nullptr);
-
-    // Pipeline State
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-    psoDesc.pRootSignature = rootSignature;
-    psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
-    psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
-    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-    psoDesc.SampleMask = UINT_MAX;
-    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-    psoDesc.SampleDesc.Count = 1;
-    device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState));
-
-    vsBlob->Release();
-    psBlob->Release();
-    commandList->Close();
-
-    // Loop
-    MSG msg = {};
-    while (msg.message != WM_QUIT) 
+    void Initialize(HWND hwnd)
     {
-        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) 
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-        else 
-        {
-            // Render frame
-            commandAllocator->Reset();
-            commandList->Reset(commandAllocator, pipelineState);
 
-            UINT frameIndex = swapChain->GetCurrentBackBufferIndex();
-            D3D12_CPU_DESCRIPTOR_HANDLE currentRTV = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-            currentRTV.ptr += frameIndex * rtvDescriptorSize;
+        adapter.Initialize(0); // Initialize the first GPU adapter (0)
+        device.Initialize(adapter); // Initialize the Direct3D device using the adapter
+        swapChain.Initialize(device, hwnd, m_Width, m_Height); // Initialize the swap chain with the device and window handle
+        commandList.Initialize(device.GetContext()); // Initialize the command list with the device context
 
-            commandList->SetGraphicsRootSignature(rootSignature);
-            commandList->SetPipelineState(pipelineState);
 
-            D3D12_VIEWPORT viewport = { 0, 0, 800, 600, 0, 1 };
-            D3D12_RECT scissor = { 0, 0, 800, 600 };
-            commandList->RSSetViewports(1, &viewport);
-            commandList->RSSetScissorRects(1, &scissor);
+        Graphics::VertexInputElement layout{};
+        layout.Add(Graphics::VertexType::Position);
+        layout.Add(Graphics::VertexType::Color);
 
-            commandList->OMSetRenderTargets(1, &currentRTV, FALSE, nullptr);
+        Graphics::PipelineDesc pipelineDesc{};
+        pipelineDesc.fillMode = D3D11_FILL_SOLID; // Set fill mode to solid
+        pipelineDesc.cullMode = D3D11_CULL_NONE; // Disable backface culling
+        pipelineDesc.depthEnabled = true; // Enable depth testing
+        pipelineDesc.vertexInputElement = layout; // Set the vertex input layout    
+        pipeline.Initialize(device, pipelineDesc);
 
-            float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-            commandList->ClearRenderTargetView(currentRTV, clearColor, 0, nullptr);
+        CreateCamera();
+        CreateMesh();
 
-            commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-            commandList->DrawInstanced(4, 1, 0, 0);
-
-            commandList->Close();
-
-            ID3D12CommandList* commandLists[] = { commandList };
-            commandQueue->ExecuteCommandLists(1, commandLists);
-            swapChain->Present(1, 0);
-        }
+        std::wcout << L"GPU: " << adapter.GetGpuName() << std::endl;
+        std::wcout << L"Dedicated Video Memory: " << adapter.GetDedicatedVideoMemory() / (1024 * 1024) << L" MB" << std::endl;
+        std::wcout << L"Dedicated System Memory: " << adapter.GetDedicatedSystemMemory() / (1024 * 1024) << L" MB" << std::endl;
+        std::wcout << L"Shared System Memory: " << adapter.GetSharedSystemMemory() / (1024 * 1024) << L" MB" << std::endl;
     }
 
+
+    void Loop()
+    {
+        float color[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
+
+        Graphics::RenderPass& pass = swapChain.GetRenderPass();
+
+        commandList.ClearRenderPass(pass, color);
+        commandList.SetRenderPass(pass);
+        commandList.SetViewport(m_Width, m_Height);
+        commandList.SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        commandList.SetPipelineState(pipeline);
+
+
+        constantBuffer.Bind(device.GetContext(), 0);        // ConstantBuffer: slot 0, stage VS
+        commandList.DrawIndexed(36, 0, 0);
+
+        constantBuffer2.Bind(device.GetContext(), 0);        // ConstantBuffer: slot 0, stage VS
+        commandList.DrawIndexed(36, 0, 0);
+
+
+        swapChain.Present(true); // Present the swap chain with vsync enabled
+    }
+
+
+    bool CreateMesh()
+    {
+        Graphics::VertexPositionColor vertices[] =
+        {
+            // Front face
+            {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+            {{ 0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+            {{-0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+            {{ 0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+
+            // Right side face
+            {{ 0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+            {{ 0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+            {{ 0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+            {{ 0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+
+            // Left side face
+            {{-0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+            {{-0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+            {{-0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+            {{-0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+
+            // Back face
+            {{ 0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+            {{-0.5f, -0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+            {{ 0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+            {{-0.5f,  0.5f,  0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+
+            // Top face
+            {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+            {{ 0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+            {{ 0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+            {{-0.5f,  0.5f,  0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+
+            // Bottom face
+            {{ 0.5f, -0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+            {{-0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+            {{ 0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+            {{-0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+        };
+
+
+        vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, vertices, sizeof(vertices), sizeof(Graphics::VertexPositionColor));
+        vertexBuffer.Bind(device.GetContext());
+
+
+
+        uint32_t indices[] =
+        {
+            // front face
+            0, 1, 2, // first triangle
+            0, 3, 1, // second triangle
+
+            // left face
+            4, 5, 6, // first triangle
+            4, 7, 5, // second triangle
+
+            // right face
+            8, 9, 10, // first triangle
+            8, 11, 9, // second triangle
+
+            // back face
+            12, 13, 14, // first triangle
+            12, 15, 13, // second triangle
+
+            // top face
+            16, 17, 18, // first triangle
+            16, 19, 17, // second triangle
+
+            // bottom face
+            20, 21, 22, // first triangle
+            20, 23, 21, // second triangle
+        };
+
+
+
+        indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, indices, sizeof(indices));
+        indexBuffer.Bind(device.GetContext());
+
+
+        return true;
+    }
+
+
+
+
+    void CreateCamera()
+    {
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -3 }, { 0, 0, 0 }, { 0, 1, 0 });
+
+        // Set up projection matrix (perspective)
+        float fov = 45.0f * (3.14f / 180.0f);
+        float aspect = static_cast<float>(m_Width) / static_cast<float>(m_Height);
+        float nearZ = 0.1f;
+        float farZ = 1000.0f;
+        DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveFovLH(fov, aspect, nearZ, farZ);
+
+        // Transpose matrices for HLSL (row-major in C++, column-major in HLSL)
+        cameraData.word = DirectX::XMMatrixIdentity();
+        cameraData.view = DirectX::XMMatrixTranspose(view);
+        cameraData.projection = DirectX::XMMatrixTranspose(projection);
+
+
+
+        constantBuffer.Initialize(device, Graphics::BufferType::ConstantBuffer, &cameraData, sizeof(CameraBuffer));
+
+
+
+        cameraData2 = cameraData;
+        constantBuffer2.Initialize(device, Graphics::BufferType::ConstantBuffer, &cameraData2, sizeof(CameraBuffer));
+        constantBuffer2.Bind(device.GetContext(), 0);        // ConstantBuffer: slot 0, stage VS
+
+
+    }
+
+
+
+    void UpdateCamera()
+    {
+
+        m_CubeRotation += 0.01f;
+
+        // Update camera matrices
+        cameraData.word = XMMatrixTranspose(DirectX::XMMatrixRotationRollPitchYaw(m_CubeRotation, m_CubeRotation, m_CubeRotation) * DirectX::XMMatrixTranslation(-0.256f, 0.0f, 0.0f));
+        // Update GPU
+        constantBuffer.Update(device.GetContext(), &cameraData, sizeof(CameraBuffer));
+
+
+        // Update camera matrices
+        cameraData.word = XMMatrixTranspose(DirectX::XMMatrixRotationRollPitchYaw(-m_CubeRotation, -m_CubeRotation, -m_CubeRotation) * DirectX::XMMatrixTranslation(0.256f, 0.0f, 0.0f));
+        // Update GPU
+        constantBuffer2.Update(device.GetContext(), &cameraData, sizeof(CameraBuffer));
+
+    }
+
+
+
+
+    void Cleanup()
+    {
+        //if (constantBuffer.data)
+        //    constantBuffer.data = nullptr;
+
+        //if (constantBuffer.buffer)
+        //    constantBuffer.buffer->Release();
+
+        //if (pipeline.rasterState)
+        //    pipeline.rasterState->Release();
+
+        //if (pipeline.depthStencilState)
+        //    pipeline.depthStencilState->Release();
+
+        //if (renderDevice.depthStencilView)
+        //    renderDevice.depthStencilView->Release();
+
+        //if (renderDevice.depthStencilBuffer)
+        //    renderDevice.depthStencilBuffer->Release();
+
+        //if (indexBuffer.buffer)
+        //    indexBuffer.buffer->Release();
+
+        //if (vertexBuffer.buffer)
+        //    vertexBuffer.buffer->Release();
+
+        //if (pipeline.inputLayout)
+        //    pipeline.inputLayout->Release();
+
+        //if (pipeline.vertexShader)
+        //    pipeline.vertexShader->Release();
+
+        //if (pipeline.pixelShader)
+        //    pipeline.pixelShader->Release();
+
+        //if (renderDevice.swapChain)
+        //    renderDevice.swapChain->Release();
+
+        //if (renderDevice.renderTargetView)
+        //    renderDevice.renderTargetView->Release();
+
+        //if (renderDevice.deviceContext)
+        //    renderDevice.deviceContext->Release();
+
+        //if (renderDevice.device)
+        //    renderDevice.device->Release();
+    }
+
+};
+
+
+int main()
+{
+    RenderSystem render = {};
+
+    GameWindows gameWindow{ };
+	gameWindow.OnInitialize();
+    render.Initialize(gameWindow.GetHandle());
+
+    while (gameWindow.IsRunning())
+    {
+        gameWindow.PumpMessages();
+
+		render.UpdateCamera();
+		render.Loop();
+
+    }
+
+    render.Cleanup();
     return 0;
 }
