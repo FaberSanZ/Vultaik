@@ -13,4 +13,4 @@
 
 
 ## Low-level rendering backend
-The rendering backend focuses entirely on DirectX 11, so it reuses DX12 enums and data structures where appropriate.
+The rendering backend focuses entirely on DirectX 11, so it reuses DX11 enums and data structures where appropriate.
