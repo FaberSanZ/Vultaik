@@ -11,7 +11,8 @@ namespace Graphics
 	{
 		VertexBuffer,
 		IndexBuffer,
-		ConstantBuffer
+		ConstantBuffer,
+		StructuredBuffer
 	};
 
 	class Device;
@@ -34,6 +35,8 @@ namespace Graphics
 
 	private:
 		ID3D11Buffer* m_Buffer = nullptr;
+		ID3D11ShaderResourceView* m_SRV = nullptr;  
+
 		BufferType m_Type = BufferType::VertexBuffer;
 		uint32_t m_Stride = 0; // Needed only for vertex buffers
 	};

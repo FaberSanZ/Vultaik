@@ -78,6 +78,16 @@ namespace Graphics
 			m_Context->DrawIndexed(indexCount, startIndexLocation, baseVertexLocation);
 		}
 	}
+
+	void CommandList::DrawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation)
+	{
+		if (m_Context)
+		{
+			m_Context->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
+		}
+	}
+
+
 	void CommandList::SetPipelineState(const Pipeline& pipelineState)
 	{
 		if (pipelineState.GetInputLayout())

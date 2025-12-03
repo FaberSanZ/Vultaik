@@ -30,10 +30,9 @@ private:
     // Define a struct for the camera matrices (must match HLSL cbuffer layout)
     struct CameraBuffer
     {
-        DirectX::XMMATRIX word;
         DirectX::XMMATRIX view;
         DirectX::XMMATRIX projection;
-    } cameraData, cameraData2;
+    } cameraData;
 
     float m_CubeRotation = 0.0f; // Rotation angle for the cube (tools for game)
 
@@ -54,7 +53,7 @@ public:
     Graphics::Buffer vertexBuffer;
     Graphics::Buffer indexBuffer;
     Graphics::Buffer constantBuffer;
-    Graphics::Buffer constantBuffer2;
+    Graphics::Buffer instanceBuffer;
 
     void Initialize(HWND hwnd)
     {
@@ -100,13 +99,12 @@ public:
 
 
         constantBuffer.Bind(device.GetContext(), 0);        // ConstantBuffer: slot 0, stage VS
-        commandList.DrawIndexed(36, 0, 0);
+		instanceBuffer.Bind(device.GetContext(), 1);        // StructureBuffer: slot 1, stage VS
+		commandList.DrawIndexedInstanced(36, numInstances, 0, 0, 0); 
 
-        constantBuffer2.Bind(device.GetContext(), 0);        // ConstantBuffer: slot 0, stage VS
-        commandList.DrawIndexed(36, 0, 0);
+ 
 
-
-        swapChain.Present(true); // Present the swap chain with vsync enabled
+        swapChain.Present(false); // Present the swap chain with vsync enabled
     }
 
 
@@ -198,7 +196,7 @@ public:
 
     void CreateCamera()
     {
-        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -3 }, { 0, 0, 0 }, { 0, 1, 0 });
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -36 }, { 0, 0, 0 }, { 0, 1, 0 });
 
         // Set up projection matrix (perspective)
         float fov = 45.0f * (3.14f / 180.0f);
@@ -208,7 +206,6 @@ public:
         DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveFovLH(fov, aspect, nearZ, farZ);
 
         // Transpose matrices for HLSL (row-major in C++, column-major in HLSL)
-        cameraData.word = DirectX::XMMatrixIdentity();
         cameraData.view = DirectX::XMMatrixTranspose(view);
         cameraData.projection = DirectX::XMMatrixTranspose(projection);
 
@@ -218,32 +215,70 @@ public:
 
 
 
-        cameraData2 = cameraData;
-        constantBuffer2.Initialize(device, Graphics::BufferType::ConstantBuffer, &cameraData2, sizeof(CameraBuffer));
-        constantBuffer2.Bind(device.GetContext(), 0);        // ConstantBuffer: slot 0, stage VS
-
+        instanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * 256 * 256 * 8, sizeof(DirectX::XMMATRIX));
 
     }
 
 
-
+	uint32_t numInstances = 256 * 256;
+	float dimension = 1.6f;
     void UpdateCamera()
     {
-
         m_CubeRotation += 0.01f;
 
-        // Update camera matrices
-        cameraData.word = XMMatrixTranspose(DirectX::XMMatrixRotationRollPitchYaw(m_CubeRotation, m_CubeRotation, m_CubeRotation) * DirectX::XMMatrixTranslation(-0.256f, 0.0f, 0.0f));
-        // Update GPU
         constantBuffer.Update(device.GetContext(), &cameraData, sizeof(CameraBuffer));
 
 
-        // Update camera matrices
-        cameraData.word = XMMatrixTranspose(DirectX::XMMatrixRotationRollPitchYaw(-m_CubeRotation, -m_CubeRotation, -m_CubeRotation) * DirectX::XMMatrixTranslation(0.256f, 0.0f, 0.0f));
-        // Update GPU
-        constantBuffer2.Update(device.GetContext(), &cameraData, sizeof(CameraBuffer));
+        std::vector<DirectX::XMMATRIX> dataArray(numInstances);
+        uint32_t dim = static_cast<uint32_t>(std::cbrt(numInstances)); // using cube root to determine the dimension of the grid
+        DirectX::XMFLOAT3 offset = { dimension, dimension, dimension };
+
+        float halfDimOffsetX = (dim * offset.x) / 2.0f;
+        float halfDimOffsetY = (dim * offset.y) / 2.0f;
+        float halfDimOffsetZ = (dim * offset.z) / 2.0f;
+
+        for (uint32_t x = 0; x < dim; ++x)
+        {
+            for (uint32_t y = 0; y < dim; ++y)
+            {
+                for (uint32_t z = 0; z < dim; ++z)
+                {
+                    uint32_t index = x * dim * dim + y * dim + z;
+
+
+                    DirectX::XMFLOAT3 position =
+                    {
+                        -halfDimOffsetX + offset.x / 2.0f + x * offset.x,
+                        -halfDimOffsetY + offset.y / 2.0f + y * offset.y,
+                        -halfDimOffsetZ + offset.z / 2.0f + z * offset.z
+                    };
+
+
+                    DirectX::XMFLOAT3 cubeRotation =
+                    {
+                        m_CubeRotation,
+                        m_CubeRotation,
+                        m_CubeRotation
+                    };
+                    if (index % 2 == 0)
+                    {
+                        cubeRotation.x = -m_CubeRotation;
+                        cubeRotation.y = -m_CubeRotation;
+                        cubeRotation.z = -m_CubeRotation;
+                    }
+                    DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(position.x, position.y, position.z);
+                    DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(cubeRotation.x, cubeRotation.y, cubeRotation.z);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+                    DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale);
+                    dataArray[index] = world;
+                }
+            }
+        }
+
+        instanceBuffer.Update(device.GetContext(), dataArray.data(), sizeof(DirectX::XMMATRIX) * static_cast<uint32_t>(dataArray.size()));
 
     }
+
 
 
 

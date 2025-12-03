@@ -1,6 +1,5 @@
-cbuffer MatrrixBuffer
+cbuffer MatrrixBuffer 
 {
-    float4x4 World;
     float4x4 View;
     float4x4 Projection;
 };
@@ -18,15 +17,19 @@ struct PixelInputType
 };
 
 
+StructuredBuffer<float4x4> models : register(t1);
 
-PixelInputType VS(VertexInputType input)
+
+
+PixelInputType VS(VertexInputType input, uint ins_id : SV_InstanceID)
 {
+    float4x4 word = models[ins_id];
     // Change the position vector to be 4 units for proper matrix calculations.
     input.position.w = 1.0f; // Ensure w is set to 1 for proper transformation ?
     
     PixelInputType output;
 
-    output.Pos = mul(input.position, World);
+    output.Pos = mul(input.position, word);
     output.Pos = mul(output.Pos, View);
     output.Pos = mul(output.Pos, Projection);
     

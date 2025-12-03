@@ -162,7 +162,6 @@ inline void GameInput::Initialize()
 
     initialized = true;
 
-    std::cout << "GameInput initialized successfully\n";
 }
 
 inline void GameInput::Shutdown()

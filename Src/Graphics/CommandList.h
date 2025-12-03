@@ -38,6 +38,7 @@ namespace Graphics
 		void SetRenderPass(const RenderPass& pass);
 		void SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY topology);
 		void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
+		void DrawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation);
 
 		void SetPipelineState(const Pipeline& pipelineState);
 
