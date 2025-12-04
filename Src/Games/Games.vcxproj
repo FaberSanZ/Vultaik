@@ -128,6 +128,7 @@
     <ClCompile Include="Games.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="entt.hpp" />
     <ClInclude Include="GameMath.h" />
     <ClInclude Include="GameTime.h" />
     <ClInclude Include="GameWindows.h" />
