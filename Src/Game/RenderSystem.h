@@ -91,14 +91,14 @@ public:
         constantBuffer.Bind(device.GetContext(), 0);        // ConstantBuffer: slot 0, stage VS
 
 
-        auto view_mesh = registry.view<MeshComponent>();
-        for (auto [entity, mesh] : view_mesh.each())
+        auto view_mesh = registry.view<MeshComponent, InstanceComponent>();
+        for (auto [entity, mesh, ins] : view_mesh.each())
         {
             mesh.mesh.vertexBuffer.Bind(device.GetContext());
             mesh.mesh.indexBuffer.Bind(device.GetContext());
             mesh.mesh.InstanceBuffer.Bind(device.GetContext(), 1); // StructuredBuffer: slot 1, stage VS
-            commandList.DrawIndexedInstanced(mesh.mesh.indexCount, numInstances, 0, 0, 0);
-			std::cout << "Drawing mesh: " << mesh.mesh.name << " with " << numInstances << " instances." << std::endl;
+            commandList.DrawIndexedInstanced(mesh.mesh.indexCount, ins.instancePositions.size(), 0, 0, 0);
+			//std::cout << "Drawing mesh: " << mesh.mesh.name << " with " << numInstances << " instances." << std::endl;
 		}
 
 
@@ -109,7 +109,7 @@ public:
 
     void CreateCamera()
     {
-        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -10 }, { 0, 0, 0 }, { 0, 1, 0 });
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -35 }, { 0, 0, 0 }, { 0, 1, 0 });
 
         // Set up projection matrix (perspective)
         float fov = 45.0f * (3.14f / 180.0f);
@@ -137,9 +137,35 @@ public:
         commandList.UpdateBuffer(constantBuffer, &cameraData, sizeof(CameraBuffer));
 
 
-        auto view_mesh = registry.view<MeshComponent>();
-        for (auto [entity, mesh] : view_mesh.each())
+
+
+
+
+        auto view_mesh = registry.view<TransformComponent, InstanceComponent, MeshComponent>();
+        for (auto [entity, transform, instance, mesh] : view_mesh.each())
         {
+            // Update instance buffer with world matrices for each instance
+            std::vector<DirectX::XMMATRIX> wordInstancing;
+            DirectX::XMMATRIX singleInstance;
+
+            if (not instance.instancePositions.empty())
+            {
+                for (const auto& instanceMatrix : instance.instancePositions)
+                {
+                    DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(instanceMatrix.x, instanceMatrix.y, instanceMatrix.z);
+                    DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+                    DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
+
+
+                    wordInstancing.push_back(world);
+                }
+            }
+
+
+
+            numInstances = static_cast<uint32_t>(wordInstancing.size());
+
 
             if (mesh.shapeType == ShapeType::Cube)
             {
@@ -219,10 +245,13 @@ public:
 
 
                     mesh.mesh.indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, indices, sizeof(indices));
+					mesh.mesh.indexCount = indexCount;
 
-                    mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * 256 * 256, sizeof(DirectX::XMMATRIX));
+                    mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * numInstances, sizeof(DirectX::XMMATRIX));
 					mesh.dirty = true;
 					std::cout << "Cube mesh created and buffers initialized." << std::endl;
+                    std::cout << "Drawing mesh index ptr: " << mesh.mesh.indexBuffer.GetBuffer() << std::endl;
+
                 }
 
 
@@ -255,111 +284,25 @@ public:
 			}
 
 
-            // Update instance buffer with world matrices for each instance
-            std::vector<DirectX::XMMATRIX> wordInstancing;
-            DirectX::XMMATRIX singleInstance;
 
-
-            // Iterate over all entities with TransformComponent and InstanceComponent
-            auto view_ins = registry.view<TransformComponent, InstanceComponent>();
-            for (auto [entity, transform, instance] : view_ins.each())
+            if (not wordInstancing.empty()) 
             {
-                if (not instance.instancePositions.empty())
-                {
-                    for (const auto& instanceMatrix : instance.instancePositions)
-                    {
-                        DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(instanceMatrix.x, instanceMatrix.y, instanceMatrix.z);
-                        DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
-                        DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
-                        DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
-
-
-                        wordInstancing.push_back(world);
-                    }
-                }
-
-            }
-
-            numInstances = static_cast<uint32_t>(wordInstancing.size());
-            std::cout << "Number of instances: " << numInstances << std::endl;
-
-
-            if (not wordInstancing.empty()) {
-
                 commandList.UpdateBuffer(mesh.mesh.InstanceBuffer, wordInstancing.data(), sizeof(DirectX::XMMATRIX) * numInstances); // Update instance buffer with all world matrices
-				std::cout << "Updating instance buffer: " << mesh.mesh.InstanceBuffer.GetBuffer() << " ." << std::endl;
             }
             else
             {
-                auto view = registry.view<TransformComponent>(entt::exclude<InstanceComponent, MeshComponent>);
-                for (auto [entity, transform] : view.each())
-                {
-                    DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
-                    DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
-                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
-                    singleInstance = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
-					std::cout << "Single instance world matrix calculated." << std::endl;
-                }
+
+                DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
+                DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ); 
+                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+                singleInstance = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
+                
 
                 commandList.UpdateBuffer(mesh.mesh.InstanceBuffer, &singleInstance, sizeof(DirectX::XMMATRIX)); // Update instance buffer with single world matrix
-                std::cout << "Updating instance buffer: " << mesh.mesh.InstanceBuffer.GetBuffer() << " ." << std::endl;
             }
 
 
         }
-
-
-  //      // Update instance buffer with world matrices for each instance
-  //      std::vector<DirectX::XMMATRIX> wordInstancing;
-  //      DirectX::XMMATRIX singleInstance;
-		//Graphics::Buffer currentInstanceBuffer;
-
-  //      // Iterate over all entities with TransformComponent and InstanceComponent
-  //      auto view_ins = registry.view<TransformComponent, InstanceComponent, MeshComponent>();
-  //      for (auto [entity, transform, instance, mesh] : view_ins.each())
-  //      {
-  //          if (not instance.instancePositions.empty())
-  //          {
-  //              for (const auto& instanceMatrix : instance.instancePositions)
-  //              {
-  //                  DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(instanceMatrix.x, instanceMatrix.y, instanceMatrix.z);
-  //                  DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
-  //                  DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
-  //                  DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
-
-
-  //                  wordInstancing.push_back(world);
-  //              }
-  //          }
-
-		//	currentInstanceBuffer = mesh.mesh.InstanceBuffer;
-
-  //      }
-
-  //      numInstances = static_cast<uint32_t>(wordInstancing.size());
-		//std::cout << "Number of instances: " << numInstances << std::endl;
-
-  //      std::cout << "Updating instance buffer: " << currentInstanceBuffer.GetBuffer() << " ." << std::endl;
-  //      if (not wordInstancing.empty())
-  //          commandList.UpdateBuffer(currentInstanceBuffer, wordInstancing.data(), sizeof(DirectX::XMMATRIX) * numInstances); // Update instance buffer with all world matrices
-  //      else
-  //      {
-  //          auto view = registry.view<TransformComponent, MeshComponent>(entt::exclude<InstanceComponent>);
-  //          for (auto [entity, transform, mesh] : view.each())
-  //          {
-  //              DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
-  //              DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
-  //              DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
-  //              singleInstance = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
-  //              std::cout << "Single instance world matrix calculated." << std::endl;
-  //              currentInstanceBuffer = mesh.mesh.InstanceBuffer;
-
-  //          }
-
-  //          std::cout << "Updating instance buffer: " << currentInstanceBuffer.GetBuffer() << " ." << std::endl;
-  //          commandList.UpdateBuffer(currentInstanceBuffer, &singleInstance, sizeof(DirectX::XMMATRIX)); // Update instance buffer with single world matrix
-  //      }
-
 
 
 

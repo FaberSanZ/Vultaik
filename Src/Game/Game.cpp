@@ -15,7 +15,7 @@ class PlayerControler
 public:
 
 
-    uint32_t numInstances = 10 * 10;
+    uint32_t numInstances = 256 * 256 * 4;
     float dimension = 1.6f;
     void OnInitialize(entt::registry& registry)
     {
@@ -62,6 +62,7 @@ public:
 		registry.emplace<MeshComponent>(entity, meshComp);
         registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 ,1 });
         registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
+		registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
 
            
 
@@ -70,6 +71,7 @@ public:
         registry.emplace<MeshComponent>(entity2, meshComp);
         registry.emplace<TransformComponent>(entity2, TransformComponent{ 1, 1 ,1 });
         registry.emplace<InstanceComponent>(entity2, InstanceComponent{ instancePositions });
+		registry.emplace<TagComponent>(entity2, TagComponent{ "Second Cube" });
 
 
 
@@ -77,14 +79,21 @@ public:
     void OnUpdate(entt::registry& registry, GameTime time)
     {
 
-        auto view = registry.view<TransformComponent>();
-        for (auto [entity, transform] : view.each())
+        auto view = registry.view<TransformComponent, TagComponent>();
+        for (auto [entity, transform, tag] : view.each())
         {
-
-            transform.rotationX += static_cast<float>(time.GetDeltaTime()) * 0.7f;
-            transform.rotationY += static_cast<float>(time.GetDeltaTime()) * 0.5f;
-            transform.rotationZ += static_cast<float>(time.GetDeltaTime()) * -0.7f;
-
+            if(tag.Tag == "Second Cube")
+            {
+                transform.rotationX += static_cast<float>(time.GetDeltaTime()) * 0.7f;
+                transform.rotationY += static_cast<float>(time.GetDeltaTime()) * 0.5f;
+                transform.rotationZ += static_cast<float>(time.GetDeltaTime()) * -0.7f;
+			}
+            else
+            {
+                transform.rotationX += static_cast<float>(time.GetDeltaTime()) * -0.7f;
+                transform.rotationY += static_cast<float>(time.GetDeltaTime()) * -0.5f;
+                transform.rotationZ += static_cast<float>(time.GetDeltaTime()) * 0.7f;
+			}
 
 
         }
