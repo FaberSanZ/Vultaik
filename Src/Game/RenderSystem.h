@@ -13,7 +13,9 @@
 #include "Texture.h"
 #include "Pipeline.h"
 #include "GameWindows.h"
-#include <GameTime.h>
+#include "GameTime.h"
+#include "entt.hpp"
+#include "Components.h"
 
 
 class RenderSystem
@@ -214,92 +216,40 @@ public:
     uint32_t numInstances = 256 * 256 * 2;
     float dimension = 1.6f;
 
-    void Update(GameTime time)
+    void Update(entt::registry& registry, GameTime time)
     {
         // Update the constant buffer with the latest camera data
         commandList.UpdateBuffer(constantBuffer, &cameraData, sizeof(CameraBuffer));
 
 
-        float rotation = time.GetTotalTime() * 2.0f;
 
-        if(GameInput::IsKeyDown(GameInput::KeyCode::W))
-        {
-            dimension += 0.1f;
-		}
-        if (GameInput::IsKeyDown(GameInput::KeyCode::S))
-        {
-            dimension -= 0.1f;
-		}
 
-        if (GameInput::IsKeyDown(GameInput::KeyCode::A))
-        {
-            numInstances += 256;
-            if (numInstances > 256 * 256 * 8)
-                numInstances = 256 * 256 * 8;
-        }
-        if (GameInput::IsKeyDown(GameInput::KeyCode::D))
-        {
-                numInstances -= 256;
-                if( numInstances < 256)
-					numInstances = 256;
-		}
+
 
         // Update instance buffer with world matrices for each instance
-        std::vector<DirectX::XMMATRIX> dataArray(numInstances);
-        uint32_t dim = static_cast<uint32_t>(std::cbrt(numInstances)); // using cube root to determine the dimension of the grid
-        DirectX::XMFLOAT3 offset = { dimension, dimension, dimension };
+        std::vector<DirectX::XMMATRIX> dataArray;
 
-        float halfDimOffsetX = (dim * offset.x) / 2.0f;
-        float halfDimOffsetY = (dim * offset.y) / 2.0f;
-        float halfDimOffsetZ = (dim * offset.z) / 2.0f;
-
-        for (uint32_t x = 0; x < dim; ++x)
+		// Iterate over all entities with TransformComponent
+        auto view = registry.view<TransformComponent>();
+        for (auto [entity, transform] : view.each())
         {
-            for (uint32_t y = 0; y < dim; ++y)
-            {
-                for (uint32_t z = 0; z < dim; ++z)
-                {
-                    uint32_t index = x * dim * dim + y * dim + z;
 
+            DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
+            DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
+            DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+            DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
 
-                    DirectX::XMFLOAT3 position =
-                    {
-                        -halfDimOffsetX + offset.x / 2.0f + x * offset.x,
-                        -halfDimOffsetY + offset.y / 2.0f + y * offset.y,
-                        -halfDimOffsetZ + offset.z / 2.0f + z * offset.z
-                    };
-
-
-                    DirectX::XMFLOAT3 cubeRotation =
-                    {
-                        rotation,
-                        rotation,
-                        rotation
-                    };
-                    if (index % 2 == 0)
-                    {
-                        cubeRotation.x = -rotation;
-                        cubeRotation.y = -rotation;
-                        cubeRotation.z = -rotation;
-                    }
-                    DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(position.x, position.y, position.z);
-                    DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(cubeRotation.x, cubeRotation.y, cubeRotation.z);
-                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
-                    DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
-                    dataArray[index] = world;
-                }
-            }
+            dataArray.push_back(world);
         }
 
         commandList.UpdateBuffer(instanceBuffer, dataArray.data(), sizeof(DirectX::XMMATRIX) * static_cast<uint32_t>(dataArray.size()));
 
-		std::cout << "Instances: " << numInstances << " Dimension: " << dimension << "\r";
     }
 
-    void OnUpdate(GameTime time)
+    void OnUpdate(entt::registry& registry, GameTime time)
     {
 
-        Update(time);
+        Update(registry, time);
         Loop();
     }
 
