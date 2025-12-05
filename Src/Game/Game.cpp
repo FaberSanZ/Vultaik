@@ -125,14 +125,13 @@ public:
                 };
 
                 inst.instancePositions.push_back(position);
-				std::cout << "Added Instance Position: (" << position.x << ", " << position.y << ", " << position.z << ")\n";
             }
 
-            for (const auto& instancePos : inst.instancePositions)
+            if (GameInput::IsKeyPressed(GameInput::KeyCode::N))
             {
-				std::cout << "Instance Position: (" << instancePos.x << ", " << instancePos.y << ", " << instancePos.z << ")\n";
+                inst.instancePositions[1].y += time.GetTotalTime() * 0.02;
+				std::cout << "Instance 1 Y Position: " << inst.instancePositions[1].y << std::endl;
             }
-
 
 
         }

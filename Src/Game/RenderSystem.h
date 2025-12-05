@@ -284,9 +284,9 @@ public:
                 }
 			}
 
-
-            commandList.UpdateBuffer(mesh.mesh.InstanceBuffer, wordInstancing.data(), sizeof(DirectX::XMMATRIX) * numInstances); // Update instance buffer with all world matrices
-
+			// Update instance buffer
+			if (numInstances > 0) // Avoid updating with zero instances
+                commandList.UpdateBuffer(mesh.mesh.InstanceBuffer, wordInstancing.data(), sizeof(DirectX::XMMATRIX) * numInstances);
 
 
         }
