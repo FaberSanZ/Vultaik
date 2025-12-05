@@ -15,7 +15,7 @@ class PlayerControler
 public:
 
 
-    uint32_t numInstances = 256 * 256 * 4;
+    uint32_t numInstances = 10 * 10;
     float dimension = 1.6f;
     void OnInitialize(entt::registry& registry)
     {
@@ -54,9 +54,22 @@ public:
             }
         }
 
+        MeshComponent meshComp;
+        meshComp.shapeType = ShapeType::Cube;
+
+
         auto entity = registry.create();
+		registry.emplace<MeshComponent>(entity, meshComp);
         registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 ,1 });
-        //registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
+        registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
+
+           
+
+
+        auto entity2 = registry.create();
+        registry.emplace<MeshComponent>(entity2, meshComp);
+        registry.emplace<TransformComponent>(entity2, TransformComponent{ 1, 1 ,1 });
+        registry.emplace<InstanceComponent>(entity2, InstanceComponent{ instancePositions });
 
 
 
@@ -107,7 +120,7 @@ public:
 
 		// Initialize systems
         renderSystem = {};
-        renderSystem.OnInitialize(gameWindow.GetHandle());
+        renderSystem.OnInitialize(registry, gameWindow.GetHandle());
     }
 
 

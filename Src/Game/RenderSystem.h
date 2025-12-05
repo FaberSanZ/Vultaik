@@ -46,12 +46,10 @@ public:
     Graphics::SwapChain swapChain;
     Graphics::CommandList commandList;
     Graphics::Pipeline pipeline;
-    Graphics::Buffer vertexBuffer;
-    Graphics::Buffer indexBuffer;
     Graphics::Buffer constantBuffer;
-    Graphics::Buffer instanceBuffer;
 
-    void OnInitialize(HWND hwnd)
+
+    void OnInitialize(entt::registry& registry, HWND hwnd)
     {
 
         adapter.Initialize(0); // Initialize the first GPU adapter (0)
@@ -72,16 +70,13 @@ public:
         pipeline.Initialize(device, pipelineDesc);
 
         CreateCamera();
-        CreateMesh();
 
-        std::wcout << L"GPU: " << adapter.GetGpuName() << std::endl;
-        std::wcout << L"Dedicated Video Memory: " << adapter.GetDedicatedVideoMemory() / (1024 * 1024) << L" MB" << std::endl;
-        std::wcout << L"Dedicated System Memory: " << adapter.GetDedicatedSystemMemory() / (1024 * 1024) << L" MB" << std::endl;
-        std::wcout << L"Shared System Memory: " << adapter.GetSharedSystemMemory() / (1024 * 1024) << L" MB" << std::endl;
+
+
     }
 
 
-    void Loop()
+    void Loop(entt::registry& registry)
     {
         float color[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
 
@@ -93,106 +88,28 @@ public:
         commandList.SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         commandList.SetPipelineState(pipeline);
 
-
         constantBuffer.Bind(device.GetContext(), 0);        // ConstantBuffer: slot 0, stage VS
-        instanceBuffer.Bind(device.GetContext(), 1);        // StructureBuffer: slot 1, stage VS
-        commandList.DrawIndexedInstanced(36, numInstances, 0, 0, 0);
+
+
+        auto view_mesh = registry.view<MeshComponent>();
+        for (auto [entity, mesh] : view_mesh.each())
+        {
+            mesh.mesh.vertexBuffer.Bind(device.GetContext());
+            mesh.mesh.indexBuffer.Bind(device.GetContext());
+            mesh.mesh.InstanceBuffer.Bind(device.GetContext(), 1); // StructuredBuffer: slot 1, stage VS
+            commandList.DrawIndexedInstanced(mesh.mesh.indexCount, numInstances, 0, 0, 0);
+			std::cout << "Drawing mesh: " << mesh.mesh.name << " with " << numInstances << " instances." << std::endl;
+		}
+
 
 
 
         swapChain.Present(false); // Present the swap chain with vsync enabled
     }
 
-
-    bool CreateMesh()
-    {
-        Graphics::VertexPositionColor vertices[] =
-        {
-            // Front face
-            {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-            {{ 0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-            {{-0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-            {{ 0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-
-            // Right side face
-            {{ 0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-            {{ 0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-            {{ 0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-            {{ 0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-
-            // Left side face
-            {{-0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-            {{-0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-            {{-0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-            {{-0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-
-            // Back face
-            {{ 0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-            {{-0.5f, -0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-            {{ 0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-            {{-0.5f,  0.5f,  0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-
-            // Top face
-            {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-            {{ 0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-            {{ 0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-            {{-0.5f,  0.5f,  0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-
-            // Bottom face
-            {{ 0.5f, -0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-            {{-0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-            {{ 0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-            {{-0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-        };
-
-
-        vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, vertices, sizeof(vertices), sizeof(Graphics::VertexPositionColor));
-        vertexBuffer.Bind(device.GetContext());
-
-
-
-        uint32_t indices[] =
-        {
-            // front face
-            0, 1, 2, // first triangle
-            0, 3, 1, // second triangle
-
-            // left face
-            4, 5, 6, // first triangle
-            4, 7, 5, // second triangle
-
-            // right face
-            8, 9, 10, // first triangle
-            8, 11, 9, // second triangle
-
-            // back face
-            12, 13, 14, // first triangle
-            12, 15, 13, // second triangle
-
-            // top face
-            16, 17, 18, // first triangle
-            16, 19, 17, // second triangle
-
-            // bottom face
-            20, 21, 22, // first triangle
-            20, 23, 21, // second triangle
-        };
-
-
-
-        indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, indices, sizeof(indices));
-        indexBuffer.Bind(device.GetContext());
-
-
-        return true;
-    }
-
-
-
-
     void CreateCamera()
     {
-        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -40 }, { 0, 0, 0 }, { 0, 1, 0 });
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -10 }, { 0, 0, 0 }, { 0, 1, 0 });
 
         // Set up projection matrix (perspective)
         float fov = 45.0f * (3.14f / 180.0f);
@@ -208,7 +125,6 @@ public:
 
 
         constantBuffer.Initialize(device, Graphics::BufferType::ConstantBuffer, nullptr, sizeof(CameraBuffer));
-        instanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * 256 * 256 * 8, sizeof(DirectX::XMMATRIX));
 
     }
 
@@ -221,72 +137,252 @@ public:
         commandList.UpdateBuffer(constantBuffer, &cameraData, sizeof(CameraBuffer));
 
 
-
-
-
-
-        // Update instance buffer with world matrices for each instance
-        std::vector<DirectX::XMMATRIX> wordInstancing;
-		DirectX::XMMATRIX singleInstance;
-
-
-		// Iterate over all entities with TransformComponent and InstanceComponent
-        auto view_ins = registry.view<TransformComponent, InstanceComponent>();
-        for (auto [entity, transform, instance] : view_ins.each())
+        auto view_mesh = registry.view<MeshComponent>();
+        for (auto [entity, mesh] : view_mesh.each())
         {
-            if (not instance.instancePositions.empty())
+
+            if (mesh.shapeType == ShapeType::Cube)
             {
-                for (const auto& instanceMatrix : instance.instancePositions)
+                if (not mesh.dirty)
                 {
-                    DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(instanceMatrix.x, instanceMatrix.y, instanceMatrix.z);
+                    uint32_t indexCount = 36;
+
+                    Graphics::VertexPositionColor vertices[] =
+                    {
+                        // Front face
+                        {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                        {{ 0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+                        {{-0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                        {{ 0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+
+                        // Right side face
+                        {{ 0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                        {{ 0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+                        {{ 0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                        {{ 0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+
+                        // Left side face
+                        {{-0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                        {{-0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+                        {{-0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                        {{-0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+
+                        // Back face
+                        {{ 0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                        {{-0.5f, -0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+                        {{ 0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                        {{-0.5f,  0.5f,  0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+
+                        // Top face
+                        {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                        {{ 0.5f,  0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+                        {{ 0.5f,  0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                        {{-0.5f,  0.5f,  0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+
+                        // Bottom face
+                        {{ 0.5f, -0.5f,  0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                        {{-0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+                        {{ 0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                        {{-0.5f, -0.5f,  0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+                    };
+                    uint32_t indices[] =
+                    {
+                        // front face
+                        0, 1, 2, // first triangle
+                        0, 3, 1, // second triangle
+
+                        // left face
+                        4, 5, 6, // first triangle
+                        4, 7, 5, // second triangle
+
+                        // right face
+                        8, 9, 10, // first triangle
+                        8, 11, 9, // second triangle
+
+                        // back face
+                        12, 13, 14, // first triangle
+                        12, 15, 13, // second triangle
+
+                        // top face
+                        16, 17, 18, // first triangle
+                        16, 19, 17, // second triangle
+
+                        // bottom face
+                        20, 21, 22, // first triangle
+                        20, 23, 21, // second triangle
+                    };
+
+
+                    mesh.mesh.vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, vertices, sizeof(vertices), sizeof(Graphics::VertexPositionColor));
+
+
+
+
+                    mesh.mesh.indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, indices, sizeof(indices));
+
+                    mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * 256 * 256, sizeof(DirectX::XMMATRIX));
+					mesh.dirty = true;
+					std::cout << "Cube mesh created and buffers initialized." << std::endl;
+                }
+
+
+            }
+            else if (mesh.shapeType == ShapeType::Null)
+            {
+				const uint32_t vertexCount = static_cast<uint32_t>(mesh.Vertices.size());
+                uint32_t indexCount = 36;
+
+				//Graphics::VertexPositionColor vertices[vertexCount];
+				std::vector<Graphics::VertexPositionColor> vertices;
+				for (const auto& vert : mesh.Vertices)
+				{
+					Graphics::VertexPositionColor vpc;
+					vpc.Position = DirectX::XMFLOAT4(vert.x, vert.y, vert.z, 1.0f);
+					vpc.Color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f); // White color for all vertices
+					vertices.push_back(vpc);
+				}
+
+
+    //            vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, vertices.data(), sizeof(vertices), sizeof(Graphics::VertexPositionColor));
+
+				//auto indices =  mesh.Indices;
+
+
+
+    //            indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, indices.data(), sizeof(indices));
+
+    //            instanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * 256 * 256 * 2, sizeof(DirectX::XMMATRIX));
+			}
+
+
+            // Update instance buffer with world matrices for each instance
+            std::vector<DirectX::XMMATRIX> wordInstancing;
+            DirectX::XMMATRIX singleInstance;
+
+
+            // Iterate over all entities with TransformComponent and InstanceComponent
+            auto view_ins = registry.view<TransformComponent, InstanceComponent>();
+            for (auto [entity, transform, instance] : view_ins.each())
+            {
+                if (not instance.instancePositions.empty())
+                {
+                    for (const auto& instanceMatrix : instance.instancePositions)
+                    {
+                        DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(instanceMatrix.x, instanceMatrix.y, instanceMatrix.z);
+                        DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
+                        DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+                        DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
+
+
+                        wordInstancing.push_back(world);
+                    }
+                }
+
+            }
+
+            numInstances = static_cast<uint32_t>(wordInstancing.size());
+            std::cout << "Number of instances: " << numInstances << std::endl;
+
+
+            if (not wordInstancing.empty()) {
+
+                commandList.UpdateBuffer(mesh.mesh.InstanceBuffer, wordInstancing.data(), sizeof(DirectX::XMMATRIX) * numInstances); // Update instance buffer with all world matrices
+				std::cout << "Updating instance buffer: " << mesh.mesh.InstanceBuffer.GetBuffer() << " ." << std::endl;
+            }
+            else
+            {
+                auto view = registry.view<TransformComponent>(entt::exclude<InstanceComponent, MeshComponent>);
+                for (auto [entity, transform] : view.each())
+                {
+                    DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
                     DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
                     DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
-                    DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
-
-
-                    wordInstancing.push_back(world);
+                    singleInstance = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
+					std::cout << "Single instance world matrix calculated." << std::endl;
                 }
+
+                commandList.UpdateBuffer(mesh.mesh.InstanceBuffer, &singleInstance, sizeof(DirectX::XMMATRIX)); // Update instance buffer with single world matrix
+                std::cout << "Updating instance buffer: " << mesh.mesh.InstanceBuffer.GetBuffer() << " ." << std::endl;
             }
+
 
         }
 
-		numInstances = static_cast<uint32_t>(wordInstancing.size());
+
+  //      // Update instance buffer with world matrices for each instance
+  //      std::vector<DirectX::XMMATRIX> wordInstancing;
+  //      DirectX::XMMATRIX singleInstance;
+		//Graphics::Buffer currentInstanceBuffer;
+
+  //      // Iterate over all entities with TransformComponent and InstanceComponent
+  //      auto view_ins = registry.view<TransformComponent, InstanceComponent, MeshComponent>();
+  //      for (auto [entity, transform, instance, mesh] : view_ins.each())
+  //      {
+  //          if (not instance.instancePositions.empty())
+  //          {
+  //              for (const auto& instanceMatrix : instance.instancePositions)
+  //              {
+  //                  DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(instanceMatrix.x, instanceMatrix.y, instanceMatrix.z);
+  //                  DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
+  //                  DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+  //                  DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
+
+
+  //                  wordInstancing.push_back(world);
+  //              }
+  //          }
+
+		//	currentInstanceBuffer = mesh.mesh.InstanceBuffer;
+
+  //      }
+
+  //      numInstances = static_cast<uint32_t>(wordInstancing.size());
+		//std::cout << "Number of instances: " << numInstances << std::endl;
+
+  //      std::cout << "Updating instance buffer: " << currentInstanceBuffer.GetBuffer() << " ." << std::endl;
+  //      if (not wordInstancing.empty())
+  //          commandList.UpdateBuffer(currentInstanceBuffer, wordInstancing.data(), sizeof(DirectX::XMMATRIX) * numInstances); // Update instance buffer with all world matrices
+  //      else
+  //      {
+  //          auto view = registry.view<TransformComponent, MeshComponent>(entt::exclude<InstanceComponent>);
+  //          for (auto [entity, transform, mesh] : view.each())
+  //          {
+  //              DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
+  //              DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
+  //              DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+  //              singleInstance = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
+  //              std::cout << "Single instance world matrix calculated." << std::endl;
+  //              currentInstanceBuffer = mesh.mesh.InstanceBuffer;
+
+  //          }
+
+  //          std::cout << "Updating instance buffer: " << currentInstanceBuffer.GetBuffer() << " ." << std::endl;
+  //          commandList.UpdateBuffer(currentInstanceBuffer, &singleInstance, sizeof(DirectX::XMMATRIX)); // Update instance buffer with single world matrix
+  //      }
 
 
 
 
-        if (not wordInstancing.empty())
-			commandList.UpdateBuffer(instanceBuffer, wordInstancing.data(), sizeof(DirectX::XMMATRIX) * numInstances); // Update instance buffer with all world matrices
-        else
-        {
-            auto view = registry.view<TransformComponent>(entt::exclude<InstanceComponent>);
-            for (auto [entity, transform] : view.each())
-            {
-                DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
-                DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
-                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
-                singleInstance = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
-            }
-
-            commandList.UpdateBuffer(instanceBuffer, &singleInstance, sizeof(DirectX::XMMATRIX)); // Update instance buffer with single world matrix
-        }
     }
 
     void OnUpdate(entt::registry& registry, GameTime time)
     {
 
         Update(registry, time);
-        Loop();
+        Loop(registry);
     }
 
 
     void OnShutdown()
     {
 
-        indexBuffer.Release();
-        vertexBuffer.Release();
-        constantBuffer.Release();
-        instanceBuffer.Release();
+        //indexBuffer.Release();
+        //vertexBuffer.Release();
+        //constantBuffer.Release();
+        //instanceBuffer.Release();
+
+
+
         pipeline.Release();
         commandList.Release();
         swapChain.Release();

@@ -1,5 +1,6 @@
 #pragma once
-#include <entt.hpp>
+#include "Buffer.h"
+
 
 
 struct TransformComponent
@@ -18,25 +19,14 @@ struct InstanceComponent
 	std::vector<DirectX::XMFLOAT3> instancePositions;
 };
 
-struct MeshComponent
-{
-	std::vector<DirectX::XMFLOAT3> vertices;
-	std::vector<uint32_t> indices;
-};
-
 enum class ShapeType
 {
     Cube,
     Sphere,
     Cylinder,
-    Plane
-};
-
-
-struct ShapeComponent
-{
-	ShapeType type;
-	uint32_t subdivisions; // For sphere or cylinder detail
+    Plane,
+    Null,
+    Count
 };
 
 struct TerrainComponent
@@ -53,4 +43,41 @@ struct CameraComponent
     DirectX::XMFLOAT3 position;
     DirectX::XMFLOAT3 target;
     DirectX::XMFLOAT3 up;
+};
+
+// TODO: Expand MeshPart to include node, sub-mesh info, etc.
+//class MeshPart 
+//{
+//    public:
+//    MeshPart() = default;
+//    ~MeshPart() = default;
+//
+//};
+
+
+class Mesh
+{
+public:
+    Mesh() = default;
+    ~Mesh() = default;
+    Mesh(const Graphics::Buffer& vBuffer, const Graphics::Buffer& iBuffer, uint32_t iCount, Graphics::Buffer instanceBuffer)
+		: vertexBuffer(vBuffer), indexBuffer(iBuffer), indexCount(iCount), InstanceBuffer(instanceBuffer)
+    {
+    }
+    Graphics::Buffer vertexBuffer;
+    Graphics::Buffer indexBuffer;
+    uint32_t indexCount = 0;
+    Graphics::Buffer InstanceBuffer; // For instanced rendering
+
+    std::string name{ "mesh empy" };
+};
+
+struct MeshComponent
+{
+	ShapeType shapeType;
+	std::vector<uint32_t> Indices;
+	std::vector<DirectX::XMFLOAT3> Vertices;
+	std::vector<DirectX::XMFLOAT3> Colors;
+	Mesh mesh;
+	bool dirty = false; // Indicates if the mesh needs to be updated
 };

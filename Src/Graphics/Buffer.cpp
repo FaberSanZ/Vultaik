@@ -169,6 +169,6 @@ namespace Graphics
 
 	Buffer::~Buffer()
 	{
-		Release();
+		//Release();
 	}
 }
