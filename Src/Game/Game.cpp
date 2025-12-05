@@ -15,20 +15,23 @@ class PlayerControler
 public:
 
 
-    uint32_t numInstances = 256 * 256 * 2;
+    uint32_t numInstances = 256 * 256 * 4;
     float dimension = 1.6f;
     void OnInitialize(entt::registry& registry)
     {
 
-        auto entity = registry.create();
-        registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 ,1 });
-		float rotation = 0.0f;
+
+
 		uint32_t dim = static_cast<uint32_t>(std::cbrt(numInstances)); // using cube root to determine the dimension of the grid
 		DirectX::XMFLOAT3 offset = { dimension, dimension, dimension };
+
 
         float halfDimOffsetX = (dim * offset.x) / 2.0f;
         float halfDimOffsetY = (dim * offset.y) / 2.0f;
         float halfDimOffsetZ = (dim * offset.z) / 2.0f;
+
+		std::vector<DirectX::XMFLOAT3> instancePositions;
+
 
         for (uint32_t x = 0; x < dim; ++x)
         {
@@ -46,70 +49,30 @@ public:
                         -halfDimOffsetZ + offset.z / 2.0f + z * offset.z
                     };
 
-
-					auto entity = registry.create();
-					registry.emplace<TransformComponent>(entity, TransformComponent{ position.x, position.y ,position.z });
-
+					instancePositions.push_back(position);
                 }
             }
         }
 
+        auto entity = registry.create();
+        registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 ,1 });
+        //registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
+
+
+
     }
     void OnUpdate(entt::registry& registry, GameTime time)
     {
-        //DirectX::XMFLOAT3 offset = { dimension, dimension, dimension };
-
-//float halfDimOffsetX = (dim * offset.x) / 2.0f;
-//float halfDimOffsetY = (dim * offset.y) / 2.0f;
-//float halfDimOffsetZ = (dim * offset.z) / 2.0f;
-
-//for (uint32_t x = 0; x < dim; ++x)
-//{
-//    for (uint32_t y = 0; y < dim; ++y)
-//    {
-//        for (uint32_t z = 0; z < dim; ++z)
-//        {
-//            uint32_t index = x * dim * dim + y * dim + z;
-
-
-//            DirectX::XMFLOAT3 position =
-//            {
-//                -halfDimOffsetX + offset.x / 2.0f + x * offset.x,
-//                -halfDimOffsetY + offset.y / 2.0f + y * offset.y,
-//                -halfDimOffsetZ + offset.z / 2.0f + z * offset.z
-//            };
-
-
-//            DirectX::XMFLOAT3 cubeRotation =
-//            {
-//                rotation,
-//                rotation,
-//                rotation
-//            };
-//            if (index % 2 == 0)
-//            {
-//                cubeRotation.x = -rotation;
-//                cubeRotation.y = -rotation;
-//                cubeRotation.z = -rotation;
-//            }
-//            DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(position.x, position.y, position.z);
-//            DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(cubeRotation.x, cubeRotation.y, cubeRotation.z);
-//            DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
-//            DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
-//            dataArray[index] = world;
-//        }
-//    }
-//}
-
-
 
         auto view = registry.view<TransformComponent>();
         for (auto [entity, transform] : view.each())
         {
 
-            transform.rotationX += static_cast<float>(time.GetDeltaTime()) * 0.5f;
+            transform.rotationX += static_cast<float>(time.GetDeltaTime()) * 0.7f;
             transform.rotationY += static_cast<float>(time.GetDeltaTime()) * 0.5f;
-            transform.rotationZ += static_cast<float>(time.GetDeltaTime()) * 0.5f;
+            transform.rotationZ += static_cast<float>(time.GetDeltaTime()) * -0.7f;
+
+
 
         }
 
@@ -138,7 +101,6 @@ public:
         gameWindow.OnInitialize();
 
 		// Initialize Game systems
-		// PlayerController, Health, etc.
 		playerControler = {};
 		playerControler.OnInitialize(registry);
 

@@ -192,7 +192,7 @@ public:
 
     void CreateCamera()
     {
-        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -36 }, { 0, 0, 0 }, { 0, 1, 0 });
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -40 }, { 0, 0, 0 }, { 0, 1, 0 });
 
         // Set up projection matrix (perspective)
         float fov = 45.0f * (3.14f / 180.0f);
@@ -213,8 +213,7 @@ public:
     }
 
 
-    uint32_t numInstances = 256 * 256 * 2;
-    float dimension = 1.6f;
+    uint32_t numInstances;
 
     void Update(entt::registry& registry, GameTime time)
     {
@@ -227,23 +226,50 @@ public:
 
 
         // Update instance buffer with world matrices for each instance
-        std::vector<DirectX::XMMATRIX> dataArray;
+        std::vector<DirectX::XMMATRIX> wordInstancing;
+		DirectX::XMMATRIX singleInstance;
 
-		// Iterate over all entities with TransformComponent
-        auto view = registry.view<TransformComponent>();
-        for (auto [entity, transform] : view.each())
+
+		// Iterate over all entities with TransformComponent and InstanceComponent
+        auto view_ins = registry.view<TransformComponent, InstanceComponent>();
+        for (auto [entity, transform, instance] : view_ins.each())
         {
+            if (not instance.instancePositions.empty())
+            {
+                for (const auto& instanceMatrix : instance.instancePositions)
+                {
+                    DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(instanceMatrix.x, instanceMatrix.y, instanceMatrix.z);
+                    DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+                    DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
 
-            DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
-            DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
-            DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
-            DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
 
-            dataArray.push_back(world);
+                    wordInstancing.push_back(world);
+                }
+            }
+
         }
 
-        commandList.UpdateBuffer(instanceBuffer, dataArray.data(), sizeof(DirectX::XMMATRIX) * static_cast<uint32_t>(dataArray.size()));
+		numInstances = static_cast<uint32_t>(wordInstancing.size());
 
+
+
+
+        if (not wordInstancing.empty())
+			commandList.UpdateBuffer(instanceBuffer, wordInstancing.data(), sizeof(DirectX::XMMATRIX) * numInstances); // Update instance buffer with all world matrices
+        else
+        {
+            auto view = registry.view<TransformComponent>(entt::exclude<InstanceComponent>);
+            for (auto [entity, transform] : view.each())
+            {
+                DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
+                DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
+                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+                singleInstance = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
+            }
+
+            commandList.UpdateBuffer(instanceBuffer, &singleInstance, sizeof(DirectX::XMMATRIX)); // Update instance buffer with single world matrix
+        }
     }
 
     void OnUpdate(entt::registry& registry, GameTime time)
