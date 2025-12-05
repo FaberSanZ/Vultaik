@@ -109,7 +109,7 @@ public:
 
     void CreateCamera()
     {
-        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -35 }, { 0, 0, 0 }, { 0, 1, 0 });
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -20 }, { 0, 0, 0 }, { 0, 1, 0 });
 
         // Set up projection matrix (perspective)
         float fov = 45.0f * (3.14f / 180.0f);
@@ -154,7 +154,7 @@ public:
                 {
                     DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(instanceMatrix.x, instanceMatrix.y, instanceMatrix.z);
                     DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
-                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(transform.scale, transform.scale, transform.scale);
                     DirectX::XMMATRIX world = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
 
 
@@ -165,6 +165,7 @@ public:
 
 
             numInstances = static_cast<uint32_t>(wordInstancing.size());
+
 
 
             if (mesh.shapeType == ShapeType::Cube)
@@ -238,7 +239,6 @@ public:
                         20, 23, 21, // second triangle
                     };
 
-
                     mesh.mesh.vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, vertices, sizeof(vertices), sizeof(Graphics::VertexPositionColor));
 
 
@@ -258,29 +258,24 @@ public:
             }
             else if (mesh.shapeType == ShapeType::Null)
             {
-				const uint32_t vertexCount = static_cast<uint32_t>(mesh.Vertices.size());
-                uint32_t indexCount = 36;
 
-				//Graphics::VertexPositionColor vertices[vertexCount];
-				std::vector<Graphics::VertexPositionColor> vertices;
-				for (const auto& vert : mesh.Vertices)
-				{
-					Graphics::VertexPositionColor vpc;
-					vpc.Position = DirectX::XMFLOAT4(vert.x, vert.y, vert.z, 1.0f);
-					vpc.Color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f); // White color for all vertices
-					vertices.push_back(vpc);
-				}
+                if (not mesh.dirty)
+                {
+                    mesh.mesh.vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, mesh.Vertices.data(), sizeof(mesh.Vertices), sizeof(Graphics::VertexPositionColor));
+
+                    mesh.mesh.indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, mesh.Indices.data(), sizeof(mesh.Indices));
+
+                    mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * numInstances, sizeof(DirectX::XMMATRIX));
 
 
-    //            vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, vertices.data(), sizeof(vertices), sizeof(Graphics::VertexPositionColor));
+                    std::cout << "Cube mesh created and buffers initialized." << std::endl;
+                    std::cout << "Drawing mesh index ptr: " << mesh.mesh.indexBuffer.GetBuffer() << std::endl;
 
-				//auto indices =  mesh.Indices;
+					mesh.dirty = true;
+                    std::cout << "count: " << sizeof(mesh.Vertices.data()) << std::endl;
+					std::cout << "count idx: " << sizeof(mesh.Indices.data()) << std::endl;
 
-
-
-    //            indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, indices.data(), sizeof(indices));
-
-    //            instanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * 256 * 256 * 2, sizeof(DirectX::XMMATRIX));
+                }
 			}
 
 
@@ -294,7 +289,7 @@ public:
 
                 DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
                 DirectX::XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ); 
-                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.25f, 0.25f, 0.25f);
+                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(transform.scale, transform.scale, transform.scale);
                 singleInstance = DirectX::XMMatrixTranspose(rot * trans * scale); // Transpose for HLSL
                 
 

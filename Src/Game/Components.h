@@ -1,5 +1,6 @@
 #pragma once
 #include "Buffer.h"
+#include "EngineData.h"
 
 
 
@@ -12,6 +13,8 @@ struct TransformComponent
 	float rotationX;
     float rotationY;
 	float rotationZ;
+
+	float scale = 1.0f;
 };
 
 struct InstanceComponent
@@ -76,8 +79,7 @@ struct MeshComponent
 {
 	ShapeType shapeType;
 	std::vector<uint32_t> Indices;
-	std::vector<DirectX::XMFLOAT3> Vertices;
-	std::vector<DirectX::XMFLOAT3> Colors;
+	std::vector<Graphics::VertexPositionColor> Vertices;
 	Mesh mesh;
 	bool dirty = false; // Indicates if the mesh needs to be updated
 };

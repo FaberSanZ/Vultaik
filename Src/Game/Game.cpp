@@ -15,7 +15,7 @@ class PlayerControler
 public:
 
 
-    uint32_t numInstances = 256 * 256 * 4;
+    uint32_t numInstances = 8 * 8;
     float dimension = 1.6f;
     void OnInitialize(entt::registry& registry)
     {
@@ -58,18 +58,27 @@ public:
         meshComp.shapeType = ShapeType::Cube;
 
 
-        auto entity = registry.create();
-		registry.emplace<MeshComponent>(entity, meshComp);
-        registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 ,1 });
-        registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
-		registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
+  //      auto entity = registry.create();
+		//registry.emplace<MeshComponent>(entity, meshComp);
+  //      registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 , 1, 0, 0, 0, 0.25f });
+  //      registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
+		//registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
 
            
-
+		// Create a simple square mesh for the second entity
+        MeshComponent triangleMesh;
+        triangleMesh.shapeType = ShapeType::Null;
+		triangleMesh.Indices = { 0, 1, 2 };
+		triangleMesh.Vertices = 
+        {
+            {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+            {{ 0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+            {{-0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+        };
 
         auto entity2 = registry.create();
-        registry.emplace<MeshComponent>(entity2, meshComp);
-        registry.emplace<TransformComponent>(entity2, TransformComponent{ 1, 1 ,1 });
+        registry.emplace<MeshComponent>(entity2, triangleMesh);
+        registry.emplace<TransformComponent>(entity2, TransformComponent{ 1, 1 , 1, 0, 0, 0, 2 });
         registry.emplace<InstanceComponent>(entity2, InstanceComponent{ instancePositions });
 		registry.emplace<TagComponent>(entity2, TagComponent{ "Second Cube" });
 
