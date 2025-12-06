@@ -57,39 +57,16 @@ public:
             }
         }
 
-        MeshComponent meshComp;
-        meshComp.shapeType = ShapeType::Cube;
-		meshComp.meshType = MeshType::Static;
+  //      MeshComponent meshComp;
+  //      meshComp.shapeType = ShapeType::Cube;
+		//meshComp.meshType = MeshType::Static;
 
-        auto entity = registry.create();
-		registry.emplace<MeshComponent>(entity, meshComp);
-        registry.emplace<InstanceComponent>(entity, instanceComp);
-		registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
+  //      auto entity = registry.create();
+		//registry.emplace<MeshComponent>(entity, meshComp);
+  //      registry.emplace<InstanceComponent>(entity, instanceComp);
+		//registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
 
-           
-		// Create a simple square mesh for the second entity
-        MeshComponent triangleMesh;
-        triangleMesh.shapeType = ShapeType::Null;
-		triangleMesh.meshType = MeshType::Dynamic;
-
-		triangleMesh.Indices = 
-        {
-            // front face
-            0, 1, 2, // first triangle
-
-        };
-		triangleMesh.Vertices = 
-        {
-            // Front face
-            {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-            {{ 0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-            {{-0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-        };
-
-        auto entity2 = registry.create();
-        registry.emplace<MeshComponent>(entity2, triangleMesh);
-        registry.emplace<InstanceComponent>(entity2, instanceComp);
-		registry.emplace<TagComponent>(entity2, TagComponent{ "triangle" });
+          
 
 
 
@@ -102,32 +79,53 @@ public:
         {
 
         }
-
+		// Add a new entity with a triangle mesh when the 'A' key is pressed
         if (GameInput::IsKeyPressed(GameInput::KeyCode::A))
         {
-            MeshComponent meshComp;
-            meshComp.shapeType = ShapeType::Cube;
+            // Create a simple square mesh for the second entity
+            MeshComponent triangleMesh;
+            triangleMesh.shapeType = ShapeType::Null;
+            triangleMesh.meshType = MeshType::Dynamic;
+
+            triangleMesh.Indices =
+            {
+                // front face
+                0, 1, 2, // first triangle
+
+            };
+            triangleMesh.Vertices =
+            {
+                // Front face
+                {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                {{ 0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                {{-0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+            };
+            InstanceComponent instanceComp;
+            instanceComp.words.push_back(Transform
+            {
+                DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f},
+                DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f},
+                DirectX::XMFLOAT3{2.8f, 2.8f, 2.8f}
+            });
 
 
-            auto entity = registry.create();
-            registry.emplace<MeshComponent>(entity, meshComp);
-            //registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
-            registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
-			std::cout << "Created new cube entity!" << std::endl;
+            auto entity2 = registry.create();
+            registry.emplace<MeshComponent>(entity2, triangleMesh);
+            registry.emplace<InstanceComponent>(entity2, instanceComp);
+            registry.emplace<TagComponent>(entity2, TagComponent{ "triangle" });
         }
 
         auto view = registry.view<TagComponent, InstanceComponent, MeshComponent>();
         for (auto [entity, tag, inst, mesh] : view.each())
         {
+
             if (tag.Tag == "triangle")
             {
                 for (auto& instance : inst.words)
                 {
-                    instance.scale.y += 0.8f * time.GetDeltaTime();
-                    if (instance.scale.y > 2.0f)
-                    {
-                        instance.scale.y = 0.5f;
-					}
+					instance.rotation.x += 1.0f * time.GetDeltaTime();
+					instance.rotation.x += 0.5f * time.GetDeltaTime();
+					instance.rotation.z += 0.8f * time.GetDeltaTime();
                 }
             }
 
@@ -200,7 +198,6 @@ public:
 
             playerControler.OnUpdate(registry, gameTime);
 			terrainSystem.OnUpdate(registry, gameTime);
-
 			renderSystem.OnUpdate(registry, gameTime);
         }
     }
