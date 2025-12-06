@@ -17,11 +17,10 @@ public:
 
     uint32_t numInstances = 250 * 250;
     float dimension = 1.6f;
-    std::vector<DirectX::XMFLOAT3> instancePositions;
     void OnInitialize(entt::registry& registry)
     {
 
-
+		InstanceComponent instanceComp;
 
 		uint32_t dim = static_cast<uint32_t>(std::cbrt(numInstances)); // using cube root to determine the dimension of the grid
 		DirectX::XMFLOAT3 offset = { dimension, dimension, dimension };
@@ -50,7 +49,12 @@ public:
                         -halfDimOffsetZ + offset.z / 2.0f + z * offset.z
                     };
 
-					instancePositions.push_back(position);
+                    instanceComp.words.push_back(Transform
+                    {
+                        position,
+                        DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f},
+                        DirectX::XMFLOAT3{0.25f, 0.25f, 0.25f}
+                    });
                 }
             }
         }
@@ -85,8 +89,7 @@ public:
 
         auto entity2 = registry.create();
         registry.emplace<MeshComponent>(entity2, triangleMesh);
-        registry.emplace<TransformComponent>(entity2, TransformComponent{ 0, 0, 0, 0, 0, 0, 0.5f});
-        registry.emplace<InstanceComponent>(entity2, InstanceComponent{ instancePositions });
+        registry.emplace<InstanceComponent>(entity2, instanceComp);
 		registry.emplace<TagComponent>(entity2, TagComponent{ "triangle" });
 
 
@@ -101,48 +104,7 @@ public:
 
         }
 
-        auto view = registry.view<TransformComponent, TagComponent, InstanceComponent>();
-        for (auto [entity, transform, tag, inst] : view.each())
-        {
-            if(tag.Tag == "Second Cube")
-            {
-                transform.rotationX += static_cast<float>(time.GetDeltaTime()) * 0.7f;
-                transform.rotationY += static_cast<float>(time.GetDeltaTime()) * 0.5f;
-                transform.rotationZ += static_cast<float>(time.GetDeltaTime()) * -0.7f;
-			}
-            else
-            {
-                transform.rotationX += static_cast<float>(time.GetDeltaTime()) * -0.7f;
-                transform.rotationY += static_cast<float>(time.GetDeltaTime()) * -0.5f;
-                transform.rotationZ += static_cast<float>(time.GetDeltaTime()) * 0.7f;
-			}
-
-
-            if (GameInput::IsKeyPressed(GameInput::KeyCode::C))
-            {
-				transform.x += 0.5f;
-            }
-
-            if (GameInput::IsKeyPressed(GameInput::KeyCode::W))
-            {
-                DirectX::XMFLOAT3 position =
-                {
-                    offset++, 0, 0
-                };
-
-                inst.instancePositions.push_back(position);
-            }
-
-            if (GameInput::IsKeyPressed(GameInput::KeyCode::N))
-            {
-                inst.instancePositions[1].y += time.GetTotalTime() * 0.02;
-				std::cout << "Instance 1 Y Position: " << inst.instancePositions[1].y << std::endl;
-            }
-
-
-        }
-
-        if(GameInput::IsKeyPressed(GameInput::KeyCode::A))
+        if (GameInput::IsKeyPressed(GameInput::KeyCode::A))
         {
             MeshComponent meshComp;
             meshComp.shapeType = ShapeType::Cube;
@@ -150,18 +112,22 @@ public:
 
             auto entity = registry.create();
             registry.emplace<MeshComponent>(entity, meshComp);
-            registry.emplace<TransformComponent>(entity, TransformComponent{ 1.0f, 1.0f , 1.0f, 1, 1, 1, 1.5f });
-            registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
+            //registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
             registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
-		}
+			std::cout << "Created new cube entity!" << std::endl;
+        }
+
+
+        auto view = registry.view<TagComponent, InstanceComponent>();
+        for (auto [entity, tag, inst] : view.each())
+        {
 
 
 
-        //offset += 0.5f;
-
+        }
     }
 
-	float offset = -1.0f;
+
 };
 
 class TerrainSystem

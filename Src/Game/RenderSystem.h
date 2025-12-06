@@ -94,7 +94,7 @@ public:
         auto view_mesh = registry.view<MeshComponent, InstanceComponent>();
         for (auto [entity, mesh, ins] : view_mesh.each())
         {
-            uint32_t instanceCount = ins.instancePositions.size();
+            uint32_t instanceCount = ins.words.size();
 
 
             mesh.mesh.vertexBuffer.Bind(device.GetContext());
@@ -111,7 +111,7 @@ public:
 
     void CreateCamera()
     {
-        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -35 }, { 0, 0, 0 }, { 0, 1, 0 });
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -10 }, { 0, 0, 0 }, { 0, 1, 0 });
 
         // Set up projection matrix (perspective)
         float fov = 45.0f * (3.14f / 180.0f);
@@ -143,33 +143,38 @@ public:
 
 
 
-        auto view_mesh = registry.view<TransformComponent, InstanceComponent, MeshComponent>();
-        for (auto [entity, transform, instance, mesh] : view_mesh.each())
+        auto view_mesh = registry.view<InstanceComponent, MeshComponent>();
+        for (auto [entity, instance, mesh] : view_mesh.each())
         {
 
 
             std::vector<DirectX::XMMATRIX> wordInstancing;
 
-            DirectX::XMMATRIX baseRot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
-            DirectX::XMMATRIX baseScale = DirectX::XMMatrixScaling(transform.scale, transform.scale, transform.scale);
+    //        DirectX::XMMATRIX baseRot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
+    //        DirectX::XMMATRIX baseScale = DirectX::XMMatrixScaling(transform.scale, transform.scale, transform.scale);
 
 
+    //        {
+    //            DirectX::XMMATRIX baseTrans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
+    //            DirectX::XMMATRIX baseWorld = DirectX::XMMatrixTranspose(baseScale * baseRot * baseTrans);
+    //            wordInstancing.push_back(baseWorld);
+				//std::cout << "Base World Matrix for Entity " << static_cast<uint32_t>(entity) << ":\n";
+    //        }
+
+            if (not instance.words.empty())
             {
-                DirectX::XMMATRIX baseTrans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
-                DirectX::XMMATRIX baseWorld = DirectX::XMMatrixTranspose(baseScale * baseRot * baseTrans);
-                wordInstancing.push_back(baseWorld);
-            }
-
-            if (not instance.instancePositions.empty())
-            {
-                for (const auto& instancePos : instance.instancePositions)
+                for (const auto& instance : instance.words)
                 {
-                    float finalX = transform.x + instancePos.x;
-                    float finalY = transform.y + instancePos.y;
-                    float finalZ = transform.z + instancePos.z;
+                    //float finalX = transform.x + instancePos.x;
+                    //float finalY = transform.y + instancePos.y;
+                    //float finalZ = transform.z + instancePos.z;
 
-                    DirectX::XMMATRIX instTrans = DirectX::XMMatrixTranslation(finalX, finalY, finalZ);
-                    DirectX::XMMATRIX instWorld = DirectX::XMMatrixTranspose(baseScale * baseRot * instTrans);
+                    //DirectX::XMMATRIX instTrans = DirectX::XMMatrixTranslation(finalX, finalY, finalZ);
+                    //DirectX::XMMATRIX instWorld = DirectX::XMMatrixTranspose(baseScale * baseRot * instTrans);
+					DirectX::XMMATRIX instTrans = DirectX::XMMatrixTranslation(instance.position.x, instance.position.y, instance.position.z);
+					DirectX::XMMATRIX instRot = DirectX::XMMatrixRotationRollPitchYaw(instance.rotation.x, instance.rotation.y, instance.rotation.z);
+					DirectX::XMMATRIX instScale = DirectX::XMMatrixScaling(instance.scale.x, instance.scale.y, instance.scale.z);
+					DirectX::XMMATRIX instWorld = DirectX::XMMatrixTranspose(instScale * instRot * instTrans);
 
                     wordInstancing.push_back(instWorld);
                 }
@@ -265,6 +270,7 @@ public:
 
 
             }
+
             else if (mesh.shapeType == ShapeType::Null)
             {
 

@@ -1,25 +1,23 @@
 #pragma once
 #include "Buffer.h"
 #include "EngineData.h"
+#include "GameMath.h"
+
+
+using namespace Games;
 
 
 
-struct TransformComponent
+struct Transform
 {
-    float x;
-    float y;
-    float z;
-
-	float rotationX;
-    float rotationY;
-	float rotationZ;
-
-	float scale = 1.0f;
+    Vector3 position;
+    Vector3 rotation;
+    Vector3 scale;
 };
 
 struct InstanceComponent
 {
-	std::vector<DirectX::XMFLOAT3> instancePositions;
+	std::vector<Transform> words;
 };
 
 enum class ShapeType
