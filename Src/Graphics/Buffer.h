@@ -15,6 +15,12 @@ namespace Graphics
 		StructuredBuffer
 	};
 
+	enum class UploadType
+	{
+		Static,
+		Dynamic
+	};
+
 	class Device;
 
 	class Buffer
@@ -38,6 +44,7 @@ namespace Graphics
 		ID3D11ShaderResourceView* m_SRV = nullptr;  
 
 		BufferType m_Type = BufferType::VertexBuffer;
+		UploadType m_UploadType = UploadType::Static;
 		uint32_t m_Stride = 0; // Needed only for vertex buffers
 	};
 }

@@ -111,7 +111,7 @@ public:
 
     void CreateCamera()
     {
-        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -10 }, { 0, 0, 0 }, { 0, 1, 0 });
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -36 }, { 0, 0, 0 }, { 0, 1, 0 });
 
         // Set up projection matrix (perspective)
         float fov = 45.0f * (3.14f / 180.0f);
@@ -150,16 +150,6 @@ public:
 
             std::vector<DirectX::XMMATRIX> wordInstancing;
 
-    //        DirectX::XMMATRIX baseRot = DirectX::XMMatrixRotationRollPitchYaw(transform.rotationX, transform.rotationY, transform.rotationZ);
-    //        DirectX::XMMATRIX baseScale = DirectX::XMMatrixScaling(transform.scale, transform.scale, transform.scale);
-
-
-    //        {
-    //            DirectX::XMMATRIX baseTrans = DirectX::XMMatrixTranslation(transform.x, transform.y, transform.z);
-    //            DirectX::XMMATRIX baseWorld = DirectX::XMMatrixTranspose(baseScale * baseRot * baseTrans);
-    //            wordInstancing.push_back(baseWorld);
-				//std::cout << "Base World Matrix for Entity " << static_cast<uint32_t>(entity) << ":\n";
-    //        }
 
             if (not instance.words.empty())
             {
@@ -281,12 +271,23 @@ public:
                     std::cout << "Drawing mesh index ptr: " << mesh.mesh.indexBuffer.GetBuffer() << std::endl;
                     std::cout << "idx count: " << mesh.Indices.size() << std::endl;
                     std::cout << "vertex count: " << mesh.Vertices.size() << std::endl;
-
                     size_t vertexDataSize = mesh.Vertices.size() * sizeof(Graphics::VertexPositionColor);
                     mesh.mesh.vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, mesh.Vertices.data(), vertexDataSize, sizeof(Graphics::VertexPositionColor));
 
                     size_t indexDataSize = mesh.Indices.size() * sizeof(uint32_t);
                     mesh.mesh.indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, mesh.Indices.data(), indexDataSize);
+
+					// TODO: Handle different mesh types appropriately
+                    if (mesh.meshType == MeshType::Static)
+                    {
+
+
+                    }
+                    else if (mesh.meshType == MeshType::Dynamic)
+                    {
+
+                    }
+
                     mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * numInstances, sizeof(DirectX::XMMATRIX));
                     mesh.mesh.indexCount = mesh.Indices.size();
 					mesh.dirty = true;
@@ -298,7 +299,12 @@ public:
 			if (numInstances > 0) // Avoid updating with zero instances
                 commandList.UpdateBuffer(mesh.mesh.InstanceBuffer, wordInstancing.data(), sizeof(DirectX::XMMATRIX) * numInstances);
 
-
+            if(mesh.meshType == MeshType::Dynamic)
+            {
+				commandList.UpdateBuffer(mesh.mesh.vertexBuffer, mesh.Vertices.data(), static_cast<uint32_t>(mesh.Vertices.size() * sizeof(Graphics::VertexPositionColor)));
+				commandList.UpdateBuffer(mesh.mesh.indexBuffer, mesh.Indices.data(), static_cast<uint32_t>(mesh.Indices.size() * sizeof(uint32_t)));
+                mesh.mesh.indexCount = mesh.Indices.size();
+			}
         }
 
 

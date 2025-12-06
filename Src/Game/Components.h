@@ -20,16 +20,7 @@ struct InstanceComponent
 	std::vector<Transform> words;
 };
 
-enum class ShapeType
-{
-    Cube,
-    Sphere,
-    Cylinder,
-    Plane,
-	Polygon,
-    Null,
-    Count
-};
+
 
 struct TerrainComponent
 {
@@ -74,9 +65,28 @@ public:
     std::string name{ "mesh empy" };
 };
 
+enum class ShapeType
+{
+    Cube,
+    Sphere,
+    Cylinder,
+    Plane,
+    Polygon,
+    Null,
+    Count
+};
+
+enum class MeshType
+{
+    Static,
+    Dynamic,
+    Count
+};
+
 struct MeshComponent
 {
 	ShapeType shapeType;
+	MeshType meshType;
     std::vector<uint32_t> Indices{};
     std::vector<Graphics::VertexPositionColor> Vertices{};
 	Mesh mesh;

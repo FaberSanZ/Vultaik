@@ -15,8 +15,8 @@ class PlayerControler
 public:
 
 
-    uint32_t numInstances = 250 * 250;
-    float dimension = 1.6f;
+    uint32_t numInstances = 128 * 128;
+    float dimension = 1.0f;
     void OnInitialize(entt::registry& registry)
     {
 
@@ -29,8 +29,6 @@ public:
         float halfDimOffsetX = (dim * offset.x) / 2.0f;
         float halfDimOffsetY = (dim * offset.y) / 2.0f;
         float halfDimOffsetZ = (dim * offset.z) / 2.0f;
-
-
 
 
         for (uint32_t x = 0; x < dim; ++x)
@@ -59,20 +57,21 @@ public:
             }
         }
 
-        //MeshComponent meshComp;
-        //meshComp.shapeType = ShapeType::Cube;
-
+  //      MeshComponent meshComp;
+  //      meshComp.shapeType = ShapeType::Cube;
+		//meshComp.meshType = MeshType::Static;
 
   //      auto entity = registry.create();
 		//registry.emplace<MeshComponent>(entity, meshComp);
-  //      registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 , 1, 0, 0, 0, 0.25f });
-  //      registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
+  //      registry.emplace<InstanceComponent>(entity, instanceComp);
 		//registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
 
            
 		// Create a simple square mesh for the second entity
         MeshComponent triangleMesh;
         triangleMesh.shapeType = ShapeType::Null;
+		triangleMesh.meshType = MeshType::Dynamic;
+
 		triangleMesh.Indices = 
         {
             // front face
@@ -117,13 +116,24 @@ public:
 			std::cout << "Created new cube entity!" << std::endl;
         }
 
-
-        auto view = registry.view<TagComponent, InstanceComponent>();
-        for (auto [entity, tag, inst] : view.each())
+        auto view = registry.view<TagComponent, InstanceComponent, MeshComponent>();
+        for (auto [entity, tag, inst, mesh] : view.each())
         {
+            // 1. Lógica de Malla Dinámica (Solo una vez por entidad)
+            if (tag.Tag == "triangle")
+            {
 
+                float timeFactor = static_cast<float>(time.GetTotalTime()) * 5;
 
+                mesh.Vertices[0].Position.x = 0.5f + 0.5f * sinf(timeFactor);
+                mesh.Vertices[1].Position.x = 0.5f + 0.5f * cosf(timeFactor);
+                mesh.Vertices[2].Position.y = -0.5f + 0.5f * sinf(timeFactor + 1.0f);
+            }
 
+            for (auto& instance : inst.words)
+            {
+                //instance.rotation.y += 0.5f * time.GetDeltaTime();
+            }
         }
     }
 
