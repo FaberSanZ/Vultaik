@@ -15,7 +15,7 @@ class PlayerControler
 public:
 
 
-    uint32_t numInstances = 8 * 8;
+    uint32_t numInstances = 250 * 250;
     float dimension = 1.6f;
     std::vector<DirectX::XMFLOAT3> instancePositions;
     void OnInitialize(entt::registry& registry)
@@ -34,36 +34,36 @@ public:
 
 
 
-     //   for (uint32_t x = 0; x < dim; ++x)
-     //   {
-     //       for (uint32_t y = 0; y < dim; ++y)
-     //       {
-     //           for (uint32_t z = 0; z < dim; ++z)
-     //           {
-     //               uint32_t index = x * dim * dim + y * dim + z;
+        for (uint32_t x = 0; x < dim; ++x)
+        {
+            for (uint32_t y = 0; y < dim; ++y)
+            {
+                for (uint32_t z = 0; z < dim; ++z)
+                {
+                    uint32_t index = x * dim * dim + y * dim + z;
 
 
-     //               DirectX::XMFLOAT3 position =
-     //               {
-     //                   -halfDimOffsetX + offset.x / 2.0f + x * offset.x,
-     //                   -halfDimOffsetY + offset.y / 2.0f + y * offset.y,
-     //                   -halfDimOffsetZ + offset.z / 2.0f + z * offset.z
-     //               };
+                    DirectX::XMFLOAT3 position =
+                    {
+                        -halfDimOffsetX + offset.x / 2.0f + x * offset.x,
+                        -halfDimOffsetY + offset.y / 2.0f + y * offset.y,
+                        -halfDimOffsetZ + offset.z / 2.0f + z * offset.z
+                    };
 
-					//instancePositions.push_back(position);
-     //           }
-     //       }
-     //   }
+					instancePositions.push_back(position);
+                }
+            }
+        }
 
         MeshComponent meshComp;
         meshComp.shapeType = ShapeType::Cube;
 
 
-  //      auto entity = registry.create();
-		//registry.emplace<MeshComponent>(entity, meshComp);
-  //      registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 , 1, 0, 0, 0, 0.25f });
-  //      registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
-		//registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
+        auto entity = registry.create();
+		registry.emplace<MeshComponent>(entity, meshComp);
+        registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 , 1, 0, 0, 0, 0.25f });
+        registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
+		registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
 
            
 		// Create a simple square mesh for the second entity

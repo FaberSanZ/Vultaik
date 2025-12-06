@@ -258,7 +258,7 @@ public:
                     mesh.mesh.indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, indices, sizeof(indices));
 					mesh.mesh.indexCount = indexCount;
 
-                    mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * 128 * 128, sizeof(DirectX::XMMATRIX));
+                    mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * numInstances, sizeof(DirectX::XMMATRIX));
 					mesh.dirty = true;
 					std::cout << "Cube mesh created and buffers initialized." << std::endl;
                     std::cout << "Drawing mesh index ptr: " << mesh.mesh.indexBuffer.GetBuffer() << std::endl;
