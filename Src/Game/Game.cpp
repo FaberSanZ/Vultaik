@@ -57,14 +57,14 @@ public:
             }
         }
 
-  //      MeshComponent meshComp;
-  //      meshComp.shapeType = ShapeType::Cube;
-		//meshComp.meshType = MeshType::Static;
+        MeshComponent meshComp;
+        meshComp.shapeType = ShapeType::Cube;
+		meshComp.meshType = MeshType::Static;
 
-  //      auto entity = registry.create();
-		//registry.emplace<MeshComponent>(entity, meshComp);
-  //      registry.emplace<InstanceComponent>(entity, instanceComp);
-		//registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
+        auto entity = registry.create();
+		registry.emplace<MeshComponent>(entity, meshComp);
+        registry.emplace<InstanceComponent>(entity, instanceComp);
+		registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
 
            
 		// Create a simple square mesh for the second entity
@@ -119,21 +119,19 @@ public:
         auto view = registry.view<TagComponent, InstanceComponent, MeshComponent>();
         for (auto [entity, tag, inst, mesh] : view.each())
         {
-            // 1. Lógica de Malla Dinámica (Solo una vez por entidad)
             if (tag.Tag == "triangle")
             {
-
-                float timeFactor = static_cast<float>(time.GetTotalTime()) * 5;
-
-                mesh.Vertices[0].Position.x = 0.5f + 0.5f * sinf(timeFactor);
-                mesh.Vertices[1].Position.x = 0.5f + 0.5f * cosf(timeFactor);
-                mesh.Vertices[2].Position.y = -0.5f + 0.5f * sinf(timeFactor + 1.0f);
+                for (auto& instance : inst.words)
+                {
+                    instance.scale.y += 0.8f * time.GetDeltaTime();
+                    if (instance.scale.y > 2.0f)
+                    {
+                        instance.scale.y = 0.5f;
+					}
+                }
             }
 
-            for (auto& instance : inst.words)
-            {
-                //instance.rotation.y += 0.5f * time.GetDeltaTime();
-            }
+
         }
     }
 
