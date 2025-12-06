@@ -95,8 +95,7 @@ public:
         for (auto [entity, mesh, ins] : view_mesh.each())
         {
             uint32_t instanceCount = ins.instancePositions.size();
-			if (instanceCount == 0)
-				instanceCount = 1; // single instance if no positions provided
+
 
             mesh.mesh.vertexBuffer.Bind(device.GetContext());
             mesh.mesh.indexBuffer.Bind(device.GetContext());
@@ -112,7 +111,7 @@ public:
 
     void CreateCamera()
     {
-        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -20 }, { 0, 0, 0 }, { 0, 1, 0 });
+        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH({ 0, 0, -35 }, { 0, 0, 0 }, { 0, 1, 0 });
 
         // Set up projection matrix (perspective)
         float fov = 45.0f * (3.14f / 180.0f);
@@ -260,8 +259,7 @@ public:
 
                     mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * numInstances, sizeof(DirectX::XMMATRIX));
 					mesh.dirty = true;
-					std::cout << "Cube mesh created and buffers initialized." << std::endl;
-                    std::cout << "Drawing mesh index ptr: " << mesh.mesh.indexBuffer.GetBuffer() << std::endl;
+
 
                 }
 
@@ -272,14 +270,20 @@ public:
 
                 if (not mesh.dirty)
                 {
-                    mesh.mesh.vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, mesh.Vertices.data(), sizeof(mesh.Vertices), sizeof(Graphics::VertexPositionColor));
 
-                    mesh.mesh.indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, mesh.Indices.data(), sizeof(mesh.Indices));
+                    std::cout << "Cube mesh created and buffers initialized." << std::endl;
+                    std::cout << "Drawing mesh index ptr: " << mesh.mesh.indexBuffer.GetBuffer() << std::endl;
+                    std::cout << "idx count: " << mesh.Indices.size() << std::endl;
+                    std::cout << "vertex count: " << mesh.Vertices.size() << std::endl;
 
-                    mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * 128, sizeof(DirectX::XMMATRIX));
+                    size_t vertexDataSize = mesh.Vertices.size() * sizeof(Graphics::VertexPositionColor);
+                    mesh.mesh.vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, mesh.Vertices.data(), vertexDataSize, sizeof(Graphics::VertexPositionColor));
 
+                    size_t indexDataSize = mesh.Indices.size() * sizeof(uint32_t);
+                    mesh.mesh.indexBuffer.Initialize(device, Graphics::BufferType::IndexBuffer, mesh.Indices.data(), indexDataSize);
+                    mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * numInstances, sizeof(DirectX::XMMATRIX));
+                    mesh.mesh.indexCount = mesh.Indices.size();
 					mesh.dirty = true;
-
 
                 }
 			}

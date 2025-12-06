@@ -55,33 +55,39 @@ public:
             }
         }
 
-        MeshComponent meshComp;
-        meshComp.shapeType = ShapeType::Cube;
+        //MeshComponent meshComp;
+        //meshComp.shapeType = ShapeType::Cube;
 
 
-        auto entity = registry.create();
-		registry.emplace<MeshComponent>(entity, meshComp);
-        registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 , 1, 0, 0, 0, 0.25f });
-        registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
-		registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
+  //      auto entity = registry.create();
+		//registry.emplace<MeshComponent>(entity, meshComp);
+  //      registry.emplace<TransformComponent>(entity, TransformComponent{ 1, 1 , 1, 0, 0, 0, 0.25f });
+  //      registry.emplace<InstanceComponent>(entity, InstanceComponent{ instancePositions });
+		//registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
 
            
 		// Create a simple square mesh for the second entity
-  //      MeshComponent triangleMesh;
-  //      triangleMesh.shapeType = ShapeType::Null;
-		//triangleMesh.Indices = { 0, 1, 2 };
-		//triangleMesh.Vertices = 
-  //      {
-  //          {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-  //          {{ 0.5f, -0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-  //          {{-0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-  //      };
+        MeshComponent triangleMesh;
+        triangleMesh.shapeType = ShapeType::Null;
+		triangleMesh.Indices = 
+        {
+            // front face
+            0, 1, 2, // first triangle
 
-  //      auto entity2 = registry.create();
-  //      registry.emplace<MeshComponent>(entity2, triangleMesh);
-  //      registry.emplace<TransformComponent>(entity2, TransformComponent{ 1, 1 , 1, 0, 0, 0, 2 });
-  //      registry.emplace<InstanceComponent>(entity2, InstanceComponent{ instancePositions });
-		//registry.emplace<TagComponent>(entity2, TagComponent{ "Second Cube" });
+        };
+		triangleMesh.Vertices = 
+        {
+            // Front face
+            {{-0.5f,  0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+            {{ 0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+            {{-0.5f, -0.5f, -0.5f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+        };
+
+        auto entity2 = registry.create();
+        registry.emplace<MeshComponent>(entity2, triangleMesh);
+        registry.emplace<TransformComponent>(entity2, TransformComponent{ 0, 0, 0, 0, 0, 0, 0.5f});
+        registry.emplace<InstanceComponent>(entity2, InstanceComponent{ instancePositions });
+		registry.emplace<TagComponent>(entity2, TagComponent{ "triangle" });
 
 
 
@@ -158,6 +164,23 @@ public:
 	float offset = -1.0f;
 };
 
+class TerrainSystem
+{
+    public:
+    void OnInitialize(entt::registry& registry)
+    {
+
+
+    }
+    void OnUpdate(entt::registry& registry, GameTime time)
+    {
+        // Update terrain system
+	}
+private:
+	uint16_t terrainWidth = 512;
+	uint16_t terrainHeight = 512;
+};
+
 class MyGame 
 {
 public:
@@ -183,6 +206,9 @@ public:
 		playerControler = {};
 		playerControler.OnInitialize(registry);
 
+		terrainSystem = {};
+		terrainSystem.OnInitialize(registry);
+
 
 		// Initialize systems
         renderSystem = {};
@@ -195,10 +221,12 @@ public:
     {
         while (gameWindow.IsRunning())
         {
-            gameWindow.PumpMessages();
-            playerControler.OnUpdate(registry, gameTime);
-
 			gameTime.OnUpdate();
+            gameWindow.PumpMessages();
+
+            playerControler.OnUpdate(registry, gameTime);
+			terrainSystem.OnUpdate(registry, gameTime);
+
 			renderSystem.OnUpdate(registry, gameTime);
         }
     }
@@ -210,11 +238,12 @@ public:
     }
 
 private:
-	RenderSystem renderSystem;
     GameWindows gameWindow;
 	GameTime gameTime;
 
+	RenderSystem renderSystem;
 	PlayerControler playerControler;
+	TerrainSystem terrainSystem;
 
     entt::registry registry;
 
