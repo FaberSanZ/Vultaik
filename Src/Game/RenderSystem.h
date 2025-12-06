@@ -155,12 +155,6 @@ public:
             {
                 for (const auto& instance : instance.words)
                 {
-                    //float finalX = transform.x + instancePos.x;
-                    //float finalY = transform.y + instancePos.y;
-                    //float finalZ = transform.z + instancePos.z;
-
-                    //DirectX::XMMATRIX instTrans = DirectX::XMMatrixTranslation(finalX, finalY, finalZ);
-                    //DirectX::XMMATRIX instWorld = DirectX::XMMatrixTranspose(baseScale * baseRot * instTrans);
 					DirectX::XMMATRIX instTrans = DirectX::XMMatrixTranslation(instance.position.x, instance.position.y, instance.position.z);
 					DirectX::XMMATRIX instRot = DirectX::XMMatrixRotationRollPitchYaw(instance.rotation.x, instance.rotation.y, instance.rotation.z);
 					DirectX::XMMATRIX instScale = DirectX::XMMatrixScaling(instance.scale.x, instance.scale.y, instance.scale.z);
@@ -266,11 +260,6 @@ public:
 
                 if (not mesh.dirty)
                 {
-
-                    std::cout << "Cube mesh created and buffers initialized." << std::endl;
-                    std::cout << "Drawing mesh index ptr: " << mesh.mesh.indexBuffer.GetBuffer() << std::endl;
-                    std::cout << "idx count: " << mesh.Indices.size() << std::endl;
-                    std::cout << "vertex count: " << mesh.Vertices.size() << std::endl;
                     size_t vertexDataSize = mesh.Vertices.size() * sizeof(Graphics::VertexPositionColor);
                     mesh.mesh.vertexBuffer.Initialize(device, Graphics::BufferType::VertexBuffer, mesh.Vertices.data(), vertexDataSize, sizeof(Graphics::VertexPositionColor));
 

@@ -115,6 +115,31 @@ public:
             registry.emplace<TagComponent>(entity2, TagComponent{ "triangle" });
         }
 
+
+        // Add a new entity with a cube mesh when the 'D' key is pressed
+        if (GameInput::IsKeyPressed(GameInput::KeyCode::D))
+        {
+            // Create a simple square mesh for the second entity
+            MeshComponent cubeMesh;
+            cubeMesh.shapeType = ShapeType::Cube;
+            cubeMesh.meshType = MeshType::Static;
+
+            InstanceComponent instanceComp;
+            instanceComp.words.push_back(Transform
+            {
+                DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f},
+                DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f},
+                DirectX::XMFLOAT3{1.8f, 1.8f, 1.8f}
+            });
+
+
+            auto entity = registry.create();
+            registry.emplace<MeshComponent>(entity, cubeMesh);
+            registry.emplace<InstanceComponent>(entity, instanceComp);
+            registry.emplace<TagComponent>(entity, TagComponent{ "cube" });
+        }
+
+
         auto view = registry.view<TagComponent, InstanceComponent, MeshComponent>();
         for (auto [entity, tag, inst, mesh] : view.each())
         {
@@ -128,7 +153,26 @@ public:
 					instance.rotation.z += 0.8f * time.GetDeltaTime();
                 }
             }
+            if (tag.Tag == "cube")
+            {
+                for (auto& instance : inst.words)
+                {
+                    instance.scale.x += 0.1f * time.GetDeltaTime();
+                    instance.scale.y += 0.1f * time.GetDeltaTime();
+                    instance.scale.z += 0.1f * time.GetDeltaTime();
 
+
+                    instance.rotation.x += 1.0f * time.GetDeltaTime();
+                    instance.rotation.x += 0.5f * time.GetDeltaTime();
+                    instance.rotation.z += 0.8f * time.GetDeltaTime();
+                    if(instance.scale.x >= 3.0f)
+                    {
+                        instance.scale.x = 1.0f;
+                        instance.scale.y = 1.0f;
+                        instance.scale.z = 1.0f;
+					}
+                }
+            }
 
         }
     }
