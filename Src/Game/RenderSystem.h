@@ -248,8 +248,6 @@ public:
 
                     mesh.mesh.InstanceBuffer.Initialize(device, Graphics::BufferType::StructuredBuffer, nullptr, sizeof(DirectX::XMMATRIX) * numInstances, sizeof(DirectX::XMMATRIX));
 					mesh.dirty = true;
-
-
                 }
 
 
