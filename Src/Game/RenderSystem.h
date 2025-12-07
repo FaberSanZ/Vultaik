@@ -309,11 +309,14 @@ public:
     void OnShutdown()
     {
 
-        //indexBuffer.Release();
-        //vertexBuffer.Release();
-        //constantBuffer.Release();
-        //instanceBuffer.Release();
-
+		constantBuffer.Release();
+		//auto view_mesh = registry.view<MeshComponent>();
+  //      for (auto [entity, mesh] : view_mesh.each())
+  //      {
+  //          mesh.mesh.vertexBuffer.Release();
+  //          mesh.mesh.indexBuffer.Release();
+  //          mesh.mesh.InstanceBuffer.Release();
+		//}
 
 
         pipeline.Release();
