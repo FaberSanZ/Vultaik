@@ -40,7 +40,7 @@ public:
                     uint32_t index = x * dim * dim + y * dim + z;
 
 
-                    DirectX::XMFLOAT3 position =
+                    Vector3 position =
                     {
                         -halfDimOffsetX + offset.x / 2.0f + x * offset.x,
                         -halfDimOffsetY + offset.y / 2.0f + y * offset.y,
@@ -50,8 +50,8 @@ public:
                     instanceComp.words.push_back(Transform
                     {
                         position,
-                        DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f},
-                        DirectX::XMFLOAT3{0.25f, 0.25f, 0.25f}
+                        Vector3 {0.0f, 0.0f, 0.0f},
+                        Vector3 {0.25f, 0.25f, 0.25f}
                     });
                 }
             }
@@ -103,9 +103,9 @@ public:
             InstanceComponent instanceComp;
             instanceComp.words.push_back(Transform
             {
-                DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f},
-                DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f},
-                DirectX::XMFLOAT3{2.8f, 2.8f, 2.8f}
+                Vector3 {0.0f, 0.0f, 0.0f},
+                Vector3 {0.0f, 0.0f, 0.0f},
+                Vector3 {2.8f, 2.8f, 2.8f}
             });
 
 
@@ -127,9 +127,9 @@ public:
             InstanceComponent instanceComp;
             instanceComp.words.push_back(Transform
             {
-                DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f},
-                DirectX::XMFLOAT3{0.0f, 0.0f, 0.0f},
-                DirectX::XMFLOAT3{1.8f, 1.8f, 1.8f}
+                Vector3 {0.0f, 0.0f, 0.0f},
+                Vector3 {0.0f, 0.0f, 0.0f},
+                Vector3 {1.8f, 1.8f, 1.8f}
             });
 
 
