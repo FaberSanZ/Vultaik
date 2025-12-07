@@ -28,7 +28,6 @@ namespace Games
 	{
 		constexpr Vector3() noexcept : DirectX::XMFLOAT3() {}
 		constexpr Vector3(float x, float y, float z) noexcept : DirectX::XMFLOAT3(x, y, z) {}
-		explicit constexpr Vector3(const float* pArray) noexcept : DirectX::XMFLOAT3(pArray) {}
 
 	};
 
