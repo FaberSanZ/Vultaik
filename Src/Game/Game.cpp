@@ -10,12 +10,12 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "D3DCompiler.lib")
 
-class PlayerControler
+class PlayerControlerSystem
 {
 public:
 
 
-    uint32_t numInstances = 128 * 128;
+    uint32_t numInstances = 256 * 256 * 4;
     float dimension = 1.0f;
     void OnInitialize(entt::registry& registry)
     {
@@ -49,7 +49,7 @@ public:
                     instanceComp.words.push_back(Transform
                     {
                         index,
-                        "Cube: " + index,
+                        "Cube",
                         position,
                         Vector3 {0.0f, 0.0f, 0.0f},
                         Vector3 {0.25f, 0.25f, 0.25f}
@@ -105,7 +105,7 @@ public:
             instanceComp.words.push_back(Transform
             {
                 0,
-			    "triangle_instance_1",
+				"triangle_instance_1", // parent name
                 Vector3 {0.0f, 0.0f, 0.0f},
                 Vector3 {0.0f, 0.0f, 0.0f},
                 Vector3 {2.8f, 2.8f, 2.8f}
@@ -153,7 +153,7 @@ public:
             {
                 for (auto& instance : inst.words)
                 {
-                    if (instance.id % 3 == 0) 
+                    if (instance.id % 2 == 0) 
                     {
                         instance.rotation.x += 1.0f * time.GetDeltaTime();
                         instance.rotation.x += 0.5f * time.GetDeltaTime();
@@ -206,75 +206,91 @@ private:
 	uint16_t terrainHeight = 512;
 };
 
-class MyGame 
+
+
+
+
+
+class GameBase
 {
 public:
-    MyGame() { }
+
+    virtual void OnInitialize(entt::registry& registry) = 0;
+    virtual void OnUpdate(entt::registry& registry, GameTime time) = 0;
+
+    virtual void OnShutdown() = 0;
 
     void Run()
     {
-		Initialize();
-		Update();
-		Shutdown();
-	}
+        // Initialize games
+        gameTime = {};
+        gameTime.OnInitialize();
 
-    void Initialize()
-    {
-		// Initialize games
-		gameTime = {};
-		gameTime.OnInitialize();
-
-		gameWindow = {};
+        gameWindow = {};
         gameWindow.OnInitialize();
 
-		// Initialize Game systems
-		playerControler = {};
-		playerControler.OnInitialize(registry);
 
-		terrainSystem = {};
-		terrainSystem.OnInitialize(registry);
+        OnInitialize(registry);
 
 
-		// Initialize systems
+        // Initialize systems
+		// TODO: Physics system, AI system, etc.
         renderSystem = {};
         renderSystem.OnInitialize(registry, gameWindow.GetHandle());
+
+
+		// Main loop
+		Update();
     }
 
 
 
-    void Update() 
+    void Update()
     {
         while (gameWindow.IsRunning())
         {
-			gameTime.OnUpdate();
             gameWindow.PumpMessages();
+            gameTime.OnUpdate();
 
-            playerControler.OnUpdate(registry, gameTime);
-			terrainSystem.OnUpdate(registry, gameTime);
+
 			renderSystem.OnUpdate(registry, gameTime);
+            OnUpdate(registry, gameTime);
         }
     }
 
-    void Shutdown() 
-    {
-        renderSystem.OnShutdown();
-		gameWindow.OnShutdown();
-    }
-
-private:
     GameWindows gameWindow;
-	GameTime gameTime;
+    GameTime gameTime;
 
-	RenderSystem renderSystem;
-	PlayerControler playerControler;
-	TerrainSystem terrainSystem;
+    RenderSystem renderSystem;
 
     entt::registry registry;
-
 };
 
+class MyGame : public GameBase
+{
+public:
+    void OnInitialize(entt::registry& registry) override
+    {
+        playerControler = {};
+        playerControler.OnInitialize(registry);
 
+        terrainSystem = {};
+        terrainSystem.OnInitialize(registry);
+    }
+    void OnUpdate(entt::registry& registry, GameTime time) override
+    {
+        playerControler.OnUpdate(registry, time);
+        terrainSystem.OnUpdate(registry, time);
+    }
+    void OnShutdown() override
+    {
+        // Cleanup resources
+    }
+private:
 
+    PlayerControlerSystem playerControler;
+    TerrainSystem terrainSystem;
+};
 
 
 int main()
