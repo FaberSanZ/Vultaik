@@ -298,22 +298,20 @@ class GameScene
 public:
     GameScene() = default;
 
-    // Acceso al registry
     entt::registry& GetRegistry() { return registry; }
 
-    // Cargar escena desde YAML
+
     bool LoadFromYAML(const std::string& filepath);
 
-    // Guardar escena a YAML
+
     bool SaveToYAML(const std::string& filepath);
 
-    // Actualizar escena, si es necesario
+
     void Update(float deltaTime);
 
 private:
     entt::registry registry;
 
-    // Datos internos para sincronización, cache, etc
 };
 
 int main()
