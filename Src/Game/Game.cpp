@@ -19,7 +19,6 @@ public:
     float dimension = 1.0f;
     void OnInitialize(entt::registry& registry)
     {
-
 		InstanceComponent instanceComp;
 
 		uint32_t dim = static_cast<uint32_t>(std::cbrt(numInstances)); // using cube root to determine the dimension of the grid
@@ -49,6 +48,8 @@ public:
 
                     instanceComp.words.push_back(Transform
                     {
+                        index,
+                        "Cube: " + index,
                         position,
                         Vector3 {0.0f, 0.0f, 0.0f},
                         Vector3 {0.25f, 0.25f, 0.25f}
@@ -57,14 +58,14 @@ public:
             }
         }
 
-  //      MeshComponent meshComp;
-  //      meshComp.shapeType = ShapeType::Cube;
-		//meshComp.meshType = MeshType::Static;
+        MeshComponent meshComp;
+        meshComp.shapeType = ShapeType::Cube;
+		meshComp.meshType = MeshType::Static;
 
-  //      auto entity = registry.create();
-		//registry.emplace<MeshComponent>(entity, meshComp);
-  //      registry.emplace<InstanceComponent>(entity, instanceComp);
-		//registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
+        auto entity = registry.create();
+		registry.emplace<MeshComponent>(entity, meshComp);
+        registry.emplace<InstanceComponent>(entity, instanceComp);
+		registry.emplace<TagComponent>(entity, TagComponent{ "First Cube" });
 
           
 
@@ -103,6 +104,8 @@ public:
             InstanceComponent instanceComp;
             instanceComp.words.push_back(Transform
             {
+                0,
+			    "triangle_instance_1",
                 Vector3 {0.0f, 0.0f, 0.0f},
                 Vector3 {0.0f, 0.0f, 0.0f},
                 Vector3 {2.8f, 2.8f, 2.8f}
@@ -117,7 +120,7 @@ public:
 
 
         // Add a new entity with a cube mesh when the 'D' key is pressed
-        if (GameInput::IsKeyPressed(GameInput::KeyCode::D))
+        if (GameInput::IsKeyPressed(GameInput::KeyCode::B))
         {
             // Create a simple square mesh for the second entity
             MeshComponent cubeMesh;
@@ -127,6 +130,8 @@ public:
             InstanceComponent instanceComp;
             instanceComp.words.push_back(Transform
             {
+                0,
+				"cube_instance_1",
                 Vector3 {0.0f, 0.0f, 0.0f},
                 Vector3 {0.0f, 0.0f, 0.0f},
                 Vector3 {1.8f, 1.8f, 1.8f}
@@ -144,13 +149,17 @@ public:
         for (auto [entity, tag, inst, mesh] : view.each())
         {
 
-            if (tag.Tag == "triangle")
+            if (tag.Tag == "First Cube")
             {
                 for (auto& instance : inst.words)
                 {
-					instance.rotation.x += 1.0f * time.GetDeltaTime();
-					instance.rotation.x += 0.5f * time.GetDeltaTime();
-					instance.rotation.z += 0.8f * time.GetDeltaTime();
+                    if (instance.id % 3 == 0) 
+                    {
+                        instance.rotation.x += 1.0f * time.GetDeltaTime();
+                        instance.rotation.x += 0.5f * time.GetDeltaTime();
+                        instance.rotation.z += 0.8f * time.GetDeltaTime();
+                    }
+
                 }
             }
             if (tag.Tag == "cube")

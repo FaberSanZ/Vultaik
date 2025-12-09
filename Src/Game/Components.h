@@ -10,6 +10,8 @@ using namespace Games;
 
 struct Transform
 {
+	uint32_t id;
+	std::string name = "default";
     Vector3 position;
     Vector3 rotation;
     Vector3 scale;
