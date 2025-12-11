@@ -12,9 +12,9 @@ struct Transform
 {
 	uint32_t id;
 	std::string name;
-    Vector3 position;
-    Vector3 rotation;
-    Vector3 scale;
+    Float3 position;
+    Float3 rotation;
+    Float3 scale;
 };
 
 struct InstanceComponent
@@ -35,9 +35,9 @@ struct TerrainComponent
 
 struct CameraComponent
 {
-    DirectX::XMFLOAT3 position;
-    DirectX::XMFLOAT3 target;
-    DirectX::XMFLOAT3 up;
+    Float3 position;
+    Float3 target;
+    Float3 up;
 };
 
 // TODO: Expand MeshPart to include node, sub-mesh info, etc.
@@ -55,16 +55,7 @@ class Mesh
 public:
     Mesh() = default;
     ~Mesh() = default;
-    Mesh(const Graphics::Buffer& vBuffer, const Graphics::Buffer& iBuffer, uint32_t iCount, Graphics::Buffer instanceBuffer)
-		: vertexBuffer(vBuffer), indexBuffer(iBuffer), indexCount(iCount), InstanceBuffer(instanceBuffer)
-    {
-    }
-    Graphics::Buffer vertexBuffer;
-    Graphics::Buffer indexBuffer;
-    uint32_t indexCount = 0;
-    Graphics::Buffer InstanceBuffer; // For instanced rendering
 
-    std::string name{ "mesh empy" };
 };
 
 enum class ShapeType
@@ -89,8 +80,8 @@ struct MeshComponent
 {
 	ShapeType shapeType;
 	MeshType meshType;
-    std::vector<uint32_t> Indices{};
-    std::vector<Graphics::VertexPositionColor> Vertices{};
+    //std::vector<uint32_t> Indices{};
+    //std::vector<Graphics::VertexPositionColor> Vertices{};
 	Mesh mesh;
 	bool dirty = false; // Indicates if the mesh needs to be updated
 };

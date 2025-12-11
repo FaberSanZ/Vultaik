@@ -24,10 +24,12 @@ namespace Games
 		static constexpr uint32_t Select1 = DirectX::XM_SELECT_1;
 	};
 
-	struct Vector3 : DirectX::XMFLOAT3
+	struct Float3
 	{
-		constexpr Vector3() noexcept : DirectX::XMFLOAT3() {}
-		constexpr Vector3(float x, float y, float z) noexcept : DirectX::XMFLOAT3(x, y, z) {}
+		float x;
+		float y;
+		float z;
+		constexpr Float3(float x, float y, float z) noexcept : x(x), y(y), z(z) {}
 
 	};
 
