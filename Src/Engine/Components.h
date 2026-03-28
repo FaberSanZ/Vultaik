@@ -46,21 +46,11 @@ struct CameraComponent
 //};
 
 
-class Mesh
-{
-public:
-    Mesh() = default;
-    ~Mesh() = default;
-
-};
-
 enum class ShapeType
 {
-    Cube,
-    Sphere,
-    Cylinder,
-    Plane,
-    Polygon,
+    Cuad,
+	Circle,
+	Polygon, // TODO: Implement polygon shape with a list of vertices for physics collision and rendering
     Null,
     Count
 };
@@ -72,15 +62,15 @@ enum class MeshType
     Count
 };
 
-struct MeshComponent
-{
-    ShapeType shapeType;
-    MeshType meshType;
-    //std::vector<uint32_t> Indices{};
-    //std::vector<Graphics::VertexPositionColor> Vertices{};
-    Mesh mesh;
-    bool dirty = false; // Indicates if the mesh needs to be updated
-};
+//struct MeshComponent
+//{
+//    ShapeType shapeType;
+//    MeshType meshType;
+//    //std::vector<uint32_t> Indices{};
+//    //std::vector<Graphics::VertexPositionColor> Vertices{};
+//    Mesh mesh;
+//    bool dirty = false; // Indicates if the mesh needs to be updated
+//};
 
 
 struct TagComponent

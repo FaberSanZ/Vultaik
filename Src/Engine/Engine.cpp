@@ -10,7 +10,7 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "D3DCompiler.lib")
 
-class PlayerControlerSystem
+class PhysicsSystem
 {
 public:
 
@@ -23,23 +23,6 @@ public:
 private:
 
 };
-
-class TerrainSystem
-{
-public:
-    void OnInitialize(entt::registry& registry)
-    {
-    }
-    void OnUpdate(entt::registry& registry, GameTime time)
-    {
-    }
-private:
-
-};
-
-
-
-
 
 
 class GameBase
@@ -67,7 +50,7 @@ public:
         // Initialize systems
         // TODO: Physics system, AI system, etc.
         renderSystem = {};
-        renderSystem.OnInitialize(registry, gameWindow.GetHandle());
+        renderSystem.OnInitialize(registry, gameWindow.GetHandle(), gameWindow.GetClientWidth(), gameWindow.GetClientHeight());
 
 
         // Main loop
@@ -97,21 +80,16 @@ public:
     entt::registry registry;
 };
 
+
+// TODO: Implement MyGame class that inherits from GameBase and defines game-specific logic, examples of systems, and game scenes
 class MyGame : public GameBase
 {
 public:
     void OnInitialize(entt::registry& registry) override
     {
-        playerControler = {};
-        playerControler.OnInitialize(registry);
-
-        terrainSystem = {};
-        terrainSystem.OnInitialize(registry);
     }
     void OnUpdate(entt::registry& registry, GameTime time) override
     {
-        playerControler.OnUpdate(registry, time);
-        terrainSystem.OnUpdate(registry, time);
     }
     void OnShutdown() override
     {
@@ -119,25 +97,8 @@ public:
     }
 private:
 
-    PlayerControlerSystem playerControler;
-    TerrainSystem terrainSystem;
 };
 
-// TODO: Implement GameScene class for scene management
-class GameScene
-{
-public:
-    GameScene() = default;
-
-    entt::registry& GetRegistry() { return registry; }
-    bool LoadFromYAML(const std::string& filepath);
-    bool SaveToYAML(const std::string& filepath);
-    void Update(float deltaTime);
-
-private:
-    entt::registry registry;
-
-};
 
 int main()
 {

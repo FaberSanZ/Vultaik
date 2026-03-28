@@ -10,123 +10,168 @@
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
+class DescriptorHeap
+{
+public:
+    ID3D12DescriptorHeap* m_Heap = nullptr;
+    uint32_t m_DescriptorSize = 0;
 
+    DescriptorHeap() = default;
+
+    void Initialize(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT numDescriptors)
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+        heapDesc.Type = type;
+        heapDesc.NumDescriptors = numDescriptors;
+        heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        heapDesc.NodeMask = 0;
+        device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_Heap));
+        m_DescriptorSize = device->GetDescriptorHandleIncrementSize(type);
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(uint32_t index) const
+    {
+        D3D12_CPU_DESCRIPTOR_HANDLE handle = GetCPUDescriptorHandleForHeapStart();
+        handle.ptr += index * m_DescriptorSize;
+        return handle;
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandleForHeapStart() const
+    {
+        return m_Heap->GetCPUDescriptorHandleForHeapStart();
+    }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandleForHeapStart() const
+    {
+        return m_Heap->GetGPUDescriptorHandleForHeapStart();
+    }
+
+    uint32_t GetDescriptorSize() const
+    {
+        return m_DescriptorSize;
+    }
+
+    void Destroy()
+    {
+        if (m_Heap)
+        {
+            m_Heap->Release();
+            m_Heap = nullptr;
+        }
+    }
+};
+
+
+class VertexBuffer
+{
+public:
+    VertexBuffer() = default;
+
+    ID3D12Resource* m_vertexBuffer = nullptr;
+    D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+
+    uint32_t stride = { };
+    uint32_t size = { };
+
+    void Destroy()
+    {
+        if (m_vertexBuffer)
+        {
+            m_vertexBuffer->Release();
+            m_vertexBuffer = nullptr;
+        }
+    }
+};
+
+class IndexBuffer
+{
+public:
+    IndexBuffer() = default;
+    ID3D12Resource* m_indexBuffer = nullptr;
+    D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+    uint32_t stride = { };
+    uint32_t size = { };
+    uint32_t m_indexCount{ };
+
+    void Destroy()
+    {
+        if (m_indexBuffer)
+        {
+            m_indexBuffer->Release();
+            m_indexBuffer = nullptr;
+        }
+    }
+
+};
+
+
+class StructuredBuffer
+{
+public:
+    StructuredBuffer() = default;
+
+    ID3D12Resource* handle = nullptr;
+    uint32_t stride = { };
+    uint32_t size = { };
+
+    void Destroy()
+    {
+        if (handle)
+        {
+            handle->Release();
+            handle = nullptr;
+        }
+    }
+};
+
+
+// Define vertices for a triangle
+struct Vertex
+{
+    float position[4];
+};
+
+
+struct InstanceData
+{
+    DirectX::XMMATRIX worldMatrix;
+    DirectX::XMFLOAT4 color;
+};
+
+
+struct Mesh
+{
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
+	StructuredBuffer instanceBuffer;
+	uint32_t maxInstanceCount = 128 * 128; // Example maximum instance count, adjust as needed
+    uint32_t currentInstanceCount = 0;
+
+
+    Mesh() = default;
+
+
+    void Draw(ID3D12GraphicsCommandList* commandList)
+    {
+        commandList->IASetVertexBuffers(0, 1, &vertexBuffer.m_vertexBufferView);
+        commandList->IASetIndexBuffer(&indexBuffer.m_indexBufferView);
+        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        commandList->SetGraphicsRootShaderResourceView(1, instanceBuffer.handle->GetGPUVirtualAddress());
+        commandList->DrawIndexedInstanced(indexBuffer.m_indexCount, currentInstanceCount, 0, 0, 0);
+
+
+    }
+
+    void Destroy()
+    {
+        vertexBuffer.Destroy();
+        indexBuffer.Destroy();
+    }
+};
 
 class Render
 {
 public:
 
-    class DescriptorHeap
-    {
-    public:
-        ID3D12DescriptorHeap* m_Heap = nullptr;
-        uint32_t m_DescriptorSize = 0;
-
-        DescriptorHeap() = default;
-
-        void Initialize(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT numDescriptors)
-        {
-            D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-            heapDesc.Type = type;
-            heapDesc.NumDescriptors = numDescriptors;
-            heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-            heapDesc.NodeMask = 0;
-            device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_Heap));
-            m_DescriptorSize = device->GetDescriptorHandleIncrementSize(type);
-        }
-
-        D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(uint32_t index) const
-        {
-            D3D12_CPU_DESCRIPTOR_HANDLE handle = GetCPUDescriptorHandleForHeapStart();
-            handle.ptr += index * m_DescriptorSize;
-            return handle;
-        }
-
-        D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandleForHeapStart() const
-        {
-            return m_Heap->GetCPUDescriptorHandleForHeapStart();
-        }
-        D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandleForHeapStart() const
-        {
-            return m_Heap->GetGPUDescriptorHandleForHeapStart();
-        }
-
-        uint32_t GetDescriptorSize() const
-        {
-            return m_DescriptorSize;
-        }
-
-        void Destroy()
-        {
-            if (m_Heap)
-            {
-                m_Heap->Release();
-                m_Heap = nullptr;
-            }
-        }
-    };
-
-    class VertexBuffer
-    {
-    public:
-        VertexBuffer() = default;
-
-        ID3D12Resource* m_vertexBuffer = nullptr;
-        D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-
-        uint32_t stride = { };
-        uint32_t size = { };
-
-        void Destroy()
-        {
-            if (m_vertexBuffer)
-            {
-                m_vertexBuffer->Release();
-                m_vertexBuffer = nullptr;
-            }
-        }
-    } vertexBuffer;
-
-    class IndexBuffer
-    {
-    public:
-        IndexBuffer() = default;
-        ID3D12Resource* m_indexBuffer = nullptr;
-        D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
-        uint32_t stride = { };
-        uint32_t size = { };
-        uint32_t m_indexCount{ };
-
-        void Destroy()
-        {
-            if (m_indexBuffer)
-            {
-                m_indexBuffer->Release();
-                m_indexBuffer = nullptr;
-            }
-        }
-
-    } indexBuffer;
-
-
-    class Mesh
-    {
-        VertexBuffer vertexBuffer;
-        IndexBuffer indexBuffer;
-    
-        void Draw(ID3D12GraphicsCommandList* commandList)
-        {
-            commandList->IASetVertexBuffers(0, 1, &vertexBuffer.m_vertexBufferView);
-            commandList->IASetIndexBuffer(&indexBuffer.m_indexBufferView);
-            commandList->DrawIndexedInstanced(indexBuffer.m_indexCount, 1, 0, 0, 0);
-		}
-
-        void Destroy()
-        {
-            vertexBuffer.Destroy();
-            indexBuffer.Destroy();
-		}
-    };
 
 public:
     Render() = default;
@@ -155,10 +200,10 @@ public:
 
 
 
-    bool Initialize(HWND hwnd, uint32_t width, uint32_t Heigh)
+    bool Initialize(HWND hwnd, uint32_t width, uint32_t height)
     {
         m_Width = width;
-        m_Height = Heigh;
+        m_Height = height;
 
 
         IDXGIFactory4* factory = nullptr;
@@ -218,8 +263,9 @@ public:
 
         CreateDepthBuffer();
         CreatePipeline();
-        CreateVertexBuffer();
-        CreateIndexBuffer();
+
+        SetOrthographicMatrix((float)width, (float)height);
+
         return true;
     }
     void CreateDepthBuffer()
@@ -276,9 +322,28 @@ public:
         auto pixelShaderBlob = shaderCompiler.Compile(L"../../../Assets/Shaders/DepthTests/PixelShader.hlsl", L"PS", L"ps_6_0");
 
 
+        // Crear root signature con 1 parámetro (constant buffer)
+        D3D12_ROOT_PARAMETER rootParams[2];
+
+        // Configurar como root constant (32-bit constants)
+        // Esto permite pasar la matriz directamente sin un buffer separado
+        rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		rootParams[0].Constants.Num32BitValues = 16;  // 4x4 matrix = 16 floats
+        rootParams[0].Constants.ShaderRegister = 0;
+        rootParams[0].Constants.RegisterSpace = 0;
+        rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+
+        rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+        rootParams[1].Descriptor.ShaderRegister = 0;
+        rootParams[1].Descriptor.RegisterSpace = 0;
+        rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
         D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
-        rootSigDesc.NumParameters = 0;
-        rootSigDesc.pParameters = nullptr;
+        rootSigDesc.NumParameters = 2;
+        rootSigDesc.pParameters = rootParams;
+        rootSigDesc.NumStaticSamplers = 0;
+        rootSigDesc.pStaticSamplers = nullptr;
         rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
         ID3DBlob* sigBlob = nullptr;
@@ -347,33 +412,142 @@ public:
     }
 
 
-    void CreateVertexBuffer()
+    void SetOrthographicMatrix(float width, float height)
     {
-        // Define vertices for a triangle
-        struct Vertex
+        // Para depuración, usa valores fijos que muestren bien los objetos
+        // Tus objetos están en el rango [-0.5, 0.5], así que queremos verlos bien
+        float orthoWidth = 2.0f;   // Mostrará de -1 a 1 en X
+        float orthoHeight = 2.0f;  // Mostrará de -1 a 1 en Y
+
+        // Si quieres mantener el aspect ratio de la pantalla
+        float aspect = width / height;
+
+        DirectX::XMMATRIX orthoMatrix = DirectX::XMMatrixOrthographicOffCenterLH(
+            -orthoWidth * aspect,   // left
+            orthoWidth * aspect,    // right
+            -orthoHeight,           // bottom
+            orthoHeight,            // top
+            0.1f,                   // near plane
+            100.0f                  // far plane
+        );
+
+        m_projectionMatrix = orthoMatrix;
+
+
+
+    }
+
+    DirectX::XMMATRIX m_projectionMatrix;
+
+
+
+    void SetRootConstants()
+    {
+        // Establecer los 16 floats de la matriz como root constants
+        commandList->SetGraphicsRoot32BitConstants(0, 16, &m_projectionMatrix, 0);
+    }
+
+
+    Mesh CreateMesh(Vertex vertices[], uint32_t vertexCount, uint32_t indices[], uint32_t indexCount)
+    {
+        Mesh mesh{};
+
+
+        mesh.vertexBuffer.stride = sizeof(Vertex);
+        mesh.vertexBuffer.size = vertexCount * sizeof(Vertex);
+        mesh.indexBuffer.stride = sizeof(uint32_t);
+        mesh.indexBuffer.size = indexCount * sizeof(uint32_t);
+        mesh.indexBuffer.m_indexCount = indexCount;
+
+        D3D12_HEAP_PROPERTIES heapProps = {};
+        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        heapProps.CreationNodeMask = 1;
+        heapProps.VisibleNodeMask = 1;
+
+        D3D12_RESOURCE_DESC bufferDesc = {};
+        bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        bufferDesc.Width = vertexCount * sizeof(Vertex); 
+        bufferDesc.Height = 1;
+        bufferDesc.DepthOrArraySize = 1;
+        bufferDesc.MipLevels = 1;
+        bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+        bufferDesc.SampleDesc.Count = 1;
+        bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+        HRESULT hr = device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+            IID_PPV_ARGS(&mesh.vertexBuffer.m_vertexBuffer));
+        if (FAILED(hr))
         {
-            float position[4];
-            float color[4];
-        };
+            std::cout << "Failed to create vertex buffer. HRESULT: " << std::hex << hr << std::endl;
+            return mesh;
+        }
 
-        Vertex vertices[] =
+
+        void* pData;
+        hr = mesh.vertexBuffer.m_vertexBuffer->Map(0, nullptr, &pData);
+        if (SUCCEEDED(hr))
         {
-            // Red Quad
-            { -0.5f,  0.5f, 0.2f, 1.0f,   1.0f, 0.0f, 0.0f, 1.0f },
-            {  0.5f, -0.5f, 0.2f, 1.0f,   1.0f, 0.0f, 0.0f, 1.0f },
-            { -0.5f, -0.5f, 0.2f, 1.0f,   1.0f, 0.0f, 0.0f, 1.0f },
-            {  0.5f,  0.5f, 0.2f, 1.0f,   1.0f, 0.0f, 0.0f, 1.0f },
+            memcpy(pData, vertices, vertexCount * sizeof(Vertex));
+            mesh.vertexBuffer.m_vertexBuffer->Unmap(0, nullptr);
+        }
 
-            // Yellow Quad
-            { -0.75f,  0.75f, 0.3f, 1.0f,   1.0f, 1.0f, 0.0f, 1.0f },
-            {  0.0f,   0.0f,  0.3f, 1.0f,   1.0f, 1.0f, 0.0f, 1.0f },
-            { -0.75f,  0.0f,  0.3f, 1.0f,   1.0f, 1.0f, 0.0f, 1.0f },
-            {  0.0f,   0.75f, 0.3f, 1.0f,   1.0f, 1.0f, 0.0f, 1.0f },
+        mesh.vertexBuffer.m_vertexBufferView.BufferLocation = mesh.vertexBuffer.m_vertexBuffer->GetGPUVirtualAddress();
+        mesh.vertexBuffer.m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+        mesh.vertexBuffer.m_vertexBufferView.SizeInBytes = vertexCount * sizeof(Vertex);
 
-        };
+        bufferDesc.Width = indexCount * sizeof(uint32_t);
+        hr = device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+            IID_PPV_ARGS(&mesh.indexBuffer.m_indexBuffer));
+        if (FAILED(hr))
+        {
+            std::cout << "Failed to create index buffer. HRESULT: " << std::hex << hr << std::endl;
+            return mesh;
+        }
 
-        vertexBuffer.size = sizeof(vertices);
-        vertexBuffer.stride = sizeof(Vertex);
+        hr = mesh.indexBuffer.m_indexBuffer->Map(0, nullptr, &pData);
+        if (SUCCEEDED(hr))
+        {
+            memcpy(pData, indices, indexCount * sizeof(uint32_t));
+            mesh.indexBuffer.m_indexBuffer->Unmap(0, nullptr);
+        }
+
+        // Configurar index buffer view
+        mesh.indexBuffer.m_indexBufferView.BufferLocation = mesh.indexBuffer.m_indexBuffer->GetGPUVirtualAddress();
+        mesh.indexBuffer.m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+        mesh.indexBuffer.m_indexBufferView.SizeInBytes = indexCount * sizeof(uint32_t);
+        mesh.indexBuffer.m_indexCount = indexCount;
+
+
+		mesh.instanceBuffer = CreateStructuredBuffer(mesh.maxInstanceCount * sizeof(InstanceData), sizeof(InstanceData));
+
+        return mesh;
+    }
+
+    void UpdateInstanceBuffer(Mesh& mesh, InstanceData instanceData[], uint32_t instanceCount)
+    {
+        if (instanceCount > mesh.maxInstanceCount)
+        {
+            std::cout << "Warning: Instance count exceeds max!" << std::endl;
+            instanceCount = mesh.maxInstanceCount;
+        }
+
+        mesh.currentInstanceCount = instanceCount;
+
+        void* pData;
+        mesh.instanceBuffer.handle->Map(0, nullptr, &pData);
+        memcpy(pData, instanceData, instanceCount * sizeof(InstanceData));
+        mesh.instanceBuffer.handle->Unmap(0, nullptr);
+        
+    }
+
+    StructuredBuffer CreateStructuredBuffer(uint32_t size, uint32_t stride)
+    {
+        StructuredBuffer buffer {};
 
         // Create vertex buffer
         D3D12_HEAP_PROPERTIES heapProps = {};
@@ -385,7 +559,7 @@ public:
 
         D3D12_RESOURCE_DESC bufferDesc = {};
         bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        bufferDesc.Width = vertexBuffer.size;
+        bufferDesc.Width = size;
         bufferDesc.Height = 1;
         bufferDesc.DepthOrArraySize = 1;
         bufferDesc.MipLevels = 1;
@@ -395,104 +569,48 @@ public:
         bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
 
-        device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexBuffer.m_vertexBuffer));
+        device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&buffer.handle));
 
+		return buffer;
+	}
 
-        // Copy vertex data to the vertex buffer
-        void* pData;
-        vertexBuffer.m_vertexBuffer->Map(0, nullptr, &pData);
-        memcpy(pData, vertices, sizeof(vertices));
-        vertexBuffer.m_vertexBuffer->Unmap(0, nullptr);
-
-
-        // Initialize the vertex buffer view.
-        vertexBuffer.m_vertexBufferView.BufferLocation = vertexBuffer.m_vertexBuffer->GetGPUVirtualAddress();
-        vertexBuffer.m_vertexBufferView.StrideInBytes = vertexBuffer.stride;
-        vertexBuffer.m_vertexBufferView.SizeInBytes = vertexBuffer.size;
-
-    }
-
-    void CreateIndexBuffer()
+    void Clear()
     {
-        // Define indices for a triangle
-        uint32_t indices[] =
-        {
-            // GREEN quad
-            0, 1, 2,
-            0, 3, 1,
 
-            // BLUE quad
-            4, 5, 6,
-            4, 7, 5,
-        };
-        indexBuffer.size = sizeof(indices);
-        indexBuffer.stride = sizeof(uint32_t);
-        indexBuffer.m_indexCount = _countof(indices);
-
-        // Create index buffer
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-        heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-        heapProps.CreationNodeMask = 1;
-        heapProps.VisibleNodeMask = 1;
-
-        D3D12_RESOURCE_DESC bufferDesc = {};
-        bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        bufferDesc.Width = indexBuffer.size;
-        bufferDesc.Height = 1;
-        bufferDesc.DepthOrArraySize = 1;
-        bufferDesc.MipLevels = 1;
-        bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
-        bufferDesc.SampleDesc.Count = 1;
-        bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-        device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&indexBuffer.m_indexBuffer));
-
-
-        // Copy index data to the index buffer
-        void* pData;
-        indexBuffer.m_indexBuffer->Map(0, nullptr, &pData);
-        memcpy(pData, indices, sizeof(indices));
-        indexBuffer.m_indexBuffer->Unmap(0, nullptr);
-
-
-        // Initialize the index buffer view.
-        indexBuffer.m_indexBufferView.BufferLocation = indexBuffer.m_indexBuffer->GetGPUVirtualAddress();
-        indexBuffer.m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-        indexBuffer.m_indexBufferView.SizeInBytes = indexBuffer.size;
-    }
-
-    void Loop()
-    {
-        // get the current back buffer index
+        // get a handle to the render target view (RTV) for the current back buffer
         uint32_t backBufferIndex = swapChain->GetCurrentBackBufferIndex();
-
-        // Reset the command allocator and command list for the current frame
-        commandAlloc->Reset();
-        commandList->Reset(commandAlloc, nullptr);
-
-
 
         // get a handle to the depth/stencil buffer
         D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dpvDescriptorHeap.GetCPUHandle(0);
-
-        // get a handle to the render target view (RTV) for the current back buffer
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvDescriptorHeap.GetCPUHandle(backBufferIndex);
+
+        // Clear the render target
+        float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+        commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+        // Clear the depth stencil view
+        commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 
         // set the render target for the output merger stage (the output of the pipeline)
         // Set the render target view (RTV) for the current back buffer
         // Set the depth/stencil view (DSV) for the current frame
         commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+	}
+    void Reset()
+    {
+        // Reset the command allocator and command list for the current frame
+        commandAlloc->Reset();
+        commandList->Reset(commandAlloc, nullptr);
+	}
 
-        commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+    // 
+    void BeginFrame()
+    {
+        commandList->SetGraphicsRootSignature(rootSignature);
+
+		SetRootConstants(); // Set the root constants (projection matrix) for the vertex shader
 
 
-
-        // Clear the render target
-        float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-        commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
         // Set the viewport and scissor rect
         D3D12_VIEWPORT view = { 0, 0, m_Width, m_Height, 0.0f, 1.0f };
@@ -503,12 +621,10 @@ public:
 
         // draw the triangle
         commandList->SetPipelineState(pipelineState);
-        commandList->IASetVertexBuffers(0, 1, &vertexBuffer.m_vertexBufferView);
-        commandList->IASetIndexBuffer(&indexBuffer.m_indexBufferView);
-        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        commandList->DrawIndexedInstanced(indexBuffer.m_indexCount, 1, 0, 0, 0);
+	}
 
-
+    void Loop()
+    {
         commandList->Close();
 
         // Execute the command list
@@ -520,13 +636,15 @@ public:
     }
 
 
+
+
     void Cleanup()
     {
-        if (indexBuffer.m_indexBuffer)
-            indexBuffer.Destroy();
+        //if (indexBuffer.m_indexBuffer)
+        //    indexBuffer.Destroy();
 
-        if (vertexBuffer.m_vertexBuffer)
-            vertexBuffer.Destroy();
+        //if (vertexBuffer.m_vertexBuffer)
+        //    vertexBuffer.Destroy();
 
         if (depthStencilBuffer)
             depthStencilBuffer->Release();
