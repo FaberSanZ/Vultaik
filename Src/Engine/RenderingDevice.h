@@ -322,11 +322,9 @@ public:
         auto pixelShaderBlob = shaderCompiler.Compile(L"../../../Assets/Shaders/DepthTests/PixelShader.hlsl", L"PS", L"ps_6_0");
 
 
-        // Crear root signature con 1 parámetro (constant buffer)
         D3D12_ROOT_PARAMETER rootParams[2];
 
-        // Configurar como root constant (32-bit constants)
-        // Esto permite pasar la matriz directamente sin un buffer separado
+
         rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
 		rootParams[0].Constants.Num32BitValues = 16;  // 4x4 matrix = 16 floats
         rootParams[0].Constants.ShaderRegister = 0;
@@ -414,12 +412,10 @@ public:
 
     void SetOrthographicMatrix(float width, float height)
     {
-        // Para depuración, usa valores fijos que muestren bien los objetos
-        // Tus objetos están en el rango [-0.5, 0.5], así que queremos verlos bien
-        float orthoWidth = 2.0f;   // Mostrará de -1 a 1 en X
-        float orthoHeight = 2.0f;  // Mostrará de -1 a 1 en Y
 
-        // Si quieres mantener el aspect ratio de la pantalla
+        float orthoWidth = 2.0f;   
+        float orthoHeight = 2.0f;
+
         float aspect = width / height;
 
         DirectX::XMMATRIX orthoMatrix = DirectX::XMMatrixOrthographicOffCenterLH(
@@ -443,7 +439,6 @@ public:
 
     void SetRootConstants()
     {
-        // Establecer los 16 floats de la matriz como root constants
         commandList->SetGraphicsRoot32BitConstants(0, 16, &m_projectionMatrix, 0);
     }
 
