@@ -1,6 +1,3 @@
-// DepthTests.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <Windows.h>
 #include <d3d12.h>
 #include <dxgi1_4.h>
@@ -9,6 +6,7 @@
 #include <d3dcompiler.h>
 #include <dxcapi.h>
 #include "ShaderCompiler.h"
+
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
@@ -109,6 +107,26 @@ public:
         }
 
     } indexBuffer;
+
+
+    class Mesh
+    {
+        VertexBuffer vertexBuffer;
+        IndexBuffer indexBuffer;
+    
+        void Draw(ID3D12GraphicsCommandList* commandList)
+        {
+            commandList->IASetVertexBuffers(0, 1, &vertexBuffer.m_vertexBufferView);
+            commandList->IASetIndexBuffer(&indexBuffer.m_indexBufferView);
+            commandList->DrawIndexedInstanced(indexBuffer.m_indexCount, 1, 0, 0, 0);
+		}
+
+        void Destroy()
+        {
+            vertexBuffer.Destroy();
+            indexBuffer.Destroy();
+		}
+    };
 
 public:
     Render() = default;
