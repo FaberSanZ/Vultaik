@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\Microsoft.Direct3D.D3D12.1.719.1-preview\build\native\Microsoft.Direct3D.D3D12.props" Condition="Exists('..\packages\Microsoft.Direct3D.D3D12.1.719.1-preview\build\native\Microsoft.Direct3D.D3D12.props')" />
+  <Import Project="..\packages\Microsoft.Direct3D.DXC.1.9.2602.17\build\native\Microsoft.Direct3D.DXC.props" Condition="Exists('..\packages\Microsoft.Direct3D.DXC.1.9.2602.17\build\native\Microsoft.Direct3D.DXC.props')" />
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -22,8 +22,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{c73a91d0-1125-4a20-9091-8dfa728c7577}</ProjectGuid>
-    <RootNamespace>Game</RootNamespace>
+    <ProjectGuid>{a31a9b6b-9744-43c4-8395-02dd6f7d1608}</ProjectGuid>
+    <RootNamespace>Engine</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -71,29 +71,12 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(SolutionDir)\bin\$(Platform)\$(Configuration)\</OutDir>
-    <ExternalIncludePath>$(SolutionDir)\Desktop;$(ExternalIncludePath)</ExternalIncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(SolutionDir)\bin\$(Platform)\$(Configuration)\</OutDir>
-    <ExternalIncludePath>$(SolutionDir)\Desktop;$(ExternalIncludePath)</ExternalIncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)\bin\$(Platform)\$(Configuration)\</OutDir>
-    <ExternalIncludePath>$(SolutionDir)Graphics;$(SolutionDir)Games;$(ExternalIncludePath)</ExternalIncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)\bin\$(Platform)\$(Configuration)\</OutDir>
-    <ExternalIncludePath>$(SolutionDir)Graphics;$(SolutionDir)Games;$(ExternalIncludePath)</ExternalIncludePath>
-  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -108,7 +91,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -121,7 +103,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -136,7 +118,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,39 +126,30 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Game.cpp" />
+    <ClCompile Include="Engine.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Games\Games.vcxproj">
-      <Project>{1abb9046-fe1f-482b-a5af-48840ba49745}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\Graphics\Graphics.vcxproj">
-      <Project>{0966a5e2-345f-4519-b589-22605e5426a9}</Project>
-    </ProjectReference>
+    <ClInclude Include="Components.h" />
+    <ClInclude Include="entt.hpp" />
+    <ClInclude Include="GameMath.h" />
+    <ClInclude Include="GameTime.h" />
+    <ClInclude Include="GameWindows.h" />
+    <ClInclude Include="RenderingDevice.h" />
+    <ClInclude Include="RenderSystem.h" />
+    <ClInclude Include="ShaderCompiler.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\Games\entt.hpp" />
-    <ClInclude Include="..\Games\GameMath.h" />
-    <ClInclude Include="..\Games\GameTime.h" />
-    <ClInclude Include="..\Games\GameWindows.h" />
-    <ClInclude Include="Components.h" />
-    <ClInclude Include="RenderSystem.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\packages\Microsoft.Direct3D.D3D12.1.719.1-preview\build\native\Microsoft.Direct3D.D3D12.targets" Condition="Exists('..\packages\Microsoft.Direct3D.D3D12.1.719.1-preview\build\native\Microsoft.Direct3D.D3D12.targets')" />
-    <Import Project="..\packages\Microsoft.GameInput.3.3.174\build\native\targets\Microsoft.GameInput.targets" Condition="Exists('..\packages\Microsoft.GameInput.3.3.174\build\native\targets\Microsoft.GameInput.targets')" />
+    <Import Project="..\packages\Microsoft.Direct3D.DXC.1.9.2602.17\build\native\Microsoft.Direct3D.DXC.targets" Condition="Exists('..\packages\Microsoft.Direct3D.DXC.1.9.2602.17\build\native\Microsoft.Direct3D.DXC.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Microsoft.GameInput.2.1.26100.6068\build\native\targets\Microsoft.GameInput.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.GameInput.2.1.26100.6068\build\native\targets\Microsoft.GameInput.targets'))" />
-    <Error Condition="!Exists('..\packages\Microsoft.Direct3D.D3D12.1.719.1-preview\build\native\Microsoft.Direct3D.D3D12.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Direct3D.D3D12.1.719.1-preview\build\native\Microsoft.Direct3D.D3D12.props'))" />
-    <Error Condition="!Exists('..\packages\Microsoft.Direct3D.D3D12.1.719.1-preview\build\native\Microsoft.Direct3D.D3D12.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Direct3D.D3D12.1.719.1-preview\build\native\Microsoft.Direct3D.D3D12.targets'))" />
-    <Error Condition="!Exists('..\packages\Microsoft.GameInput.3.3.174\build\native\targets\Microsoft.GameInput.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.GameInput.3.3.174\build\native\targets\Microsoft.GameInput.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Direct3D.DXC.1.9.2602.17\build\native\Microsoft.Direct3D.DXC.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Direct3D.DXC.1.9.2602.17\build\native\Microsoft.Direct3D.DXC.props'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Direct3D.DXC.1.9.2602.17\build\native\Microsoft.Direct3D.DXC.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Direct3D.DXC.1.9.2602.17\build\native\Microsoft.Direct3D.DXC.targets'))" />
   </Target>
 </Project>

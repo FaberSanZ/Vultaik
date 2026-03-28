@@ -127,12 +127,6 @@
   <ItemGroup>
     <ClCompile Include="Games.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="entt.hpp" />
-    <ClInclude Include="GameMath.h" />
-    <ClInclude Include="GameTime.h" />
-    <ClInclude Include="GameWindows.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

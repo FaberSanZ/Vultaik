@@ -19,18 +19,4 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="GameWindows.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GameTime.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GameMath.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="entt.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
 </Project>
