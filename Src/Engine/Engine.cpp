@@ -26,23 +26,21 @@ public:
 
         for (auto [entity, particle] : view.each())
         {
+
+			particle.velocity.x += particle.acceleraton.x * dt;
+			particle.velocity.y += particle.acceleraton.y * dt;
+
             particle.position.x += particle.velocity.x * dt;
             particle.position.y += particle.velocity.y * dt;
 
 
-            if (particle.position.x > 3.1f) 
+            if(particle.position.y < -1.8f)
             {
-				particle.velocity.x = -particle.velocity.x;
-                auto& mesh = registry.get<MeshComponent>(entity); 
-				mesh.meshType = MeshType::Static;
+                particle.position.y = -1.8f;
+                particle.velocity.y *= -0.8f;
+				std::cout << "Collision with the floor!" << std::endl;
+			}
 
-            }
-            else if (particle.position.x < -3.1f) 
-            {
-                particle.velocity.x = -particle.velocity.x;
-                auto& mesh = registry.get<MeshComponent>(entity);
-                mesh.meshType = MeshType::Dynamic;
-            }
 		}
 
 
@@ -77,7 +75,8 @@ public:
 
 
         //Scene1();
-        Scene2();
+        //Scene2();
+        Scene3();
 
 		physicsSystem = {};
 		physicsSystem.OnInitialize(registry);
@@ -148,6 +147,50 @@ public:
         registry.emplace<ParticleComponent>(entity3, particle3);
         registry.emplace<MeshComponent>(entity3, MeshComponent{ ShapeType::Circle, MeshType::Dynamic });
 
+	}
+
+    void Scene3()
+    {
+        // 
+        ParticleComponent particle{};
+        particle.position = { -1.3f, 1.0f };
+        particle.acceleraton = { 0.0f, -0.5f };
+        particle.velocity = { 0.0f, 0.0f };
+        particle.rotation = 0.0f;
+        particle.scale = { 0.5f, 0.5f };
+        particle.mass = 1.0f;
+
+        auto entity = registry.create();
+        registry.emplace<ParticleComponent>(entity, particle);
+        registry.emplace<MeshComponent>(entity, MeshComponent{ ShapeType::Circle, MeshType::Dynamic });
+
+
+
+        ParticleComponent particle2{};
+        particle2.position = { 0.0f, 1.0f };
+        particle2.acceleraton = { 0.0f, -1.f };
+        particle2.velocity = { 0.0f, 0.0f };
+        particle2.rotation = 0.0f;
+        particle2.scale = { 0.4f, 0.4f };
+        particle2.mass = 1.0f;
+
+        auto entity2 = registry.create();
+        registry.emplace<ParticleComponent>(entity2, particle2);
+        registry.emplace<MeshComponent>(entity2, MeshComponent{ ShapeType::Circle, MeshType::Kinematic });
+
+
+
+        ParticleComponent particle3{};
+        particle3.position = { 1.0f, 1.0f };
+        particle3.acceleraton = { 0.0f, -1.5f };
+        particle3.velocity = { 0.0f, 0.0f };
+        particle3.rotation = 0.0f;
+        particle3.scale = { 0.3f, 0.3f };
+        particle3.mass = 1.0f;
+
+        auto entity3 = registry.create();
+        registry.emplace<ParticleComponent>(entity3, particle3);
+        registry.emplace<MeshComponent>(entity3, MeshComponent{ ShapeType::Circle, MeshType::Static });
 	}
 
 
