@@ -371,7 +371,7 @@ public:
 
         // Rasterizer state manual
         D3D12_RASTERIZER_DESC rasterizerDesc = {};
-        rasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+        rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
         rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
         rasterizerDesc.FrontCounterClockwise = false;
         rasterizerDesc.DepthClipEnable = true;
@@ -627,7 +627,7 @@ public:
         commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
         // Present the frame
-        swapChain->Present(1, 0);
+        swapChain->Present(0, 0);
     }
 
 

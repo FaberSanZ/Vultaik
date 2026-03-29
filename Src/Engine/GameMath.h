@@ -2,6 +2,16 @@
 #include <cmath>
 #include <DirectXMath.h>
 
+
+struct Float2
+{
+	float x;
+	float y;
+	constexpr Float2(float x, float y) noexcept : x(x), y(y) {}
+	Float2() : x(0.0f), y(0.0f) {}
+};
+
+
 struct Float3
 {
 	float x;
@@ -23,10 +33,6 @@ public:
 	static constexpr float PI2 = 6.283185307f;
 	static constexpr float PIDIV2 = 1.570796327f;
 	static constexpr float PIDIV4 = 0.785398163f;
-
-
-	static constexpr uint32_t Select0 = DirectX::XM_SELECT_0;
-	static constexpr uint32_t Select1 = DirectX::XM_SELECT_1;
 };
 
 

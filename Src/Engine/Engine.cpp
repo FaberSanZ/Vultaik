@@ -16,85 +16,54 @@ public:
 
     void OnInitialize(entt::registry& registry)
     {
-        TransformComponent trasform{};
-		trasform.position = { -1.5f, 0.0f, 0.0f };
-		trasform.rotation = { 0.0f, 0.0f, 0.0f };
-		trasform.scale = { 0.8f, 0.8f, 0.8f };
-
-        auto entity = registry.create();
-        registry.emplace<TransformComponent>(entity, trasform);
-        registry.emplace<MeshComponent>(entity, MeshComponent { ShapeType::Triangle, MeshType::Static });
-
-
-
-        trasform.position = { 0.0f, 0.0f, 0.0f };
-        trasform.rotation = { 0.0f, 0.0f, 0.0f };
-        trasform.scale = { 0.8f, 0.8f, 0.8f };
-
-        auto entity2 = registry.create();
-        registry.emplace<TransformComponent>(entity2, trasform);
-        registry.emplace<MeshComponent>(entity2, MeshComponent { ShapeType::Cuad, MeshType::Dynamic });
-
-
-
-        trasform.position = { 1.5f, 0.0f, 0.0f };
-        trasform.rotation = { 0.0f, 0.0f, 0.0f };
-        trasform.scale = { 0.8f, 0.8f, 0.8f };
-
-        auto entity3 = registry.create();
-        registry.emplace<TransformComponent>(entity3, trasform);
-        registry.emplace<MeshComponent>(entity3, MeshComponent{ ShapeType::Pentagon, MeshType::Kinematic });
-
-
-
-        trasform.position = { 1.5f, 1.0f, 0.0f };
-        trasform.rotation = { 0.0f, 0.0f, 0.0f };
-        trasform.scale = { 0.8f, 0.8f, 0.8f };
-
-        auto entity4 = registry.create();
-        registry.emplace<TransformComponent>(entity4, trasform);
-        registry.emplace<MeshComponent>(entity4, MeshComponent{ ShapeType::Hexagon, MeshType::Static });
-
-
-
-        trasform.position = { 1.5f, -1.0f, 0.0f };
-        trasform.rotation = { 0.0f, 0.0f, 0.0f };
-        trasform.scale = { 0.8f, 0.8f, 0.8f };
-
-        auto entity5 = registry.create();
-        registry.emplace<TransformComponent>(entity5, trasform);
-        registry.emplace<MeshComponent>(entity5, MeshComponent{ ShapeType::Circle, MeshType::Dynamic });
-
-
     }
     void OnUpdate(entt::registry& registry, GameTime time)
     {
-        // Simple physics update: Move the object in a circular path
-        float speed = 1.0f; // Radians per second
-        float angle = static_cast<float>(time.GetTotalTime()) * speed;
+        float dt = static_cast<float>(time.GetDeltaTime());
 
-        auto view = registry.view<TransformComponent>();
-        for (auto [entity, trasform] : view.each())
+		// particle system 
+        auto view = registry.view<ParticleComponent>();
+
+        for (auto [entity, particle] : view.each())
         {
+            particle.position.x += particle.velocity.x * dt;
+            particle.position.y += particle.velocity.y * dt;
 
 
-			trasform.rotation = {  0.0f, 0.0f, angle }; // Rotate around Z-axis
-            registry.replace<TransformComponent>(entity, trasform);
+            if (particle.position.x > 3.1f) 
+            {
+				particle.velocity.x = -particle.velocity.x;
+                auto& mesh = registry.get<MeshComponent>(entity); 
+				mesh.meshType = MeshType::Static;
+
+            }
+            else if (particle.position.x < -3.1f) 
+            {
+                particle.velocity.x = -particle.velocity.x;
+                auto& mesh = registry.get<MeshComponent>(entity);
+                mesh.meshType = MeshType::Dynamic;
+            }
 		}
+
+
+
+    }
+
+	// TODO: move to game math, and add more math functions like sin, cos, tan, etc.
+    float radians(float degrees)
+    {
+        return degrees * (GameMath::PI / 180.0f);
     }
 private:
 
 };
 
 
-class GameBase
+class MyGame
 {
 public:
 
-    virtual void OnInitialize(entt::registry& registry) = 0;
-    virtual void OnUpdate(entt::registry& registry, GameTime time) = 0;
 
-    virtual void OnShutdown() = 0;
 
     void Run()
     {
@@ -106,11 +75,9 @@ public:
         gameWindow.OnInitialize();
 
 
-        OnInitialize(registry);
 
-
-        // Initialize systems
-        // TODO: Physics system, AI system, etc.
+        //Scene1();
+        Scene2();
 
 		physicsSystem = {};
 		physicsSystem.OnInitialize(registry);
@@ -125,6 +92,65 @@ public:
 
 
 
+    void Scene1()
+    {
+        ParticleComponent particle{};
+        particle.position = { 0.0f, -1.0f };
+        particle.acceleraton = { 0.0f, 0.0f };
+        particle.velocity = { 1.0f, 0.0f };
+        particle.rotation = 0.0f;
+        particle.scale = { 0.3f, 0.3f };
+        particle.mass = 1.0f;
+
+        auto entity = registry.create();
+        registry.emplace<ParticleComponent>(entity, particle);
+        registry.emplace<MeshComponent>(entity, MeshComponent{ ShapeType::Circle, MeshType::Dynamic });
+    }
+
+
+    void Scene2()
+    {
+        ParticleComponent particle{};
+        particle.position = { 0.0f, -1.0f };
+        particle.acceleraton = { 0.0f, 0.0f };
+        particle.velocity = { 3.0f, 0.0f };
+		particle.rotation = 0.0f;
+		particle.scale = { 0.3f, 0.3f };
+		particle.mass = 1.0f;
+
+        auto entity = registry.create();
+        registry.emplace<ParticleComponent>(entity, particle);
+        registry.emplace<MeshComponent>(entity, MeshComponent{ ShapeType::Circle, MeshType::Dynamic });
+
+
+        ParticleComponent particle2{};
+        particle2.position = { 0.0f, 0.0f };
+        particle2.acceleraton = { 0.0f, 0.0f };
+        particle2.velocity = { 2.0f, 0.0f };
+        particle2.rotation = 0.0f;
+        particle2.scale = { 0.3f, 0.3f };
+        particle2.mass = 1.0f;
+
+        auto entity2 = registry.create();
+        registry.emplace<ParticleComponent>(entity2, particle2);
+        registry.emplace<MeshComponent>(entity2, MeshComponent{ ShapeType::Circle, MeshType::Dynamic });
+
+
+        ParticleComponent particle3{};
+        particle3.position = { 0.0f, 1.0f };
+        particle3.acceleraton = { 0.0f, 0.0f };
+        particle3.velocity = { 1.0f, 0.0f };
+        particle3.rotation = 0.0f;
+        particle3.scale = { 0.3f, 0.3f };
+        particle3.mass = 1.0f;
+
+        auto entity3 = registry.create();
+        registry.emplace<ParticleComponent>(entity3, particle3);
+        registry.emplace<MeshComponent>(entity3, MeshComponent{ ShapeType::Circle, MeshType::Dynamic });
+
+	}
+
+
     void Update()
     {
         while (gameWindow.IsRunning())
@@ -134,7 +160,6 @@ public:
 
 			physicsSystem.OnUpdate(registry, gameTime);
             renderSystem.OnUpdate(registry, gameTime);
-            OnUpdate(registry, gameTime);
         }
     }
 
@@ -147,23 +172,6 @@ public:
     entt::registry registry;
 };
 
-
-class MyGame : public GameBase
-{
-public:
-    void OnInitialize(entt::registry& registry) override
-    {
-    }
-    void OnUpdate(entt::registry& registry, GameTime time) override
-    {
-    }
-    void OnShutdown() override
-    {
-
-    }
-private:
-
-};
 
 
 int main()

@@ -41,7 +41,7 @@ public:
 		cuad = GeneratePolygonMesh(0.5f, 4);
 		pentagon = GeneratePolygonMesh(0.5f, 5);
 		hexagon = GeneratePolygonMesh(0.5f, 6);
-		circle = GeneratePolygonMesh(0.5f, 32);
+		circle = GeneratePolygonMesh(0.5f, 12);
 
 
         
@@ -53,8 +53,7 @@ public:
         std::vector<Vertex> vertices;
         vertices.reserve(segmentCount + 1);
 
-        // Centro
-        vertices.push_back({ 0.0f, 0.0f, 0.0f, 1.0f});
+        //vertices.push_back({ 0.0f, 0.0f, 0.0f, 1.0f});
 
         for (uint32_t i = 0; i <= segmentCount; ++i)
         {
@@ -107,7 +106,6 @@ public:
 
     void Update(entt::registry& registry, GameTime time)
     {
-        auto view_mesh = registry.view<TransformComponent, MeshComponent>();
         std::vector<InstanceData> triangleInstancing;
         std::vector<InstanceData> cuadInstancing;
         std::vector<InstanceData> pentagonInstancing;
@@ -117,70 +115,123 @@ public:
 
         DirectX::XMFLOAT4 color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-        for (auto [entity, trasform, shape] : view_mesh.each())
+        auto view_mesh = registry.view<MeshComponent>();
+
+        for (auto [entity, mesh] : view_mesh.each())
         {
 
-            if (shape.meshType == MeshType::Static)
+            if (mesh.meshType == MeshType::Static)
                 color = { 0.4f, 0.7f, 0.3f, 1.0f };
 
-            else if (shape.meshType == MeshType::Dynamic)
+            else if (mesh.meshType == MeshType::Dynamic)
                 color = { 0.25f, 0.45f, 0.75f, 1.0f };
 
-            else if (shape.meshType == MeshType::Kinematic)
+            else if (mesh.meshType == MeshType::Kinematic)
                 color = { 0.9f, 0.6f, 0.2f, 1.0f };
 
 
-            if (shape.shapeType == ShapeType::Triangle)
+            if (registry.all_of<TransformComponent>(entity))
             {
-                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
-                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
-                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
-                triangleInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                auto& trasform = registry.get<TransformComponent>(entity);
+
+                if (mesh.shapeType == ShapeType::Triangle)
+                {
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, 0.0f);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, trasform.rotation);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, 0.0f);
+                    triangleInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                }
+
+
+                if (mesh.shapeType == ShapeType::Cuad)
+                {
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, 0.0f);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, trasform.rotation);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, 0.0f);
+                    cuadInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                }
+
+
+                if (mesh.shapeType == ShapeType::Pentagon)
+                {
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, 0.0f);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, trasform.rotation);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, 0.0f);
+                    pentagonInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                }
+
+
+                if (mesh.shapeType == ShapeType::Hexagon)
+                {
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, 0.0f);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, trasform.rotation);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, 0.0f);
+                    hexagonInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                }
+
+                if (mesh.shapeType == ShapeType::Circle)
+                {
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, 0.0f);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, trasform.rotation);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, 0.0f);
+                    circleInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                }
+            }
+            else if (registry.all_of<ParticleComponent>(entity))
+            {
+                auto& trasform = registry.get<ParticleComponent>(entity);
+
+                if (mesh.shapeType == ShapeType::Triangle)
+                {
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, 0.0f);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, trasform.rotation);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, 0.0f);
+                    triangleInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                }
+
+
+                if (mesh.shapeType == ShapeType::Cuad)
+                {
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, 0.0f);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, trasform.rotation);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, 0.0f);
+                    cuadInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                }
+
+
+                if (mesh.shapeType == ShapeType::Pentagon)
+                {
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, 0.0f);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, trasform.rotation);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, 0.0f);
+                    pentagonInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                }
+
+
+                if (mesh.shapeType == ShapeType::Hexagon)
+                {
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, 0.0f);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, trasform.rotation);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, 0.0f);
+                    hexagonInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                }
+
+                if (mesh.shapeType == ShapeType::Circle)
+                {
+                    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, 0.0f);
+                    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, trasform.rotation);
+                    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, 0.0f);
+                    circleInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+                }
             }
 
 
-            if (shape.shapeType == ShapeType::Cuad)
-            {
-                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
-                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
-                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
-                cuadInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
-            }
+            
 
 
-            if (shape.shapeType == ShapeType::Pentagon)
-            {
-                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
-                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
-                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
-                pentagonInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
-            }
 
 
-            if (shape.shapeType == ShapeType::Hexagon)
-            {
-                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
-                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
-                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
-                hexagonInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
-            }
 
-            if (shape.shapeType == ShapeType::Circle)
-            {
-                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
-                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
-                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
-
-                circleInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
-            }
-
-            //if (shape.shapeType == ShapeType::Polygon)
-            //{
-            //    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
-            //    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
-            //    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
-            //    polygonInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
-            //}
 
 
         }
