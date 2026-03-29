@@ -371,7 +371,7 @@ public:
 
         // Rasterizer state manual
         D3D12_RASTERIZER_DESC rasterizerDesc = {};
-        rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+        rasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
         rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
         rasterizerDesc.FrontCounterClockwise = false;
         rasterizerDesc.DepthClipEnable = true;
@@ -580,7 +580,7 @@ public:
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvDescriptorHeap.GetCPUHandle(backBufferIndex);
 
         // Clear the render target
-        float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+        float clearColor[] = { 0.9f, 0.9f, 0.9f, 1.0f };
         commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         // Clear the depth stencil view
         commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);

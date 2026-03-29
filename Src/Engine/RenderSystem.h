@@ -23,8 +23,10 @@ public:
     uint32_t m_Width{ }; // Width of the render target
     uint32_t m_Height{ }; // Height of the render target
     Render render{};
-	Mesh cuad = {};
 	Mesh triangle = {};
+	Mesh cuad = {};
+	Mesh pentagon = {};
+	Mesh hexagon = {};
 	Mesh circle = {};
 
     void OnInitialize(entt::registry& registry, HWND hwnd,uint32_t width, uint32_t height)
@@ -34,41 +36,19 @@ public:
 
         render.Initialize(hwnd, m_Width, m_Height);
 
-        Vertex vertices[] =
-        {
-            // Red Quad
-            { -0.5f,  0.5f, 0.2f, 1.0f,},
-            {  0.5f, -0.5f, 0.2f, 1.0f,   },
-            { -0.5f, -0.5f, 0.2f, 1.0f,  },
-            {  0.5f,  0.5f, 0.2f, 1.0f,  },
 
-        };
-
-        uint32_t indices[] =
-        {
-            0, 1, 2,
-            0, 3, 1,
-        };
+		triangle = GeneratePolygonMesh(0.5f, 3);
+		cuad = GeneratePolygonMesh(0.5f, 4);
+		pentagon = GeneratePolygonMesh(0.5f, 5);
+		hexagon = GeneratePolygonMesh(0.5f, 6);
+		circle = GeneratePolygonMesh(0.5f, 32);
 
 
-        cuad = render.CreateMesh(vertices, 4, indices, 6);
-
-
-		// Create a simple triangle mesh
-        Vertex verticest[] =
-        {
-            {  0.0f,  0.2f, 0.1f, 1.0f,},
-            {  0.2f, -0.2f, 0.1f, 1.0f,},
-            { -0.2f, -0.2f, 0.1f, 1.0f, }
-        };
-        uint32_t indicest[] = { 0, 1, 2 };
-		triangle = render.CreateMesh(verticest, 3, indicest, 3);
-
-		GenerateCircleMesh(0.3f, 12);
+        
         
     }
 
-    void GenerateCircleMesh(float radius, uint32_t segmentCount)
+    Mesh GeneratePolygonMesh(float radius, uint32_t segmentCount)
     {
         std::vector<Vertex> vertices;
         vertices.reserve(segmentCount + 1);
@@ -81,10 +61,6 @@ public:
             float angle = (2.0f * 3.14159265f * i) / segmentCount;
             float x = radius * cos(angle);
             float y = radius * sin(angle);
-
-            // Colores para depuración (arcoíris)
-            float r = 0;
-            float g = 0;
 
             vertices.push_back({ x, y, 0.0f, 1.0f});
         }
@@ -99,44 +75,17 @@ public:
             indices.push_back(i + 1);
         }
 
-        circle = render.CreateMesh(vertices.data(), (uint32_t)vertices.size(),
-            indices.data(), (uint32_t)indices.size());
+        return render.CreateMesh(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size());
+        
     }
+
+
+
 	float speed = 1.0f;
 
     void OnUpdate(entt::registry& registry, GameTime time)
     {
-        float totalTime = time.GetTotalTime();
-
-        InstanceData data[8];
-
-        // Instancia estática en el centro
-        data[0].worldMatrix = DirectX::XMMatrixIdentity();
-        data[0].color = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-
-        // Instancia en movimiento
-        float radius = 1.0f;
-        float angle = totalTime * 1.5f;
-        float x = radius * cos(angle);
-        float y = radius * sin(angle);
-
-        DirectX::XMMATRIX translation = DirectX::XMMatrixIdentity();
-
-
-        for(int i = 1; i < 7; ++i)
-        {
-            x = radius * cos(angle + float(i));
-            y = radius * sin(angle + float(i));
-            translation = DirectX::XMMatrixTranslation(x, y, 0.0f);
-
-            data[i].worldMatrix = DirectX::XMMatrixTranspose(translation);
-            data[i].color = DirectX::XMFLOAT4(x, 0.5f, y, 1.0f);
-		}
-
-
-        render.UpdateInstanceBuffer(circle, data, 8);
-
-        Update(registry, time);
+		Update(registry, time);
         Loop(registry);
     }
 
@@ -146,8 +95,10 @@ public:
 		render.Clear(); // Clear the render target and depth/stencil buffer, and set them for rendering
 		render.BeginFrame(); // Set the viewport, scissor rect, and pipeline state for the current frame
 
-		//cuad.Draw(render.commandList); // Draw the mesh using the command list
-		//triangle.Draw(render.commandList); // Draw the mesh using the command list 
+		triangle.Draw(render.commandList); // Draw the mesh using the command list 
+		cuad.Draw(render.commandList); // Draw the mesh using the command list
+		pentagon.Draw(render.commandList); // Draw the mesh using the command list
+		hexagon.Draw(render.commandList); // Draw the mesh using the command list
 		circle.Draw(render.commandList); // Draw the mesh using the command list
 
         render.Loop();
@@ -156,12 +107,110 @@ public:
 
     void Update(entt::registry& registry, GameTime time)
     {
+        auto view_mesh = registry.view<TransformComponent, MeshComponent>();
+        std::vector<InstanceData> triangleInstancing;
+        std::vector<InstanceData> cuadInstancing;
+        std::vector<InstanceData> pentagonInstancing;
+		std::vector<InstanceData> hexagonInstancing;
+        std::vector<InstanceData> circleInstancing;
+        std::vector<InstanceData> polygonInstancing;
+
+        DirectX::XMFLOAT4 color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+        for (auto [entity, trasform, shape] : view_mesh.each())
+        {
+
+            if (shape.meshType == MeshType::Static)
+                color = { 0.4f, 0.7f, 0.3f, 1.0f };
+
+            else if (shape.meshType == MeshType::Dynamic)
+                color = { 0.25f, 0.45f, 0.75f, 1.0f };
+
+            else if (shape.meshType == MeshType::Kinematic)
+                color = { 0.9f, 0.6f, 0.2f, 1.0f };
+
+
+            if (shape.shapeType == ShapeType::Triangle)
+            {
+                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
+                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
+                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
+                triangleInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+            }
+
+
+            if (shape.shapeType == ShapeType::Cuad)
+            {
+                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
+                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
+                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
+                cuadInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+            }
+
+
+            if (shape.shapeType == ShapeType::Pentagon)
+            {
+                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
+                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
+                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
+                pentagonInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+            }
+
+
+            if (shape.shapeType == ShapeType::Hexagon)
+            {
+                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
+                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
+                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
+                hexagonInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+            }
+
+            if (shape.shapeType == ShapeType::Circle)
+            {
+                DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
+                DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
+                DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
+
+                circleInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+            }
+
+            //if (shape.shapeType == ShapeType::Polygon)
+            //{
+            //    DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(trasform.position.x, trasform.position.y, trasform.position.z);
+            //    DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(trasform.rotation.x, trasform.rotation.y, trasform.rotation.z);
+            //    DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(trasform.scale.x, trasform.scale.y, trasform.scale.z);
+            //    polygonInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
+            //}
+
+
+        }
+
+
+        if(triangleInstancing.size() > 0)
+			render.UpdateInstanceBuffer(triangle, triangleInstancing.data(), triangleInstancing.size());
+
+        if (cuadInstancing.size() > 0)
+            render.UpdateInstanceBuffer(cuad, cuadInstancing.data(), cuadInstancing.size());
+
+		if (pentagonInstancing.size() > 0)
+			render.UpdateInstanceBuffer(pentagon, pentagonInstancing.data(), pentagonInstancing.size());
+
+        if(hexagonInstancing.size() > 0)
+			render.UpdateInstanceBuffer(hexagon, hexagonInstancing.data(), hexagonInstancing.size());
+
+        if (circleInstancing.size() > 0)
+            render.UpdateInstanceBuffer(circle, circleInstancing.data(), circleInstancing.size());
+
+		//if (polygonInstancing.size() > 0)
+		//	render.UpdateInstanceBuffer(triangle, polygonInstancing.data(), polygonInstancing.size());
+
+
+
     }
 
     void OnShutdown()
     {
         render.Cleanup();
-
     }
 
 };

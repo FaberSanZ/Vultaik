@@ -4,29 +4,18 @@
 
 
 
-struct Transform
+struct TransformComponent
 {
     uint32_t id;
-    std::string name;
     Float3 position;
     Float3 rotation;
     Float3 scale;
+
+    TransformComponent() = default;
+    TransformComponent(const TransformComponent&) = default;
 };
 
-struct InstanceComponent
-{
-    std::vector<Transform> words;
-};
 
-
-
-struct TerrainComponent
-{
-    uint32_t width;
-    uint32_t height;
-    float scale;
-    std::vector<float> heightMap;
-};
 
 
 struct CameraComponent
@@ -36,21 +25,14 @@ struct CameraComponent
     Float3 up;
 };
 
-// TODO: Expand MeshPart to include node, sub-mesh info, etc.
-//class MeshPart 
-//{
-//    public:
-//    MeshPart() = default;
-//    ~MeshPart() = default;
-//
-//};
-
-
 enum class ShapeType
 {
+	Triangle,
     Cuad,
+	Pentagon,
+	Hexagon,
 	Circle,
-	Polygon, // TODO: Implement polygon shape with a list of vertices for physics collision and rendering
+	Polygon,
     Null,
     Count
 };
@@ -59,18 +41,15 @@ enum class MeshType
 {
     Static,
     Dynamic,
+    Kinematic,
     Count
 };
 
-//struct MeshComponent
-//{
-//    ShapeType shapeType;
-//    MeshType meshType;
-//    //std::vector<uint32_t> Indices{};
-//    //std::vector<Graphics::VertexPositionColor> Vertices{};
-//    Mesh mesh;
-//    bool dirty = false; // Indicates if the mesh needs to be updated
-//};
+struct MeshComponent
+{
+    ShapeType shapeType;
+    MeshType meshType; // TODO: Implement mesh type for static and dynamic meshes, which can affect how they are rendered and updated in the physics system
+};
 
 
 struct TagComponent

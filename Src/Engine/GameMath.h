@@ -8,7 +8,7 @@ struct Float3
 	float y;
 	float z;
 	constexpr Float3(float x, float y, float z) noexcept : x(x), y(y), z(z) {}
-
+	Float3() : x(0.0f), y(0.0f), z(0.0f) {}
 };
 
 class GameMath
