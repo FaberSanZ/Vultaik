@@ -26,7 +26,13 @@ public:
 
         for (auto [entity, particle] : view.each())
         {
+            //if (registry.valid(entity))
+            //{
 
+            //}
+             
+            
+            // Update particle physics
 			particle.velocity.x += particle.acceleraton.x * dt;
 			particle.velocity.y += particle.acceleraton.y * dt;
 
@@ -34,12 +40,19 @@ public:
             particle.position.y += particle.velocity.y * dt;
 
 
+
+
+			// Scene3
             if(particle.position.y < -1.8f)
             {
                 particle.position.y = -1.8f;
                 particle.velocity.y *= -0.8f;
-				std::cout << "Collision with the floor!" << std::endl;
 			}
+
+            //if (particle.position.y < -1.8f)
+            //{
+            //    registry.destroy(entity);
+            //}
 
 		}
 
@@ -60,9 +73,6 @@ private:
 class MyGame
 {
 public:
-
-
-
     void Run()
     {
         // Initialize games
@@ -71,8 +81,6 @@ public:
 
         gameWindow = {};
         gameWindow.OnInitialize();
-
-
 
         //Scene1();
         //Scene2();
@@ -89,8 +97,6 @@ public:
         Update();
     }
 
-
-
     void Scene1()
     {
         ParticleComponent particle{};
@@ -102,10 +108,9 @@ public:
         particle.mass = 1.0f;
 
         auto entity = registry.create();
-        registry.emplace<ParticleComponent>(entity, particle);
         registry.emplace<MeshComponent>(entity, MeshComponent{ ShapeType::Circle, MeshType::Dynamic });
+        registry.emplace<ParticleComponent>(entity, particle);
     }
-
 
     void Scene2()
     {
@@ -149,9 +154,10 @@ public:
 
 	}
 
+	// In this scene we will create three particles with different gravity values, and see how they fall at different speeds.
     void Scene3()
     {
-        // 
+		// first particle with low gravity
         ParticleComponent particle{};
         particle.position = { -1.3f, 1.0f };
         particle.acceleraton = { 0.0f, -0.5f };
@@ -165,7 +171,7 @@ public:
         registry.emplace<MeshComponent>(entity, MeshComponent{ ShapeType::Circle, MeshType::Dynamic });
 
 
-
+		// second particle with normal gravity
         ParticleComponent particle2{};
         particle2.position = { 0.0f, 1.0f };
         particle2.acceleraton = { 0.0f, -1.f };
@@ -179,7 +185,7 @@ public:
         registry.emplace<MeshComponent>(entity2, MeshComponent{ ShapeType::Circle, MeshType::Kinematic });
 
 
-
+		// third particle with high gravity
         ParticleComponent particle3{};
         particle3.position = { 1.0f, 1.0f };
         particle3.acceleraton = { 0.0f, -1.5f };
@@ -198,12 +204,15 @@ public:
     {
         while (gameWindow.IsRunning())
         {
-            gameWindow.PumpMessages();
-            gameTime.OnUpdate();
+
 
 			physicsSystem.OnUpdate(registry, gameTime);
             renderSystem.OnUpdate(registry, gameTime);
-        }
+
+
+            gameWindow.PumpMessages();
+            gameTime.OnUpdate();
+        }    
     }
 
     GameWindows gameWindow;
@@ -214,8 +223,6 @@ public:
 
     entt::registry registry;
 };
-
-
 
 int main()
 {

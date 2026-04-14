@@ -1,24 +1,27 @@
-struct VertexInputType
+struct VSInput
 {
     float4 position : POSITION;
     float4 color : COLOR;
+    float2 uv : TEXCOORD;
 };
 
-struct PixelInputType
+struct PSInput
 {
-    float4 Pos : SV_POSITION;
-    float4 Color : COLOR;
+    float4 position : SV_POSITION;
+    float4 color : COLOR;
+    float2 uv : TEXCOORD;
 };
 
-
-
-PixelInputType VS(VertexInputType input)
+cbuffer CameraBuffer : register(b0)
 {
-    PixelInputType output;
+    float4x4 viewProjMatrix;
+};
 
-    output.Pos = input.position;
-    output.Color = input.color;
-
-
+PSInput VS(VSInput input)
+{
+    PSInput output;
+    output.position = mul(input.position, viewProjMatrix);
+    output.color = input.color;
+    output.uv = input.uv;
     return output;
 }

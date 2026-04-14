@@ -130,6 +130,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components.h" />
+    <ClInclude Include="EasyUI.h" />
     <ClInclude Include="entt.hpp" />
     <ClInclude Include="GameMath.h" />
     <ClInclude Include="GameTime.h" />
@@ -137,6 +138,7 @@
     <ClInclude Include="RenderingDevice.h" />
     <ClInclude Include="RenderSystem.h" />
     <ClInclude Include="ShaderCompiler.h" />
+    <ClInclude Include="stb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
