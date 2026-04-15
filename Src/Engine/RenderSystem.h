@@ -24,16 +24,16 @@ public:
     uint32_t m_Width{ }; // Width of the render target
     uint32_t m_Height{ }; // Height of the render target
     Render render{};
-	Mesh triangle = {};
-	Mesh cuad = {};
-	Mesh pentagon = {};
-	Mesh hexagon = {};
-	Mesh circle = {};
-	UIMesh uiMesh = {};
-    UIManager uiManager; 
+    Mesh triangle = {};
+    Mesh cuad = {};
+    Mesh pentagon = {};
+    Mesh hexagon = {};
+    Mesh circle = {};
+    UIMesh uiMesh = {};
+    UIManager uiManager;
 
 
-    void OnInitialize(entt::registry& registry, HWND hwnd,uint32_t width, uint32_t height)
+    void OnInitialize(entt::registry& registry, HWND hwnd, uint32_t width, uint32_t height)
     {
         m_Width = width;
         m_Height = height;
@@ -61,18 +61,17 @@ public:
             });
 
 
-		triangle = GeneratePolygonMesh(0.5f, 3);
-		cuad = GeneratePolygonMesh(0.5f, 4);
-		pentagon = GeneratePolygonMesh(0.5f, 5);
-		hexagon = GeneratePolygonMesh(0.5f, 6);
-		circle = GeneratePolygonMesh(0.5f, 12);
+        triangle = GeneratePolygonMesh(0.5f, 3);
+        cuad = GeneratePolygonMesh(0.5f, 4);
+        pentagon = GeneratePolygonMesh(0.5f, 5);
+        hexagon = GeneratePolygonMesh(0.5f, 6);
+        circle = GeneratePolygonMesh(0.5f, 12);
 
 
         uiManager.setScreenSize(m_Width, m_Height);
 
         if (!root)
         {
-            // Root: ocupa toda la pantalla (stretch)
             root = new UIElement();
             root->setHorizontalAlignment(HorizontalAlignment::Stretch);
             root->setVerticalAlignment(VerticalAlignment::Stretch);
@@ -80,7 +79,6 @@ public:
             root->setPadding(Thickness(0));   // sin padding interno
             root->setColor(0x80FFFFFF);
 
-            // Botón 1: posición absoluta (20,20) se logra con margin left/top
             auto* playBtn = new UIButton();
             playBtn->setSize(100, 75);
             playBtn->setMargin(Thickness(20, 20, 0, 0));
@@ -90,7 +88,6 @@ public:
             playBtn->setBorder(2, 0xFFFFFFFF);
             playBtn->setOnClick([]() { std::cout << "Button 1 clicked!\n"; });
 
-            // Botón 2: posición (140,20) -> margin left=140, top=20
             auto* playBtn2 = new UIButton();
             playBtn2->setSize(100, 75);
             playBtn2->setMargin(Thickness(140, 20, 0, 0));
@@ -100,17 +97,15 @@ public:
             playBtn2->setBorder(2, 0xFFFFFFFF);
             playBtn2->setOnClick([]() { std::cout << "Button 2 clicked!\n"; });
 
-            // Slider: ancho 300, posición (50,200) -> margin left=50, top=200
             auto* slider = new UISlider();
             slider->setSize(300, 20);
             slider->setMargin(Thickness(50, 200, 0, 0));
-            slider->setColor(0xFF3A3A3A);          // fondo del carril
-            slider->setHandleSize(24);              // handle más grande
-            slider->setHandleColor(0xFF00C8FF);     // cian brillante
-            slider->setHandleBorder(2, 0xFFFFFFFF); // borde blanco
+            slider->setColor(0xFF3A3A3A);          
+            slider->setHandleSize(24);              
+            slider->setHandleColor(0xFF00C8FF);     
+            slider->setHandleBorder(2, 0xFFFFFFFF); 
             slider->setOnChange([](float v) { std::cout << v << std::endl; });
 
-            // Checkbox: posición (100,100)
             auto* check = new UICheckBox();
             check->setSize(30, 30);
             check->setMargin(Thickness(100, 100, 0, 0));
@@ -120,7 +115,6 @@ public:
             check->setColor(0x00FFFFFF);
             check->setOnChange([](bool v) { std::cout << "Vsync: " << v << std::endl; });
 
-            // Dropdown: posición (500,100)
             auto* dropdown = new UIDropdown();
             dropdown->setSize(200, 30);
             dropdown->setMargin(Thickness(500, 100, 0, 0));
@@ -128,15 +122,14 @@ public:
             dropdown->setVerticalAlignment(VerticalAlignment::Top);
             dropdown->setColor(0xFF3A3A3A);
             dropdown->setBorder(1, 0xFFFFFFFF);
-            dropdown->addOption("Opción 1");
-            dropdown->addOption("Opción 2");
-            dropdown->addOption("Opción 3");
-            dropdown->addOption("Opción 4");
+            dropdown->addOption("Opci?n 1");
+            dropdown->addOption("Opci?n 2");
+            dropdown->addOption("Opci?n 3");
+            dropdown->addOption("Opci?n 4");
             dropdown->setOnChange([](int idx, const std::string& text) {
                 std::cout << "Seleccionado: " << idx << " - " << text << std::endl;
                 });
 
-            // ProgressBar: posición (50,300)
             progress = new UIProgressBar();
             progress->setSize(300, 20);
             progress->setMargin(Thickness(50, 300, 0, 0));
@@ -149,21 +142,20 @@ public:
 
 
             // En OnInitialize
-            auto fontAtlas = new FontAtlas();
-            fontAtlas->LoadFromFile("../../../Assets/Fonts/Roboto-Regular.ttf", 24.0f);
+            //auto fontAtlas = new FontAtlas();
+            //fontAtlas->LoadFromFile("../../../Assets/Fonts/Roboto-Regular.ttf", 24.0f);
 
-            // Luego, creas un UIText
-            auto* text = new UIText();
-            text->setFontAtlas(fontAtlas);
-            text->setText("Hello World!");
-            text->setFontSize(24);
-            text->setColor(0xFFFFFFFF);
-            text->setMargin(Thickness(10, 10, 0, 0));
-            text->setHorizontalAlignment(HorizontalAlignment::Left);
-            text->setVerticalAlignment(VerticalAlignment::Top);
-            root->addChild(text);
+            //// Luego, creas un UIText
+            //auto* text = new UIText();
+            //text->setFontAtlas(fontAtlas);
+            //text->setText("Hello World!");
+            //text->setFontSize(24);
+            //text->setColor(0xFFFFFFFF);
+            //text->setMargin(Thickness(10, 10, 0, 0));
+            //text->setHorizontalAlignment(HorizontalAlignment::Left);
+            //text->setVerticalAlignment(VerticalAlignment::Top);
+            //root->addChild(text);
 
-            // Añadir todos al root
             root->addChild(playBtn);
             root->addChild(playBtn2);
             root->addChild(slider);
@@ -186,7 +178,7 @@ public:
 
 
 
-        
+
     }
 
 
@@ -206,7 +198,7 @@ public:
             float x = radius * cos(angle);
             float y = radius * sin(angle);
 
-            vertices.push_back({ x, y, 0.0f, 1.0f});
+            vertices.push_back({ x, y, 0.0f, 1.0f });
         }
 
         std::vector<uint32_t> indices;
@@ -220,36 +212,36 @@ public:
         }
 
         return render.CreateMesh(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size());
-        
+
     }
 
 
 
-	float speed = 0.0f;
-	float progressValue = 0.0f;
+    float speed = 0.0f;
+    float progressValue = 0.0f;
 
     void OnUpdate(entt::registry& registry, GameTime time)
     {
-		Update(registry, time);
+        Update(registry, time);
         Loop(registry);
     }
 
     void Loop(entt::registry& registry)
     {
-		render.Reset(); // Reset the command allocator and command list for the current frame
-		render.Clear(); // Clear the render target and depth/stencil buffer, and set them for rendering
-		render.BeginFrame(); // Set the viewport, scissor rect, and pipeline state for the current frame
+        render.Reset(); // Reset the command allocator and command list for the current frame
+        render.Clear(); // Clear the render target and depth/stencil buffer, and set them for rendering
+        render.BeginFrame(); // Set the viewport, scissor rect, and pipeline state for the current frame
 
         render.BeginUI();
         uiMesh.Draw(render.commandList); // Draw the UI mesh using the command list
 
 
-		render.BeginGame();
-		triangle.Draw(render.commandList); // Draw the mesh using the command list 
-		cuad.Draw(render.commandList); // Draw the mesh using the command list
-		pentagon.Draw(render.commandList); // Draw the mesh using the command list
-		hexagon.Draw(render.commandList); // Draw the mesh using the command list
-		circle.Draw(render.commandList); // Draw the mesh using the command list
+        render.BeginGame();
+        triangle.Draw(render.commandList); // Draw the mesh using the command list 
+        cuad.Draw(render.commandList); // Draw the mesh using the command list
+        pentagon.Draw(render.commandList); // Draw the mesh using the command list
+        hexagon.Draw(render.commandList); // Draw the mesh using the command list
+        circle.Draw(render.commandList); // Draw the mesh using the command list
 
 
 
@@ -257,16 +249,16 @@ public:
     }
 
 
-	float gettrasparencyfromvalue(float value)
-	{
-		return (sin(value) + 1.0f) / 2.0f; // Oscila entre 0 y 1
-	}
+    float gettrasparencyfromvalue(float value)
+    {
+        return (sin(value) + 1.0f) / 2.0f; // Oscila entre 0 y 1
+    }
 
     void Update(entt::registry& registry, GameTime time)
     {
-		speed += 0.01f;
-		progress->setValue((sin(speed) + 1.0f) / 2.0f);
-		root->setColor(0x80FF0000 + (uint32_t)((sin(speed) + 1.0f) / 2.0f * 0x7F) * 0x10000); // Cambia el rojo del fondo con el tiempo
+        speed += 0.01f;
+        progress->setValue((sin(speed) + 1.0f) / 2.0f);
+        root->setColor(0x80FF0000 + (uint32_t)((sin(speed) + 1.0f) / 2.0f * 0x7F) * 0x10000); // Cambia el rojo del fondo con el tiempo
 
 
         std::vector<UIDrawCommand> commands;
@@ -283,13 +275,13 @@ public:
         }
 
         render.UpdateUIGeometry(uiMesh, reinterpret_cast<uiVertex*>(allVerts.data()), (uint32_t)allVerts.size(), allIndices.data(), (uint32_t)allIndices.size());
-        
+
 
 
         std::vector<InstanceData> triangleInstancing;
         std::vector<InstanceData> cuadInstancing;
         std::vector<InstanceData> pentagonInstancing;
-		std::vector<InstanceData> hexagonInstancing;
+        std::vector<InstanceData> hexagonInstancing;
         std::vector<InstanceData> circleInstancing;
         std::vector<InstanceData> polygonInstancing;
 
@@ -407,29 +399,29 @@ public:
         }
 
 
-        if(triangleInstancing.size() > 0)
-			render.UpdateInstanceBuffer(triangle, triangleInstancing.data(), triangleInstancing.size());
+        if (triangleInstancing.size() > 0)
+            render.UpdateInstanceBuffer(triangle, triangleInstancing.data(), triangleInstancing.size());
 
         if (cuadInstancing.size() > 0)
             render.UpdateInstanceBuffer(cuad, cuadInstancing.data(), cuadInstancing.size());
 
-		if (pentagonInstancing.size() > 0)
-			render.UpdateInstanceBuffer(pentagon, pentagonInstancing.data(), pentagonInstancing.size());
+        if (pentagonInstancing.size() > 0)
+            render.UpdateInstanceBuffer(pentagon, pentagonInstancing.data(), pentagonInstancing.size());
 
-        if(hexagonInstancing.size() > 0)
-			render.UpdateInstanceBuffer(hexagon, hexagonInstancing.data(), hexagonInstancing.size());
+        if (hexagonInstancing.size() > 0)
+            render.UpdateInstanceBuffer(hexagon, hexagonInstancing.data(), hexagonInstancing.size());
 
         if (circleInstancing.size() > 0)
             render.UpdateInstanceBuffer(circle, circleInstancing.data(), circleInstancing.size());
 
-		std::vector<InstanceData> uiInstancing;
+        std::vector<InstanceData> uiInstancing;
 
         DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(0, 0, 0.0f);
         DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.0f);
         DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(1.0f, 1.0f, 0.0f);
 
         uiInstancing.push_back({ DirectX::XMMatrixTranspose(scale * rotation * translation), color });
-		render.UpdateUIInstanceBuffer(uiMesh, uiInstancing.data(), uiInstancing.size());
+        render.UpdateUIInstanceBuffer(uiMesh, uiInstancing.data(), uiInstancing.size());
 
 
 
@@ -442,5 +434,4 @@ public:
     }
 
 };
-
 

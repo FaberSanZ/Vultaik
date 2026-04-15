@@ -127,6 +127,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Engine.cpp" />
+    <ClCompile Include="StrideUI.cpp" />
+    <ClCompile Include="StrideUI.H" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components.h" />

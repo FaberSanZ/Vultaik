@@ -18,6 +18,12 @@
     <ClCompile Include="Engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="StrideUI.H">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="StrideUI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components.h">

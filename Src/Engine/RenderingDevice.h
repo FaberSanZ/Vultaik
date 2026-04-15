@@ -10,9 +10,27 @@
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
-// ------------------------------------------------------------------
-// Helper classes (DescriptorHeap, VertexBuffer, IndexBuffer, StructuredBuffer)
-// ------------------------------------------------------------------
+struct Adapter
+{
+    IDXGIAdapter3* adapter = nullptr;
+	std::wstring name;
+    uint32_t memory;
+	uint32_t gpuCount;
+};
+
+struct Device
+{
+	uint32_t id; // Unique identifier for the device (could be index or custom ID)
+    ID3D12Device* device = nullptr;
+	uint32_t nodeIndex = 0; // For multi-GPU setups, this indicates which GPU node the device is associated with
+};
+
+struct SwapChain
+{
+    IDXGISwapChain3* swapChain = nullptr;
+    uint32_t bufferCount = 0;
+};
+
 class DescriptorHeap
 {
 public:
@@ -31,7 +49,7 @@ public:
         }
         else
         {
-			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+            heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         }
         device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_Heap));
         m_DescriptorSize = device->GetDescriptorHandleIncrementSize(type);
@@ -49,7 +67,7 @@ public:
         D3D12_GPU_DESCRIPTOR_HANDLE handle = m_Heap->GetGPUDescriptorHandleForHeapStart();
         handle.ptr += index * m_DescriptorSize;
         return handle;
-	}
+    }
 
     void Destroy() { if (m_Heap) { m_Heap->Release(); m_Heap = nullptr; } }
 };
@@ -169,13 +187,20 @@ public:
     bool Initialize(HWND hwnd, uint32_t width, uint32_t height);
     void Cleanup();
 
+
+    DescriptorHeap CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t count, bool shaderVisible = false);
+    D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(const DescriptorHeap& heap, uint32_t index);
+    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(const DescriptorHeap& heap, uint32_t index);
+
+
     // Frame management
     void Reset();
     void Clear();
     void BeginFrame();   // sets game PSO and root signature
-	void BeginGame();     // switches to game PSO and root signature
+    void BeginGame();     // switches to game PSO and root signature
     void BeginUI();      // switches to UI PSO and root signature
     void Loop();         // closes command list, executes, presents
+
 
     // Mesh creation
     Mesh CreateMesh(Vertex* vertices, uint32_t vertexCount, uint32_t* indices, uint32_t indexCount);
@@ -385,8 +410,8 @@ void Render::CreateGamePipeline()
 
 void Render::CreateUIPipeline()
 {
-    auto vertexShaderBlob = m_ShaderCompiler.Compile(L"../../../Assets/Shaders/IndexBuffer/VertexShader.hlsl", L"VS", L"vs_6_0");
-    auto pixelShaderBlob = m_ShaderCompiler.Compile(L"../../../Assets/Shaders/IndexBuffer/PixelShader.hlsl", L"PS", L"ps_6_0");
+    auto vertexShaderBlob = m_ShaderCompiler.Compile(L"../../../Assets/Shaders/UI/VertexShader.hlsl", L"VS", L"vs_6_0");
+    auto pixelShaderBlob = m_ShaderCompiler.Compile(L"../../../Assets/Shaders/UI/PixelShader.hlsl", L"PS", L"ps_6_0");
 
     // Root parameters: constants (matriz) + SRV (textura)
     D3D12_ROOT_PARAMETER rootParams[2];
@@ -426,7 +451,7 @@ void Render::CreateUIPipeline()
     D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
     rootSigDesc.NumParameters = 2;
     rootSigDesc.pParameters = rootParams;
-    rootSigDesc.NumStaticSamplers = 1;               // ? ahora sí, un sampler
+    rootSigDesc.NumStaticSamplers = 1;               // ? ahora s?, un sampler
     rootSigDesc.pStaticSamplers = &sampler;          // ? apuntar al sampler
     rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
@@ -442,7 +467,7 @@ void Render::CreateUIPipeline()
     sigBlob->Release();
     if (errorBlob) errorBlob->Release();
 
-    D3D12_INPUT_ELEMENT_DESC inputLayout[] = 
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
