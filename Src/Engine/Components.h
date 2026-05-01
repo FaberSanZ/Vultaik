@@ -1,58 +1,20 @@
 #pragma once
-#include "GameMath.h"
+// #include "GameMath.h"
+#include <DirectXMath.h>
+#include <cstdint>
 #include <string>
 
 
 
 struct TransformComponent
 {
-    uint32_t id;
-    Float2 position;
-    Float2 scale;
-    float rotation;
+    uint32_t id = 0;
+    DirectX::XMFLOAT3 position = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 scale = { 1.0f, 1.0f, 1.0f };
+    DirectX::XMFLOAT3 rotation = { 0.0f, 0.0f, 0.0f };
 
     TransformComponent() = default;
     TransformComponent(const TransformComponent&) = default;
-};
-
-struct VelocityComponent
-{
-    Float2 velocity;
-    VelocityComponent() = default;
-    VelocityComponent(const VelocityComponent&) = default;
-    VelocityComponent(const Float2& velocity) : velocity(velocity) { }
-};
-
-struct AccelerationComponent
-{
-    Float2 acceleration;
-    AccelerationComponent() = default;
-    AccelerationComponent(const AccelerationComponent&) = default;
-    AccelerationComponent(const Float2& acceleration) : acceleration(acceleration) { }
-};
-
-struct Rigidbody2DComponent
-{
-    float mass;
-    bool isKinematic;
-    Rigidbody2DComponent() = default;
-    Rigidbody2DComponent(const Rigidbody2DComponent&) = default;
-    Rigidbody2DComponent(float mass, bool isKinematic) : mass(mass), isKinematic(isKinematic) { }
-};
-
-struct ParticleComponent
-{
-    Float2 position;
-    Float2 velocity;
-    Float2 acceleraton;
-    Float2 scale;
-    float rotation;
-    float mass;
-    ParticleComponent() = default;
-    ParticleComponent(const ParticleComponent&) = default;
-    ParticleComponent(const Float2& position, const Float2& velocity, const Float2& acceleration, float mass)
-		: position(position), velocity(velocity), acceleraton(acceleration), mass(mass) { }
-
 };
 
 
@@ -63,6 +25,9 @@ enum class ShapeType
 	Pentagon,
 	Hexagon,
 	Circle,
+    Cube,
+    Sphere,
+    Plane,
 	Polygon,
     Null,
     Count
@@ -76,10 +41,24 @@ enum class MeshType
     Count
 };
 
+
 struct MeshComponent
 {
-    ShapeType shapeType;
-    MeshType meshType; // TODO: Implement mesh type for static and dynamic meshes, which can affect how they are rendered and updated in the physics system
+    ShapeType shapeType = ShapeType::Null;
+    MeshType meshType = MeshType::Static;
+};
+
+struct MaterialComponent
+{
+    DirectX::XMFLOAT3 baseColor = { 0.8f, 0.8f, 0.8f };
+    float metallic = 0.0f;
+    float roughness = 0.5f;
+    float ao = 1.0f;
+    int32_t textureId = 0;
+
+    MaterialComponent() = default;
+    MaterialComponent(const DirectX::XMFLOAT3& baseColor, float metallic, float roughness, float ao, int32_t textureId = 0)
+        : baseColor(baseColor), metallic(metallic), roughness(roughness), ao(ao), textureId(textureId) {}
 };
 
 
@@ -92,4 +71,35 @@ struct TagComponent
     TagComponent(const std::string& tag)
         : Tag(tag) {
     }
+};
+
+
+// new physics components for 3D physics system
+
+enum class ColliderType
+{
+    Sphere,
+};
+
+struct SphereColliderComponent 
+{
+    float radius = 0.5f;
+
+    DirectX::XMFLOAT3 centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
+};
+
+enum class PhysicsBodyType 
+{
+    Static,
+    Dynamic,
+    Kinematic
+};
+
+struct PhysicsBodyComponent
+{
+    PhysicsBodyType type = PhysicsBodyType::Static;
+
+    DirectX::XMFLOAT4 orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+    bool enabled = true;
 };

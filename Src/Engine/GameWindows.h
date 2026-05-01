@@ -5,6 +5,10 @@
 #include <functional>
 #include <vector>
 #include <iostream>
+#include <imgui.h>
+#include "backends/imgui_impl_win32.h"
+
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 class GameInput
 {
@@ -534,6 +538,9 @@ private:
 
     static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
+        if (ImGui::GetCurrentContext() && ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
+            return 1;
+
         GameInput::ProcessMessage(hwnd, uMsg, wParam, lParam);
 
         switch (uMsg)
