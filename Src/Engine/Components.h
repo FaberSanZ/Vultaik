@@ -90,6 +90,7 @@ struct PhysicsBodyComponent
     DirectX::XMFLOAT3 linearVelocity = { 0.0f, 0.0f, 0.0f };
 
 
+    float restitution = 0.4f;
     float mass = 1.0f;
     float invMass = 1.0f;
 

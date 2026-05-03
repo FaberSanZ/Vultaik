@@ -68,6 +68,7 @@ public:
             body.invMass = 1.0f / body.mass;
             body.linearVelocity = { 0.0f, 0.0f, 0.0f };
             body.useGravity = true;
+            body.restitution = 0.5f;
 
             SphereColliderComponent collider{};
             collider.radius = 1.0f;
@@ -108,6 +109,7 @@ public:
             body.invMass = 0.0f;
             body.linearVelocity = { 0.0f, 0.0f, 0.0f };
             body.useGravity = false;
+            body.restitution = 0.5f;
 
             SphereColliderComponent collider{};
             collider.radius = 6.0f;
@@ -296,14 +298,6 @@ public:
     }
 
 
-    void StopBody(PhysicsBodyComponent& body)
-    {
-        if (body.type != PhysicsBodyType::Dynamic)
-            return;
-
-        body.linearVelocity = { 0.0f, 0.0f, 0.0f };
-    }
-
 
     void DetectAndResolveCollisions(entt::registry& registry)
     {
@@ -436,26 +430,30 @@ public:
             return;
 
         const DirectX::XMFLOAT3 normal = contact.normal;
-
         const DirectX::XMFLOAT3 relativeVelocity = GameMath::Sub(bodyB.linearVelocity, bodyA.linearVelocity);
-
         const float contactVelocity = GameMath::Dot(relativeVelocity, normal);
 
         if (contactVelocity > 0.0f)
             return;
 
-        const float restitution = 1.0f;
+        float restitution = CombineRestitution(bodyA, bodyB);
 
-        const float impulseMagnitude =
-            -(1.0f + restitution) * contactVelocity / invMassSum;
+        if (std::abs(contactVelocity) < restingVelocityThreshold)
+        {
+            restitution = 0.0f;
+        }
+
+        const float impulseMagnitude = -(1.0f + restitution) * contactVelocity / invMassSum;
 
         const DirectX::XMFLOAT3 impulse = GameMath::Mul(normal, impulseMagnitude);
 
         if (bodyA.type == PhysicsBodyType::Dynamic)
         {
-            const DirectX::XMFLOAT3 deltaVelocityA = GameMath::Mul(impulse, invMassA);
+            const DirectX::XMFLOAT3 deltaVelocityA =
+                GameMath::Mul(impulse, invMassA);
 
-            bodyA.linearVelocity = GameMath::Sub(bodyA.linearVelocity, deltaVelocityA);
+            bodyA.linearVelocity =
+                GameMath::Sub(bodyA.linearVelocity, deltaVelocityA);
         }
 
         if (bodyB.type == PhysicsBodyType::Dynamic)
@@ -464,6 +462,11 @@ public:
 
             bodyB.linearVelocity = GameMath::Add(bodyB.linearVelocity, deltaVelocityB);
         }
+
+        //if (std::abs(contactVelocity) < restingVelocityThreshold)
+        //{
+        //    restitution = 0.0f;
+        //}
     }
 
 
@@ -512,8 +515,13 @@ public:
         }
     }
 
+    float CombineRestitution(const PhysicsBodyComponent& bodyA, const PhysicsBodyComponent& bodyB)
+    {
+        return std::min(bodyA.restitution, bodyB.restitution);
+    }
+
 	// TODO: move this to a config file or something
     DirectX::XMFLOAT3 gravity = { 0.0f, -1.0f, 0.0f };
 
-
+    float restingVelocityThreshold = 0.5f;
 };
