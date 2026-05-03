@@ -275,7 +275,17 @@ private:
             if (registry.all_of<TransformComponent>(entity))
             {
                 auto& transform = registry.get<TransformComponent>(entity);
-                DirectX::XMMATRIX world = BuildWorldMatrix(transform.position, transform.rotation, transform.scale);
+                DirectX::XMMATRIX world{};
+
+                if (registry.all_of<PhysicsBodyComponent>(entity))
+                {
+                    auto& body = registry.get<PhysicsBodyComponent>(entity);
+                    world = BuildWorldMatrixQuat(transform.position, body.orientation, transform.scale);
+                }
+                else
+                {
+                    world = BuildWorldMatrix(transform.position, transform.rotation, transform.scale);
+                }
                 DirectX::XMFLOAT4X4 worldMatrix{};
                 DirectX::XMStoreFloat4x4(&worldMatrix, world);
 
@@ -309,6 +319,19 @@ private:
         render.UpdateInstanceBuffer(sphere, sphereInstances.empty() ? nullptr : sphereInstances.data(), static_cast<uint32_t>(sphereInstances.size()));
         render.UpdateInstanceBuffer(plane, planeInstances.empty() ? nullptr : planeInstances.data(), static_cast<uint32_t>(planeInstances.size()));
     }
+
+
+
+    DirectX::XMMATRIX BuildWorldMatrixQuat(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4& orientation, const DirectX::XMFLOAT3& scale) const
+    {
+
+        DirectX::XMMATRIX translation = DirectX::XMMatrixTranslation(position.x, position.y, position.z);
+        DirectX::XMMATRIX rotation = DirectX::XMMatrixRotationQuaternion(XMLoadFloat4(&orientation));
+        DirectX::XMMATRIX scaling = DirectX::XMMatrixScaling(scale.x, scale.y, scale.z);
+
+        return scaling * rotation * translation;
+    }
+
 
     void SpawnShape(entt::registry& registry, ShapeType shape)
     {

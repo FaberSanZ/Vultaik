@@ -88,6 +88,8 @@ struct PhysicsBodyComponent
 
     DirectX::XMFLOAT4 orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
     DirectX::XMFLOAT3 linearVelocity = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 angularVelocity = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 invInertiaLocal = { 1.0f, 1.0f, 1.0f };
 
 
     float restitution = 0.4f;
@@ -96,5 +98,6 @@ struct PhysicsBodyComponent
 
     bool useGravity = true;
     bool enabled = true;
+    bool massPropertiesDirty = true;
 
 };

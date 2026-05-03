@@ -34,6 +34,7 @@ struct Contact
     float separationDistance = 0.0f;
 };
 
+
 class PhysicsSystem
 {
 public:
@@ -67,18 +68,23 @@ public:
             body.mass = 1.0f;
             body.invMass = 1.0f / body.mass;
             body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+            body.angularVelocity = { 0.0f, 0.0f, 0.0f };
             body.useGravity = true;
             body.restitution = 0.5f;
+			body.massPropertiesDirty = true;
 
             SphereColliderComponent collider{};
             collider.radius = 1.0f;
             collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
+
+            SetSphereInertia(body, collider);
 
             registry.emplace<TransformComponent>(entity, transform);
             registry.emplace<MeshComponent>(entity, mesh);
             registry.emplace<MaterialComponent>(entity, material);
             registry.emplace<PhysicsBodyComponent>(entity, body);
             registry.emplace<SphereColliderComponent>(entity, collider);
+
         }
 
         // -------------------------
@@ -108,8 +114,10 @@ public:
             body.mass = 0.0f;
             body.invMass = 0.0f;
             body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+            body.angularVelocity = { 0.0f, 0.0f, 0.0f };
             body.useGravity = false;
             body.restitution = 0.5f;
+
 
             SphereColliderComponent collider{};
             collider.radius = 6.0f;
@@ -127,8 +135,13 @@ public:
     {
         const float dt = time.FixedDeltaTime();
 
+        UpdateMassProperties(registry);
+
+
         ApplyGravityImpulse(registry, dt);
         IntegratePositions(registry, dt);
+        IntegrateOrientations(registry, dt);
+
         SolveContacts(registry);
     }
 
@@ -519,6 +532,135 @@ public:
     {
         return std::min(bodyA.restitution, bodyB.restitution);
     }
+
+    void SetSphereInertia(PhysicsBodyComponent& body, const SphereColliderComponent& sphere)
+    {
+        if (body.type == PhysicsBodyType::Static || body.invMass == 0.0f)
+        {
+            body.invInertiaLocal = { 0.0f, 0.0f, 0.0f };
+            return;
+        }
+
+        const float radius = sphere.radius;
+        const float inertia = (2.0f / 5.0f) * body.mass * radius * radius;
+
+        if (inertia <= 0.00001f)
+        {
+            body.invInertiaLocal = { 0.0f, 0.0f, 0.0f };
+            return;
+        }
+
+        const float invI = 1.0f / inertia;
+        body.invInertiaLocal = { invI, invI, invI };
+    }
+
+
+    void ApplyAngularImpulse(PhysicsBodyComponent& body, const DirectX::XMFLOAT3& angularImpulse)
+    {
+        if (!body.enabled)
+            return;
+
+        if (body.type != PhysicsBodyType::Dynamic)
+            return;
+
+        DirectX::XMFLOAT3 deltaAngularVelocity =
+        {
+            angularImpulse.x * body.invInertiaLocal.x,
+            angularImpulse.y * body.invInertiaLocal.y,
+            angularImpulse.z * body.invInertiaLocal.z
+        };
+
+        body.angularVelocity = GameMath::Add(body.angularVelocity, deltaAngularVelocity);
+
+        const float maxAngularSpeed = 30.0f;
+        const float speedSq = GameMath::LengthSq(body.angularVelocity);
+
+        if (speedSq > maxAngularSpeed * maxAngularSpeed)
+        {
+            body.angularVelocity = GameMath::Mul(GameMath::Normalize(body.angularVelocity), maxAngularSpeed);
+        }
+    }
+
+
+    void IntegrateOrientations(entt::registry& registry, float dt)
+    {
+        auto view = registry.view<PhysicsBodyComponent>();
+
+        for (auto entity : view)
+        {
+            auto& body = view.get<PhysicsBodyComponent>(entity);
+
+            if (!body.enabled)
+                continue;
+
+            if (body.type != PhysicsBodyType::Dynamic)
+                continue;
+
+            const float angularSpeed = GameMath::Length(body.angularVelocity);
+
+            if (angularSpeed <= 0.00001f)
+                continue;
+
+            using namespace DirectX;
+
+            XMVECTOR axis = XMLoadFloat3(&body.angularVelocity);
+            axis = XMVector3Normalize(axis);
+
+            const float angle = angularSpeed * dt;
+
+            XMVECTOR deltaRotation =
+                XMQuaternionRotationAxis(axis, angle);
+
+            XMVECTOR orientation =
+                XMLoadFloat4(&body.orientation);
+
+            orientation =
+                XMQuaternionNormalize(XMQuaternionMultiply(deltaRotation, orientation));
+
+            XMStoreFloat4(&body.orientation, orientation);
+        }
+    }
+
+    void UpdateMassProperties(entt::registry& registry)
+    {
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
+
+        for (auto [entity, transform, body, sphere] : view.each())
+        {
+            if (!body.massPropertiesDirty)
+                continue;
+
+            if (body.type == PhysicsBodyType::Static)
+            {
+                body.mass = 0.0f;
+                body.invMass = 0.0f;
+                body.invInertiaLocal = { 0.0f, 0.0f, 0.0f };
+                body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+                body.angularVelocity = { 0.0f, 0.0f, 0.0f };
+                body.massPropertiesDirty = false;
+                continue;
+            }
+
+            body.mass = std::max(body.mass, 0.0001f);
+            body.invMass = 1.0f / body.mass;
+
+            const float radius = sphere.radius;
+            const float inertia = (2.0f / 5.0f) * body.mass * radius * radius;
+
+            if (inertia <= 0.00001f)
+            {
+                body.invInertiaLocal = { 0.0f, 0.0f, 0.0f };
+            }
+            else
+            {
+                const float invI = 1.0f / inertia;
+                body.invInertiaLocal = { invI, invI, invI };
+            }
+
+            body.massPropertiesDirty = false;
+        }
+    }
+
 
 	// TODO: move this to a config file or something
     DirectX::XMFLOAT3 gravity = { 0.0f, -1.0f, 0.0f };
