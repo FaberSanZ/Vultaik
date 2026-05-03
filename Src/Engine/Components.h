@@ -61,7 +61,7 @@ struct TagComponent
 };
 
 
-// new physics components for 3D physics system
+//  physics 
 
 enum class ColliderType
 {

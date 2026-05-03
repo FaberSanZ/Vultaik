@@ -108,12 +108,6 @@ public:
 
         auto view = registry.view<TransformComponent>();
 
-        //ApplyGravity(registry, time.FixedDeltaTime());
-		//ApplyGravityImpulse(registry, time.FixedDeltaTime());
-        //IntegratePositions(registry, time.FixedDeltaTime());
-
-
-
         ApplyGravityImpulse(registry, dt);
         DetectCollisions(registry);
         IntegratePositions(registry, dt);
