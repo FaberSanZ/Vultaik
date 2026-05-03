@@ -21,68 +21,94 @@ class PhysicsSystem
 public:
     void OnInitialize(entt::registry& registry)
     {
-        TransformComponent transform{};
-        transform.position = { 0.0f, 0.0f, 0.0f };
-        transform.scale = { 1.0f, 1.0f, 1.0f };
-        transform.rotation = { 0.0f, 0.0f, 0.0f };
+        // -------------------------
+        // Small dynamic sphere
+        // -------------------------
+        {
+            auto entity = registry.create();
 
-		MeshComponent mesh{};
-		mesh.shapeType = ShapeType::Sphere;
+            TransformComponent transform{};
+            transform.position = { 0.0f, 0.0f, 0.0f };
+            transform.scale = { 1.0f, 1.0f, 1.0f };
+            transform.rotation = { 0.0f, 0.0f, 0.0f };
 
-		MaterialComponent material{};
-		material.baseColor = { 255.0f, 255.0f, 255.0f };
-		material.metallic = 0.1f;
-		material.roughness = 0.5f;
-		material.ao = 1.0f;
-		material.textureId = 1;
+            MeshComponent mesh{};
+            mesh.shapeType = ShapeType::Sphere;
 
-        PhysicsBodyComponent body{};
-        body.type = PhysicsBodyType::Static;
-        body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+            MaterialComponent material{};
+            material.baseColor = { 255.0f, 80.0f, 80.0f };
+            material.metallic = 0.1f;
+            material.roughness = 0.5f;
+            material.ao = 1.0f;
+            material.textureId = 1;
 
-        SphereColliderComponent sphereCollider{};
-        sphereCollider.radius = 0.5f;
-        sphereCollider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
+            PhysicsBodyComponent body{};
+            body.type = PhysicsBodyType::Dynamic;
+            body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+            body.mass = 1.0f;
+            body.invMass = 1.0f / body.mass;
+            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+            body.useGravity = true;
 
+            SphereColliderComponent collider{};
+            collider.radius = 0.5f;
+            collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
 
-        auto entity = registry.create();
-        registry.emplace<TransformComponent>(entity, transform);
-        registry.emplace<MeshComponent>(entity, mesh);
-        registry.emplace<MaterialComponent>(entity, material);
-        registry.emplace<PhysicsBodyComponent>(entity, body);
-        registry.emplace<SphereColliderComponent>(entity, sphereCollider);
+            registry.emplace<TransformComponent>(entity, transform);
+            registry.emplace<MeshComponent>(entity, mesh);
+            registry.emplace<MaterialComponent>(entity, material);
+            registry.emplace<PhysicsBodyComponent>(entity, body);
+            registry.emplace<SphereColliderComponent>(entity, collider);
+        }
 
+        // -------------------------
+        // Big static sphere
+        // -------------------------
+        {
+            auto entity = registry.create();
 
+            TransformComponent transform{};
+            transform.position = { 0.0f, -3.5f, 0.0f };
+            transform.scale = { 6.0f, 6.0f, 6.0f };
+            transform.rotation = { 0.0f, 0.0f, 0.0f };
 
-        auto entity2 = registry.create();
-		body.type = PhysicsBodyType::Static;
-		transform.position = { 0.0f, -3.6f, 0.0f };
-		transform.scale = { 6.0f, 6.0f, 6.0f };
-        registry.emplace<TransformComponent>(entity2, transform);
-        registry.emplace<MeshComponent>(entity2, mesh);
-        registry.emplace<MaterialComponent>(entity2, material);
-        registry.emplace<PhysicsBodyComponent>(entity2, body);
-        registry.emplace<SphereColliderComponent>(entity2, sphereCollider);
+            MeshComponent mesh{};
+            mesh.shapeType = ShapeType::Sphere;
+
+            MaterialComponent material{};
+            material.baseColor = { 255.0f, 255.0f, 255.0f };
+            material.metallic = 0.1f;
+            material.roughness = 0.5f;
+            material.ao = 1.0f;
+            material.textureId = 1;
+
+            PhysicsBodyComponent body{};
+            body.type = PhysicsBodyType::Static;
+            body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+            body.mass = 0.0f;
+            body.invMass = 0.0f;
+            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+            body.useGravity = false;
+
+            SphereColliderComponent collider{};
+            collider.radius = 3.0f;
+            collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
+
+            registry.emplace<TransformComponent>(entity, transform);
+            registry.emplace<MeshComponent>(entity, mesh);
+            registry.emplace<MaterialComponent>(entity, material);
+            registry.emplace<PhysicsBodyComponent>(entity, body);
+            registry.emplace<SphereColliderComponent>(entity, collider);
+        }
     }
 
     void OnUpdate(entt::registry& registry, const GameTime& time)
     {
         auto view = registry.view<TransformComponent>();
 
-        for (auto [entity, transform] : view.each())
-        {
-            auto& transform = registry.get<TransformComponent>(entity);
-            auto& body = registry.get<PhysicsBodyComponent>(entity);
-            auto& collider = registry.get<SphereColliderComponent>(entity);
-
-            if (!body.enabled)
-                continue;
-
-			DirectX::XMFLOAT3 centerOfMassWorld = GameMath::GetCenterOfMassWorld(transform, body, collider);
-
-            ApplyGravity(registry, time.FixedDeltaTime());
-            IntegratePositions(registry, time.FixedDeltaTime());
-        }
+        //ApplyGravity(registry, time.FixedDeltaTime());
+		ApplyGravityImpulse(registry, time.FixedDeltaTime());
+        IntegratePositions(registry, time.FixedDeltaTime());
 
     }
 
@@ -90,6 +116,7 @@ public:
     {
 		//TODO: ImGui for physics system
 	}
+
 
 
 
@@ -111,13 +138,12 @@ public:
                 continue;
 
             // dv = a * dt
-            const DirectX::XMFLOAT3 deltaVelocity =
-                GameMath::Mul(gravity, dt);
+            const DirectX::XMFLOAT3 deltaVelocity = GameMath::Mul(gravity, dt);
 
-            body.linearVelocity =
-                GameMath::Add(body.linearVelocity, deltaVelocity);
+            body.linearVelocity = GameMath::Add(body.linearVelocity, deltaVelocity);
         }
     }
+
 
     void IntegratePositions(entt::registry& registry, float dt)
     {
@@ -135,9 +161,96 @@ public:
             const DirectX::XMFLOAT3 deltaPosition = GameMath::Mul(body.linearVelocity, dt);
 
             transform.position = GameMath::Add(transform.position, deltaPosition);
-
         }
     }
+
+
+
+    // -------------
+
+    void SetMass(PhysicsBodyComponent& body, float mass)
+    {
+        body.mass = std::max(mass, 0.0001f);
+
+        if (body.type == PhysicsBodyType::Static)
+        {
+            body.invMass = 0.0f;
+        }
+        else
+        {
+            body.invMass = 1.0f / body.mass;
+        }
+    }
+
+
+    void SetBodyType(PhysicsBodyComponent& body, PhysicsBodyType type)
+    {
+        body.type = type;
+
+        if (body.type == PhysicsBodyType::Static)
+        {
+            body.mass = 0.0f;
+            body.invMass = 0.0f;
+            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+        }
+        else
+        {
+            if (body.mass <= 0.0f)
+                body.mass = 1.0f;
+
+            body.invMass = 1.0f / body.mass;
+        }
+    }
+
+    void ApplyLinearImpulse(PhysicsBodyComponent& body, const DirectX::XMFLOAT3& impulse )
+    {
+        if (!body.enabled)
+            return;
+
+        if (body.type != PhysicsBodyType::Dynamic)
+            return;
+
+        if (body.invMass == 0.0f)
+            return;
+
+        // dv = J / m
+        // invMass = 1 / m:
+        // dv = J * invMass
+        DirectX::XMFLOAT3 deltaVelocity = GameMath::Mul(impulse, body.invMass);
+
+        body.linearVelocity = GameMath::Add(body.linearVelocity, deltaVelocity);
+    }
+
+
+    void ApplyGravityImpulse(entt::registry& registry, float dt)
+    {
+        auto view = registry.view<PhysicsBodyComponent>();
+
+        for (auto entity : view)
+        {
+            auto& body = view.get<PhysicsBodyComponent>(entity);
+
+            if (!body.enabled)
+                continue;
+
+            if (body.type != PhysicsBodyType::Dynamic)
+                continue;
+
+            if (!body.useGravity)
+                continue;
+
+            // F = m * g
+            const DirectX::XMFLOAT3 force = GameMath::Mul(gravity, body.mass);
+
+            // J = F * dt
+            const DirectX::XMFLOAT3 impulse = GameMath::Mul(force, dt);
+
+            ApplyLinearImpulse(body, impulse);
+        }
+    }
+
+
+
 
 
 	// TODO: move this to a config file or something
