@@ -21,31 +21,18 @@ struct TransformComponent
 enum class ShapeType
 {
 	Triangle,
-    Cuad,
-	Pentagon,
-	Hexagon,
-	Circle,
+    Plane,
     Cube,
     Sphere,
-    Plane,
-	Polygon,
     Null,
     Count
 };
 
-enum class MeshType
-{
-    Static,
-    Dynamic,
-    Kinematic,
-    Count
-};
 
 
 struct MeshComponent
 {
     ShapeType shapeType = ShapeType::Null;
-    MeshType meshType = MeshType::Static;
 };
 
 struct MaterialComponent
@@ -100,6 +87,10 @@ struct PhysicsBodyComponent
     PhysicsBodyType type = PhysicsBodyType::Static;
 
     DirectX::XMFLOAT4 orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+    DirectX::XMFLOAT3 linearVelocity = { 0.0f, 0.0f, 0.0f };
 
+
+    bool useGravity = true;
     bool enabled = true;
+
 };

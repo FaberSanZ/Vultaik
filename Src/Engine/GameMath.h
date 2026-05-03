@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include <DirectXMath.h>
+#include "Components.h"
 
 
 struct Float2
@@ -33,6 +34,69 @@ public:
 	static constexpr float PI2 = 6.283185307f;
 	static constexpr float PIDIV2 = 1.570796327f;
 	static constexpr float PIDIV4 = 0.785398163f;
+
+
+    static inline DirectX::XMVECTOR Load3(const DirectX::XMFLOAT3& v)
+    {
+        return DirectX::XMLoadFloat3(&v);
+    }
+
+    static inline DirectX::XMVECTOR LoadQuat(const DirectX::XMFLOAT4& q)
+    {
+        return DirectX::XMQuaternionNormalize(DirectX::XMLoadFloat4(&q));
+    }
+
+    static inline DirectX::XMFLOAT3 Store3(DirectX::FXMVECTOR v)
+    {
+        DirectX::XMFLOAT3 result{};
+        DirectX::XMStoreFloat3(&result, v);
+        return result;
+    }
+
+    static inline DirectX::XMFLOAT3 LocalToWorldPoint(const TransformComponent& transform, const PhysicsBodyComponent& body, const DirectX::XMFLOAT3& localPoint)
+    {
+        using namespace DirectX;
+
+        XMVECTOR position = XMLoadFloat3(&transform.position);
+        XMVECTOR orientation = LoadQuat(body.orientation);
+        XMVECTOR local = XMLoadFloat3(&localPoint);
+
+        XMVECTOR world = XMVector3Rotate(local, orientation) + position;
+
+        return Store3(world);
+    }
+
+    static inline DirectX::XMFLOAT3 WorldToLocalPoint(const TransformComponent& transform, const PhysicsBodyComponent& body, const DirectX::XMFLOAT3& worldPoint)
+    {
+        using namespace DirectX;
+
+        XMVECTOR position = XMLoadFloat3(&transform.position);
+        XMVECTOR orientation = LoadQuat(body.orientation);
+        XMVECTOR inverseOrientation = XMQuaternionConjugate(orientation);
+
+        XMVECTOR world = XMLoadFloat3(&worldPoint);
+        XMVECTOR local = XMVector3Rotate(world - position, inverseOrientation);
+
+        return Store3(local);
+    }
+
+    static inline DirectX::XMFLOAT3 GetCenterOfMassWorld(const TransformComponent& transform, const PhysicsBodyComponent& body, const SphereColliderComponent& collider)
+    {
+        return LocalToWorldPoint(transform, body, collider.centerOfMassLocal);
+    }
+
+
+    static inline DirectX::XMFLOAT3 Add(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
+    {
+        return { a.x + b.x, a.y + b.y,a.z + b.z };
+    }
+
+    static inline DirectX::XMFLOAT3 Mul(const DirectX::XMFLOAT3& v, float s)
+    {
+        return { v.x * s, v.y * s, v.z * s };
+    }
+
+
 };
 
 

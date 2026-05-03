@@ -28,11 +28,6 @@ public:
     uint32_t m_Height{};
 
     Render render{};
-    Mesh triangle{};
-    Mesh cuad{};
-    Mesh pentagon{};
-    Mesh hexagon{};
-    Mesh circle{};
     Mesh cube{};
     Mesh sphere{};
     Mesh plane{};
@@ -45,33 +40,23 @@ public:
 
         render.Initialize(hwnd, m_Width, m_Height);
 
-        triangle = GeneratePolygonMesh(0.65f, 3);
-        cuad = GeneratePolygonMesh(0.65f, 4);
-        pentagon = GeneratePolygonMesh(0.65f, 5);
-        hexagon = GeneratePolygonMesh(0.65f, 6);
-        circle = GeneratePolygonMesh(0.65f, 20);
         cube = GenerateCubeMesh(1.0f);
-        sphere = GenerateSphereMesh(0.6f, 20, 24);
+        sphere = GenerateSphereMesh(0.5f, 20, 24);
         plane = GeneratePlaneMesh(1.0f);
 
-        triangle.debugName = "Triangle";
-        cuad.debugName = "Quad";
-        pentagon.debugName = "Pentagon";
-        hexagon.debugName = "Hexagon";
-        circle.debugName = "Circle";
         cube.debugName = "Cube";
         sphere.debugName = "Sphere";
         plane.debugName = "Plane";
 
-        Scene3(registry);
+        //Scene3(registry);
         if (render.GetTextureCount() > 1)
             spawnTextureId = 1;
     }
 
-    void OnUpdate(entt::registry& registry, PhysicsSystem& physicsSystem, GameTime time)
+    void OnUpdate(entt::registry& registry, PhysicsSystem& physicsSystem, const GameTime& time)
     {
         UpdateCamera();
-        render.UpdateFrameStats(time.GetDeltaTime());
+        render.UpdateFrameStats(time.DeltaTime());
         Loop(registry, physicsSystem, time);
     }
 
@@ -82,7 +67,7 @@ public:
 
 private:
     entt::registry* m_Registry = nullptr;
-    float cameraDistance = 6.0f;
+    float cameraDistance = 15.0f;
     float cameraYaw = 0.55f;
     float cameraPitch = 0.25f;
     DirectX::XMFLOAT3 spawnPosition = { 0.0f, 0.0f, 0.0f };
@@ -94,35 +79,6 @@ private:
     int spawnTextureId = 0;
     entt::entity selectedEntity = entt::null;
 
-    Mesh GeneratePolygonMesh(float radius, uint32_t segmentCount)
-    {
-        std::vector<Vertex> vertices;
-        vertices.reserve(segmentCount + 1);
-
-        vertices.push_back({ { 0.0f, 0.0f, 0.0f }, { 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f } });
-
-        for (uint32_t i = 0; i <= segmentCount; ++i)
-        {
-            float angle = (2.0f * DirectX::XM_PI * i) / segmentCount;
-            float x = radius * std::cos(angle);
-            float y = radius * std::sin(angle);
-            float u = (x / (radius * 2.0f)) + 0.5f;
-            float v = (y / (radius * 2.0f)) + 0.5f;
-            vertices.push_back({ { x, y, 0.0f }, { u, v }, { 0.0f, 0.0f, 1.0f } });
-        }
-
-        std::vector<uint32_t> indices;
-        indices.reserve(segmentCount * 3);
-
-        for (uint32_t i = 0; i < segmentCount; ++i)
-        {
-            indices.push_back(0);
-            indices.push_back(i + 2);
-            indices.push_back(i + 1);
-        }
-
-        return render.CreateMesh(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size());
-    }
 
     Mesh GeneratePlaneMesh(float size)
     {
@@ -232,25 +188,11 @@ private:
         return render.CreateMesh(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size());
     }
 
-    void Scene3(entt::registry& registry)
-    {
-        SpawnShapeInternal(
-            registry,
-            ShapeType::Sphere,
-            { 0.0f, -0.2f, 0.0f },
-            { 1.0f, 1.0f, 1.0f },
-            { 0.0f, 0.0f, 0.0f },
-            { 0.20f, 0.45f, 0.95f },
-            0.9f,
-            0.18f,
-            1.0f,
-            1);
-    }
+
 
     void ResetScene(entt::registry& registry)
     {
         registry.clear();
-        Scene3(registry);
         if (render.GetTextureCount() > 1)
             spawnTextureId = 1;
     }
@@ -303,11 +245,6 @@ private:
         renderStats.shapeInstanceCounts.fill(0);
         renderStats.objectCount = 0;
 
-        std::vector<InstanceData> triangleInstances;
-        std::vector<InstanceData> cuadInstances;
-        std::vector<InstanceData> pentagonInstances;
-        std::vector<InstanceData> hexagonInstances;
-        std::vector<InstanceData> circleInstances;
         std::vector<InstanceData> cubeInstances;
         std::vector<InstanceData> sphereInstances;
         std::vector<InstanceData> planeInstances;
@@ -342,17 +279,24 @@ private:
                 DirectX::XMFLOAT4X4 worldMatrix{};
                 DirectX::XMStoreFloat4x4(&worldMatrix, world);
 
-                PushInstance(
-                    mesh.shapeType,
-                    InstanceData{ worldMatrix, baseColor, material },
-                    triangleInstances,
-                    cuadInstances,
-                    pentagonInstances,
-                    hexagonInstances,
-                    circleInstances,
-                    cubeInstances,
-                    sphereInstances,
-                    planeInstances);
+                switch (mesh.shapeType)
+                {
+                    case ShapeType::Plane:
+                        planeInstances.push_back({ worldMatrix, baseColor, material });
+						break;
+
+                    case ShapeType::Cube:
+                        cubeInstances.push_back({ worldMatrix, baseColor, material });
+                        break;
+
+
+                    case ShapeType::Sphere:
+                        sphereInstances.push_back({ worldMatrix, baseColor, material });
+                        break;
+
+                default:
+                    break;
+                }
 
                 const uint32_t shapeIndex = static_cast<uint32_t>(mesh.shapeType);
                 if (shapeIndex < renderStats.shapeInstanceCounts.size())
@@ -361,57 +305,9 @@ private:
             }
         }
 
-        render.UpdateInstanceBuffer(triangle, triangleInstances.empty() ? nullptr : triangleInstances.data(), static_cast<uint32_t>(triangleInstances.size()));
-        render.UpdateInstanceBuffer(cuad, cuadInstances.empty() ? nullptr : cuadInstances.data(), static_cast<uint32_t>(cuadInstances.size()));
-        render.UpdateInstanceBuffer(pentagon, pentagonInstances.empty() ? nullptr : pentagonInstances.data(), static_cast<uint32_t>(pentagonInstances.size()));
-        render.UpdateInstanceBuffer(hexagon, hexagonInstances.empty() ? nullptr : hexagonInstances.data(), static_cast<uint32_t>(hexagonInstances.size()));
-        render.UpdateInstanceBuffer(circle, circleInstances.empty() ? nullptr : circleInstances.data(), static_cast<uint32_t>(circleInstances.size()));
         render.UpdateInstanceBuffer(cube, cubeInstances.empty() ? nullptr : cubeInstances.data(), static_cast<uint32_t>(cubeInstances.size()));
         render.UpdateInstanceBuffer(sphere, sphereInstances.empty() ? nullptr : sphereInstances.data(), static_cast<uint32_t>(sphereInstances.size()));
         render.UpdateInstanceBuffer(plane, planeInstances.empty() ? nullptr : planeInstances.data(), static_cast<uint32_t>(planeInstances.size()));
-    }
-
-    void PushInstance(
-        ShapeType shape,
-        const InstanceData& instance,
-        std::vector<InstanceData>& triangleInstancing,
-        std::vector<InstanceData>& cuadInstancing,
-        std::vector<InstanceData>& pentagonInstancing,
-        std::vector<InstanceData>& hexagonInstancing,
-        std::vector<InstanceData>& circleInstancing,
-        std::vector<InstanceData>& cubeInstancing,
-        std::vector<InstanceData>& sphereInstancing,
-        std::vector<InstanceData>& planeInstancing)
-    {
-        switch (shape)
-        {
-        case ShapeType::Triangle:
-            triangleInstancing.push_back(instance);
-            break;
-        case ShapeType::Cuad:
-            cuadInstancing.push_back(instance);
-            break;
-        case ShapeType::Pentagon:
-            pentagonInstancing.push_back(instance);
-            break;
-        case ShapeType::Hexagon:
-            hexagonInstancing.push_back(instance);
-            break;
-        case ShapeType::Circle:
-            circleInstancing.push_back(instance);
-            break;
-        case ShapeType::Cube:
-            cubeInstancing.push_back(instance);
-            break;
-        case ShapeType::Sphere:
-            sphereInstancing.push_back(instance);
-            break;
-        case ShapeType::Plane:
-            planeInstancing.push_back(instance);
-            break;
-        default:
-            break;
-        }
     }
 
     void SpawnShape(entt::registry& registry, ShapeType shape)
@@ -449,11 +345,10 @@ private:
         transform.rotation = rotation;
         registry.emplace<TransformComponent>(entity, transform);
 
-        registry.emplace<MeshComponent>(entity, MeshComponent{ shape, MeshType::Kinematic });
+        registry.emplace<MeshComponent>(entity, MeshComponent{ shape });
 
         registry.emplace<MaterialComponent>(entity, MaterialComponent{ baseColor, metallic, roughness, ao, textureId });
 
-        // Física
         PhysicsBodyComponent body{};
         body.type = PhysicsBodyType::Dynamic;
         body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -619,11 +514,6 @@ private:
             };
 
             const auto& counts = stats.shapeInstanceCounts;
-            drawShapeRow("Triangle", counts[static_cast<uint32_t>(ShapeType::Triangle)]);
-            drawShapeRow("Quad", counts[static_cast<uint32_t>(ShapeType::Cuad)]);
-            drawShapeRow("Pentagon", counts[static_cast<uint32_t>(ShapeType::Pentagon)]);
-            drawShapeRow("Hexagon", counts[static_cast<uint32_t>(ShapeType::Hexagon)]);
-            drawShapeRow("Circle", counts[static_cast<uint32_t>(ShapeType::Circle)]);
             drawShapeRow("Cube", counts[static_cast<uint32_t>(ShapeType::Cube)]);
             drawShapeRow("Sphere", counts[static_cast<uint32_t>(ShapeType::Sphere)]);
             drawShapeRow("Plane", counts[static_cast<uint32_t>(ShapeType::Plane)]);
@@ -637,11 +527,6 @@ private:
     {
         switch (shape)
         {
-        case ShapeType::Triangle: return "Triangle";
-        case ShapeType::Cuad: return "Quad";
-        case ShapeType::Pentagon: return "Pentagon";
-        case ShapeType::Hexagon: return "Hexagon";
-        case ShapeType::Circle: return "Circle";
         case ShapeType::Cube: return "Cube";
         case ShapeType::Sphere: return "Sphere";
         case ShapeType::Plane: return "Plane";
@@ -662,11 +547,6 @@ private:
 
         if (render.BeginGame())
         {
-            triangle.Draw(render.commandList);
-            cuad.Draw(render.commandList);
-            pentagon.Draw(render.commandList);
-            hexagon.Draw(render.commandList);
-            circle.Draw(render.commandList);
             cube.Draw(render.commandList);
             sphere.Draw(render.commandList);
             plane.Draw(render.commandList);
@@ -682,7 +562,18 @@ class MyGame
 public:
     void Run()
     {
-        gameTime.OnInitialize();
+
+        GameTime::Config config;
+
+        config.fixedDeltaTime = 1.0 / 60.0;
+        config.maxDeltaTime = 0.25;
+        config.maxPhysicsStepsPerFrame = 8;
+        config.timeScale = 1.0;
+        config.clearPhysicsAccumulatorOnReset = true;
+
+        gameTime.Reset();
+        gameTime.SetConfig(config);
+
         gameWindow.OnInitialize();
 
         physicsSystem.OnInitialize(registry);
@@ -703,11 +594,16 @@ private:
     {
         while (gameWindow.IsRunning())
         {
-            physicsSystem.OnUpdate(registry, gameTime);
+            gameTime.OnUpdate();
+            while (gameTime.UpdatePhysics())
+            {
+                //const double fixedDt = gameTime.FixedDeltaTime();
+
+                physicsSystem.OnUpdate(registry, gameTime);
+            }
             renderSystem.OnUpdate(registry, physicsSystem, gameTime);
 
             gameWindow.PumpMessages();
-            gameTime.OnUpdate();
         }
     }
 
