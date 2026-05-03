@@ -51,7 +51,7 @@ public:
             body.useGravity = true;
 
             SphereColliderComponent collider{};
-            collider.radius = 0.5f;
+            collider.radius = 1.0f;
             collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
 
             registry.emplace<TransformComponent>(entity, transform);
@@ -68,7 +68,7 @@ public:
             auto entity = registry.create();
 
             TransformComponent transform{};
-            transform.position = { 0.0f, -3.5f, 0.0f };
+            transform.position = { 0.0f, -10.5f, 0.0f };
             transform.scale = { 6.0f, 6.0f, 6.0f };
             transform.rotation = { 0.0f, 0.0f, 0.0f };
 
@@ -80,7 +80,7 @@ public:
             material.metallic = 0.1f;
             material.roughness = 0.5f;
             material.ao = 1.0f;
-            material.textureId = 1;
+            material.textureId = 2;
 
             PhysicsBodyComponent body{};
             body.type = PhysicsBodyType::Static;
@@ -91,7 +91,7 @@ public:
             body.useGravity = false;
 
             SphereColliderComponent collider{};
-            collider.radius = 3.0f;
+            collider.radius = 6.0f;
             collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
 
             registry.emplace<TransformComponent>(entity, transform);
@@ -104,12 +104,19 @@ public:
 
     void OnUpdate(entt::registry& registry, const GameTime& time)
     {
+        const float dt = time.FixedDeltaTime();
+
         auto view = registry.view<TransformComponent>();
 
         //ApplyGravity(registry, time.FixedDeltaTime());
-		ApplyGravityImpulse(registry, time.FixedDeltaTime());
-        IntegratePositions(registry, time.FixedDeltaTime());
+		//ApplyGravityImpulse(registry, time.FixedDeltaTime());
+        //IntegratePositions(registry, time.FixedDeltaTime());
 
+
+
+        ApplyGravityImpulse(registry, dt);
+        DetectCollisions(registry);
+        IntegratePositions(registry, dt);
     }
 
     void OnImGui(entt::registry& registry)
@@ -250,6 +257,70 @@ public:
     }
 
 
+
+    bool IntersectSphereSphere(const TransformComponent& transformA, const SphereColliderComponent& sphereA, const TransformComponent& transformB, const SphereColliderComponent& sphereB)
+    {
+        const DirectX::XMFLOAT3 ab = GameMath::Sub(transformB.position, transformA.position);
+
+        const float radiusA = sphereA.radius;
+        const float radiusB = sphereB.radius;
+
+        const float radiusSum = radiusA + radiusB;
+        const float distanceSq = GameMath::LengthSq(ab);
+
+        return distanceSq <= radiusSum * radiusSum;
+    }
+
+    void StopBody(PhysicsBodyComponent& body)
+    {
+        if (body.type != PhysicsBodyType::Dynamic)
+            return;
+
+        body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+    }
+
+
+    void DetectCollisions(entt::registry& registry)
+    {
+        auto view = registry.view<TransformComponent,PhysicsBodyComponent,SphereColliderComponent>();
+
+        std::vector<entt::entity> entities;
+        entities.reserve(view.size_hint());
+
+        for (auto [entity, transform, body, sphere] : view.each())
+        {
+            entities.push_back(entity);
+        }
+
+        for (size_t i = 0; i < entities.size(); ++i)
+        {
+            for (size_t j = i + 1; j < entities.size(); ++j)
+            {
+                entt::entity entityA = entities[i];
+                entt::entity entityB = entities[j];
+
+                auto& transformA = registry.get<TransformComponent>(entityA);
+                auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
+                auto& sphereA = registry.get<SphereColliderComponent>(entityA);
+
+                auto& transformB = registry.get<TransformComponent>(entityB);
+                auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
+                auto& sphereB = registry.get<SphereColliderComponent>(entityB);
+
+                if (!bodyA.enabled || !bodyB.enabled)
+                    continue;
+
+                if (bodyA.invMass == 0.0f && bodyB.invMass == 0.0f)
+                    continue;
+
+                if (IntersectSphereSphere(transformA, sphereA, transformB, sphereB))
+                {
+                    StopBody(bodyA);
+                    StopBody(bodyB);
+                }
+            }
+        }
+    }
 
 
 

@@ -97,6 +97,27 @@ public:
     }
 
 
+    static inline DirectX::XMFLOAT3 Sub(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
+    {
+        return { a.x - b.x,a.y - b.y,a.z - b.z };
+    }
+
+    static inline float Dot(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
+    {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+
+    static inline float LengthSq(const DirectX::XMFLOAT3& v)
+    {
+        return Dot(v, v);
+    }
+
+    static inline float Max3(float x, float y, float z)
+    {
+        return std::max(x, std::max(y, z));
+    }
+
+
 };
 
 

@@ -41,7 +41,7 @@ public:
         render.Initialize(hwnd, m_Width, m_Height);
 
         cube = GenerateCubeMesh(1.0f);
-        sphere = GenerateSphereMesh(0.5f, 20, 24);
+        sphere = GenerateSphereMesh(1.0f, 20, 24);
         plane = GeneratePlaneMesh(1.0f);
 
         cube.debugName = "Cube";
@@ -67,9 +67,9 @@ public:
 
 private:
     entt::registry* m_Registry = nullptr;
-    float cameraDistance = 15.0f;
+    float cameraDistance = 25.0f;
     float cameraYaw = 0.55f;
-    float cameraPitch = 0.25f;
+    float cameraPitch = 0.1f;
     DirectX::XMFLOAT3 spawnPosition = { 0.0f, 0.0f, 0.0f };
     DirectX::XMFLOAT3 spawnScale = { 1.0f, 1.0f, 1.0f };
     DirectX::XMFLOAT3 spawnRotation = { 0.0f, 0.0f, 0.0f };
@@ -356,7 +356,7 @@ private:
         registry.emplace<PhysicsBodyComponent>(entity, body);
 
         SphereColliderComponent sphereCollider{};
-        sphereCollider.radius = 0.5f;
+        sphereCollider.radius = 1.0f;
         sphereCollider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
 
         registry.emplace<SphereColliderComponent>(entity, sphereCollider);
