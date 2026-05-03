@@ -147,8 +147,82 @@ public:
 
     void OnImGui(entt::registry& registry)
     {
-		//TODO: ImGui for physics system
-	}
+        ImGui::Begin("Physics Debug");
+
+        ImGui::DragFloat3("Gravity", &gravity.x, 0.05f, -50.0f, 50.0f);
+        ImGui::DragFloat("Rest Threshold", &restingVelocityThreshold, 0.01f, 0.0f, 5.0f);
+
+        ImGui::SeparatorText("Chapter 13 - General Impulses");
+
+        if (ImGui::Button("Apply Center Impulse"))
+        {
+            ApplyDebugCenterImpulse(registry);
+        }
+
+        if (ImGui::Button("Apply Side Impulse"))
+        {
+            ApplyDebugSideImpulse(registry);
+        }
+
+        ImGui::SeparatorText("First Dynamic Body");
+
+        entt::entity entity = FindFirstDynamicSphere(registry);
+
+        if (entity != entt::null)
+        {
+            auto& transform = registry.get<TransformComponent>(entity);
+            auto& body = registry.get<PhysicsBodyComponent>(entity);
+            auto& sphere = registry.get<SphereColliderComponent>(entity);
+
+            ImGui::Text(
+                "Position: %.3f %.3f %.3f",
+                transform.position.x,
+                transform.position.y,
+                transform.position.z
+            );
+
+            ImGui::Text(
+                "Linear Velocity: %.3f %.3f %.3f",
+                body.linearVelocity.x,
+                body.linearVelocity.y,
+                body.linearVelocity.z
+            );
+
+            ImGui::Text(
+                "Angular Velocity: %.3f %.3f %.3f",
+                body.angularVelocity.x,
+                body.angularVelocity.y,
+                body.angularVelocity.z
+            );
+
+            ImGui::Text(
+                "Inv Inertia: %.3f %.3f %.3f",
+                body.invInertiaLocal.x,
+                body.invInertiaLocal.y,
+                body.invInertiaLocal.z
+            );
+
+            ImGui::Text("Mass: %.3f", body.mass);
+            ImGui::Text("Inv Mass: %.3f", body.invMass);
+            ImGui::Text("Radius: %.3f", sphere.radius);
+
+            if (ImGui::Button("Stop Linear Velocity"))
+            {
+                body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+            }
+
+            if (ImGui::Button("Stop Angular Velocity"))
+            {
+                body.angularVelocity = { 0.0f, 0.0f, 0.0f };
+            }
+        }
+        else
+        {
+            ImGui::TextUnformatted("No dynamic sphere found.");
+        }
+
+        ImGui::End();
+    }
 
 
 
@@ -476,10 +550,6 @@ public:
             bodyB.linearVelocity = GameMath::Add(bodyB.linearVelocity, deltaVelocityB);
         }
 
-        //if (std::abs(contactVelocity) < restingVelocityThreshold)
-        //{
-        //    restitution = 0.0f;
-        //}
     }
 
 
@@ -660,6 +730,141 @@ public:
             body.massPropertiesDirty = false;
         }
     }
+
+    DirectX::XMFLOAT3 GetCenterOfMassWorld(const TransformComponent& transform,const PhysicsBodyComponent& body,const SphereColliderComponent& collider)
+    {
+        DirectX::XMVECTOR localCenter = DirectX::XMLoadFloat3(&collider.centerOfMassLocal);
+        DirectX::XMVECTOR orientation = DirectX::XMLoadFloat4(&body.orientation);
+
+        orientation = DirectX::XMQuaternionNormalize(orientation);
+
+        DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&transform.position);
+        DirectX::XMVECTOR rotatedCenter = DirectX::XMVector3Rotate(localCenter, orientation);
+        DirectX::XMVECTOR worldCenter = DirectX::XMVectorAdd(rotatedCenter, position);
+
+        DirectX::XMFLOAT3 result{};
+        DirectX::XMStoreFloat3(&result, worldCenter);
+
+        return result;
+    }
+
+
+    void ApplyImpulseAtPoint(PhysicsBodyComponent& body, const DirectX::XMFLOAT3& centerOfMassWorld, const DirectX::XMFLOAT3& pointWorld, const DirectX::XMFLOAT3& impulse)
+    {
+        if (!body.enabled)
+            return;
+
+        if (body.type != PhysicsBodyType::Dynamic)
+            return;
+
+
+        // v += J * invMass
+        ApplyLinearImpulse(body, impulse);
+
+
+        const DirectX::XMFLOAT3 r = GameMath::Sub(pointWorld, centerOfMassWorld);
+
+        // Jangular = r x Jlinear
+        const DirectX::XMFLOAT3 angularImpulse = GameMath::Cross(r, impulse);
+
+        ApplyAngularImpulse(body, angularImpulse);
+    }
+
+
+
+    void ApplyImpulseAtPoint(entt::registry& registry, entt::entity entity, const DirectX::XMFLOAT3& pointWorld, const DirectX::XMFLOAT3& impulse)
+    {
+        if (!registry.valid(entity))
+            return;
+
+        if (!registry.all_of<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>(entity))
+            return;
+
+        auto& transform = registry.get<TransformComponent>(entity);
+        auto& body = registry.get<PhysicsBodyComponent>(entity);
+        auto& collider = registry.get<SphereColliderComponent>(entity);
+
+        const DirectX::XMFLOAT3 centerOfMassWorld =GetCenterOfMassWorld(transform, body, collider);
+
+        ApplyImpulseAtPoint(body, centerOfMassWorld, pointWorld, impulse);
+    }
+
+
+    entt::entity FindFirstDynamicSphere(entt::registry& registry)
+    {
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
+
+        for (auto [entity, transform, body, sphere] : view.each())
+        {
+            if (!body.enabled)
+                continue;
+
+            if (body.type != PhysicsBodyType::Dynamic)
+                continue;
+
+            return entity;
+        }
+
+        return entt::null;
+    }
+
+
+    void ApplyDebugCenterImpulse(entt::registry& registry)
+    {
+        entt::entity entity = FindFirstDynamicSphere(registry);
+
+        if (entity == entt::null)
+            return;
+
+        auto& transform = registry.get<TransformComponent>(entity);
+
+        const DirectX::XMFLOAT3 pointWorld =
+        {
+            transform.position.x,
+            transform.position.y,
+            transform.position.z
+        };
+
+        const DirectX::XMFLOAT3 impulse =
+        {
+            0.0f,
+            8.0f,
+            0.0f
+        };
+
+        ApplyImpulseAtPoint(registry, entity, pointWorld, impulse);
+    }
+
+    void ApplyDebugSideImpulse(entt::registry& registry)
+    {
+        entt::entity entity = FindFirstDynamicSphere(registry);
+
+        if (entity == entt::null)
+            return;
+
+        auto& transform = registry.get<TransformComponent>(entity);
+        auto& sphere = registry.get<SphereColliderComponent>(entity);
+
+        const float radius = sphere.radius;
+
+        const DirectX::XMFLOAT3 pointWorld =
+        {
+            transform.position.x + radius,
+            transform.position.y,
+            transform.position.z
+        };
+
+        const DirectX::XMFLOAT3 impulse =
+        {
+            0.0f,
+            8.0f,
+            0.0f
+        };
+
+        ApplyImpulseAtPoint(registry, entity, pointWorld, impulse);
+    }
+
+
 
 
 	// TODO: move this to a config file or something
