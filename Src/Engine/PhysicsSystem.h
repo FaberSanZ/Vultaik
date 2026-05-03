@@ -16,49 +16,68 @@
 #include "GameMath.h"
 #include "entt.hpp"
 
+
+
+// TODO: move this to a collision system or something
+struct Contact
+{
+    entt::entity entityA = entt::null;
+    entt::entity entityB = entt::null;
+
+    DirectX::XMFLOAT3 pointOnAWorld = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 pointOnBWorld = { 0.0f, 0.0f, 0.0f };
+
+    // Normal desde A hacia B
+    DirectX::XMFLOAT3 normal = { 0.0f, 1.0f, 0.0f };
+
+    // Negativo cuando están penetrando
+    float separationDistance = 0.0f;
+};
+
 class PhysicsSystem
 {
 public:
+
     void OnInitialize(entt::registry& registry)
     {
         // -------------------------
         // Small dynamic sphere
         // -------------------------
         {
-            auto entity = registry.create();
+            //auto entity = registry.create();
 
-            TransformComponent transform{};
-            transform.position = { 0.0f, 0.0f, 0.0f };
-            transform.scale = { 1.0f, 1.0f, 1.0f };
-            transform.rotation = { 0.0f, 0.0f, 0.0f };
+            //TransformComponent transform{};
+            //transform.position = { 0.0f, 0.0f, 0.0f };
+            //transform.scale = { 1.0f, 1.0f, 1.0f };
+            //transform.rotation = { 0.0f, 0.0f, 0.0f };
 
-            MeshComponent mesh{};
-            mesh.shapeType = ShapeType::Sphere;
+            //MeshComponent mesh{};
+            //mesh.shapeType = ShapeType::Sphere;
 
-            MaterialComponent material{};
-            material.baseColor = { 255.0f, 80.0f, 80.0f };
-            material.metallic = 0.1f;
-            material.roughness = 0.5f;
-            material.ao = 1.0f;
-            material.textureId = 1;
+            //MaterialComponent material{};
+            //material.baseColor = { 255.0f, 80.0f, 80.0f };
+            //material.metallic = 0.1f;
+            //material.roughness = 0.5f;
+            //material.ao = 1.0f;
+            //material.textureId = 1;
 
-            PhysicsBodyComponent body{};
-            body.type = PhysicsBodyType::Dynamic;
-            body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
-            body.mass = 1.0f;
-            body.invMass = 1.0f / body.mass;
-            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
-            body.useGravity = true;
+            //PhysicsBodyComponent body{};
+            //body.type = PhysicsBodyType::Dynamic;
+            //body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+            //body.mass = 1.0f;
+            //body.invMass = 1.0f / body.mass;
+            //body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+            //body.useGravity = true;
 
-            SphereColliderComponent collider{};
-            collider.radius = 1.0f;
-            collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
+            //SphereColliderComponent collider{};
+            //collider.radius = 1.0f;
+            //collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
 
-            registry.emplace<TransformComponent>(entity, transform);
-            registry.emplace<MeshComponent>(entity, mesh);
-            registry.emplace<MaterialComponent>(entity, material);
-            registry.emplace<PhysicsBodyComponent>(entity, body);
-            registry.emplace<SphereColliderComponent>(entity, collider);
+            //registry.emplace<TransformComponent>(entity, transform);
+            //registry.emplace<MeshComponent>(entity, mesh);
+            //registry.emplace<MaterialComponent>(entity, material);
+            //registry.emplace<PhysicsBodyComponent>(entity, body);
+            //registry.emplace<SphereColliderComponent>(entity, collider);
         }
 
         // -------------------------
@@ -106,11 +125,9 @@ public:
     {
         const float dt = time.FixedDeltaTime();
 
-        auto view = registry.view<TransformComponent>();
-
         ApplyGravityImpulse(registry, dt);
-        DetectCollisions(registry);
         IntegratePositions(registry, dt);
+        SolveContacts(registry);
     }
 
     void OnImGui(entt::registry& registry)
@@ -252,18 +269,46 @@ public:
 
 
 
-    bool IntersectSphereSphere(const TransformComponent& transformA, const SphereColliderComponent& sphereA, const TransformComponent& transformB, const SphereColliderComponent& sphereB)
+    bool IntersectSphereSphere(
+        entt::entity entityA,
+        entt::entity entityB,
+        const TransformComponent& transformA,
+        const SphereColliderComponent& sphereA,
+        const TransformComponent& transformB,
+        const SphereColliderComponent& sphereB,
+        Contact& contact
+    )
     {
-        const DirectX::XMFLOAT3 ab = GameMath::Sub(transformB.position, transformA.position);
+        const DirectX::XMFLOAT3 ab =
+            GameMath::Sub(transformB.position, transformA.position);
 
-        const float radiusA = sphereA.radius;
+        const float distance = GameMath::Length(ab);
+
+        const DirectX::XMFLOAT3 normal =
+            distance > 0.00001f
+            ? GameMath::Div(ab, distance)
+            : DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
+
+        const float radiusA =  sphereA.radius;
         const float radiusB = sphereB.radius;
 
         const float radiusSum = radiusA + radiusB;
-        const float distanceSq = GameMath::LengthSq(ab);
 
-        return distanceSq <= radiusSum * radiusSum;
+        contact.entityA = entityA;
+        contact.entityB = entityB;
+        contact.normal = normal;
+
+        contact.pointOnAWorld =
+            GameMath::Add(transformA.position, GameMath::Mul(normal, radiusA));
+
+        contact.pointOnBWorld =
+            GameMath::Sub(transformB.position, GameMath::Mul(normal, radiusB));
+
+        contact.separationDistance = distance - radiusSum;
+
+        return contact.separationDistance <= 0.0f;
     }
+
 
     void StopBody(PhysicsBodyComponent& body)
     {
@@ -274,9 +319,13 @@ public:
     }
 
 
-    void DetectCollisions(entt::registry& registry)
+    void DetectAndResolveCollisions(entt::registry& registry)
     {
-        auto view = registry.view<TransformComponent,PhysicsBodyComponent,SphereColliderComponent>();
+        auto view = registry.view<
+            TransformComponent,
+            PhysicsBodyComponent,
+            SphereColliderComponent
+        >();
 
         std::vector<entt::entity> entities;
         entities.reserve(view.size_hint());
@@ -285,6 +334,8 @@ public:
         {
             entities.push_back(entity);
         }
+
+        std::vector<Contact> contacts;
 
         for (size_t i = 0; i < entities.size(); ++i)
         {
@@ -307,16 +358,81 @@ public:
                 if (bodyA.invMass == 0.0f && bodyB.invMass == 0.0f)
                     continue;
 
-                if (IntersectSphereSphere(transformA, sphereA, transformB, sphereB))
+                Contact contact{};
+
+                if (IntersectSphereSphere(
+                    entityA,
+                    entityB,
+                    transformA,
+                    sphereA,
+                    transformB,
+                    sphereB,
+                    contact))
                 {
-                    StopBody(bodyA);
-                    StopBody(bodyB);
+                    contacts.push_back(contact);
                 }
             }
+        }
+
+        for (const Contact& contact : contacts)
+        {
+            ResolveContactProjection(registry, contact);
         }
     }
 
 
+    void ResolveContactProjection(entt::registry& registry, const Contact& contact)
+    {
+        auto& transformA = registry.get<TransformComponent>(contact.entityA);
+        auto& bodyA = registry.get<PhysicsBodyComponent>(contact.entityA);
+
+        auto& transformB = registry.get<TransformComponent>(contact.entityB);
+        auto& bodyB = registry.get<PhysicsBodyComponent>(contact.entityB);
+
+        if (contact.separationDistance >= 0.0f)
+            return;
+
+        const float invMassA = bodyA.invMass;
+        const float invMassB = bodyB.invMass;
+        const float invMassSum = invMassA + invMassB;
+
+        if (invMassSum <= 0.0f)
+            return;
+
+        const float penetrationDepth = -contact.separationDistance;
+
+        const DirectX::XMFLOAT3 correction =
+            GameMath::Mul(contact.normal, penetrationDepth);
+
+        const DirectX::XMFLOAT3 correctionA =
+            GameMath::Mul(correction, invMassA / invMassSum);
+
+        const DirectX::XMFLOAT3 correctionB =
+            GameMath::Mul(correction, invMassB / invMassSum);
+
+        if (bodyA.type == PhysicsBodyType::Dynamic)
+        {
+            transformA.position = GameMath::Sub(transformA.position, correctionA);
+            bodyA.linearVelocity = { 0.0f, 0.0f, 0.0f };
+        }
+
+        if (bodyB.type == PhysicsBodyType::Dynamic)
+        {
+            transformB.position = GameMath::Add(transformB.position, correctionB);
+            bodyB.linearVelocity = { 0.0f, 0.0f, 0.0f };
+        }
+    }
+
+
+    void SolveContacts(entt::registry& registry)
+    {
+        constexpr int solverIterations = 4;
+
+        for (int i = 0; i < solverIterations; ++i)
+        {
+            DetectAndResolveCollisions(registry);
+        }
+    }
 
 	// TODO: move this to a config file or something
     DirectX::XMFLOAT3 gravity = { 0.0f, -1.0f, 0.0f };

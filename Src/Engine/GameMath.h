@@ -118,6 +118,27 @@ public:
     }
 
 
+    static inline float Length(const DirectX::XMFLOAT3& v)
+    {
+        return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    }
+
+    static inline DirectX::XMFLOAT3 Div(const DirectX::XMFLOAT3& v, float s)
+    {
+        return { v.x / s, v.y / s, v.z / s };
+    }
+
+    static inline DirectX::XMFLOAT3 Normalize(const DirectX::XMFLOAT3& v)
+    {
+        const float len = Length(v);
+
+        if (len <= 0.00001f)
+            return { 0.0f, 1.0f, 0.0f };
+
+        return Div(v, len);
+    }
+
+
 };
 
 
