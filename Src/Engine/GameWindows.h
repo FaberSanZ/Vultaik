@@ -484,7 +484,7 @@ public:
         RegisterClass(&wc);
 
         hwnd = CreateWindow(wc.lpszClassName, L"My game", WS_OVERLAPPEDWINDOW,
-            CW_USEDEFAULT, CW_USEDEFAULT, 1200 + 400, 820 + 180, nullptr, nullptr, wc.hInstance, nullptr);
+            CW_USEDEFAULT, CW_USEDEFAULT, 1200 * 2, 820 + 180, nullptr, nullptr, wc.hInstance, nullptr);
 
         ShowWindow(hwnd, SW_SHOW);
 

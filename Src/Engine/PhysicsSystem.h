@@ -42,21 +42,21 @@ public:
 
     void OnImGui(entt::registry& registry)
     {
-        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
-        for (auto entity : view)
-        {
-            auto& transform = registry.get<TransformComponent>(entity);
-            auto& body = registry.get<PhysicsBodyComponent>(entity);
-            auto& collider = registry.get<SphereColliderComponent>(entity);
+  //      auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
+  //      for (auto entity : view)
+  //      {
+  //          auto& transform = registry.get<TransformComponent>(entity);
+  //          auto& body = registry.get<PhysicsBodyComponent>(entity);
+  //          auto& collider = registry.get<SphereColliderComponent>(entity);
 
-            ImGui::PushID(static_cast<int>(entity));
-            ImGui::Text("Entity %d", static_cast<int>(entity));
-            ImGui::DragFloat3("Position", &transform.position.x, 0.1f);
-            ImGui::DragFloat4("Orientation (Quaternion)", &body.orientation.x, 0.1f);
-            ImGui::DragFloat("Radius", &collider.radius, 0.1f);
-            ImGui::Separator();
-            ImGui::PopID();
-		}
+  //          ImGui::PushID(static_cast<int>(entity));
+  //          ImGui::Text("Entity %d", static_cast<int>(entity));
+  //          ImGui::DragFloat3("Position", &transform.position.x, 0.1f);
+  //          ImGui::DragFloat4("Orientation (Quaternion)", &body.orientation.x, 0.1f);
+  //          ImGui::DragFloat("Radius", &collider.radius, 0.1f);
+  //          ImGui::Separator();
+  //          ImGui::PopID();
+		//}
 	}
 
 

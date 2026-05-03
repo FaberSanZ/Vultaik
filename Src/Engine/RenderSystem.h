@@ -36,7 +36,6 @@ public:
     Mesh cube{};
     Mesh sphere{};
     Mesh plane{};
-    std::vector<RaytracingObject> m_SceneObjects;
 
     void OnInitialize(entt::registry& registry, HWND hwnd, uint32_t width, uint32_t height)
     {
@@ -300,7 +299,18 @@ private:
 
     void UpdateMeshes(entt::registry& registry, GameTime time)
     {
-        m_SceneObjects.clear();
+        auto& renderStats = render.GetRenderStats();
+        renderStats.shapeInstanceCounts.fill(0);
+        renderStats.objectCount = 0;
+
+        std::vector<InstanceData> triangleInstances;
+        std::vector<InstanceData> cuadInstances;
+        std::vector<InstanceData> pentagonInstances;
+        std::vector<InstanceData> hexagonInstances;
+        std::vector<InstanceData> circleInstances;
+        std::vector<InstanceData> cubeInstances;
+        std::vector<InstanceData> sphereInstances;
+        std::vector<InstanceData> planeInstances;
 
         auto view_mesh = registry.view<MeshComponent>();
 
@@ -331,12 +341,34 @@ private:
                 DirectX::XMMATRIX world = BuildWorldMatrix(transform.position, transform.rotation, transform.scale);
                 DirectX::XMFLOAT4X4 worldMatrix{};
                 DirectX::XMStoreFloat4x4(&worldMatrix, world);
-                RaytracingObject object{};
-                object.shapeType = mesh.shapeType;
-                object.instance = InstanceData{ worldMatrix, baseColor, material };
-                m_SceneObjects.push_back(object);
+
+                PushInstance(
+                    mesh.shapeType,
+                    InstanceData{ worldMatrix, baseColor, material },
+                    triangleInstances,
+                    cuadInstances,
+                    pentagonInstances,
+                    hexagonInstances,
+                    circleInstances,
+                    cubeInstances,
+                    sphereInstances,
+                    planeInstances);
+
+                const uint32_t shapeIndex = static_cast<uint32_t>(mesh.shapeType);
+                if (shapeIndex < renderStats.shapeInstanceCounts.size())
+                    ++renderStats.shapeInstanceCounts[shapeIndex];
+                ++renderStats.objectCount;
             }
         }
+
+        render.UpdateInstanceBuffer(triangle, triangleInstances.empty() ? nullptr : triangleInstances.data(), static_cast<uint32_t>(triangleInstances.size()));
+        render.UpdateInstanceBuffer(cuad, cuadInstances.empty() ? nullptr : cuadInstances.data(), static_cast<uint32_t>(cuadInstances.size()));
+        render.UpdateInstanceBuffer(pentagon, pentagonInstances.empty() ? nullptr : pentagonInstances.data(), static_cast<uint32_t>(pentagonInstances.size()));
+        render.UpdateInstanceBuffer(hexagon, hexagonInstances.empty() ? nullptr : hexagonInstances.data(), static_cast<uint32_t>(hexagonInstances.size()));
+        render.UpdateInstanceBuffer(circle, circleInstances.empty() ? nullptr : circleInstances.data(), static_cast<uint32_t>(circleInstances.size()));
+        render.UpdateInstanceBuffer(cube, cubeInstances.empty() ? nullptr : cubeInstances.data(), static_cast<uint32_t>(cubeInstances.size()));
+        render.UpdateInstanceBuffer(sphere, sphereInstances.empty() ? nullptr : sphereInstances.data(), static_cast<uint32_t>(sphereInstances.size()));
+        render.UpdateInstanceBuffer(plane, planeInstances.empty() ? nullptr : planeInstances.data(), static_cast<uint32_t>(planeInstances.size()));
     }
 
     void PushInstance(
@@ -507,7 +539,7 @@ private:
         auto selectableView = registry.view<MeshComponent, TransformComponent>();
         std::vector<entt::entity> selectableEntities;
         selectableEntities.reserve(selectableView.size_hint());
-        for (auto entity : selectableView)
+        for (auto [entity, mesh, transform] : selectableView.each())
             selectableEntities.push_back(entity);
 
         auto entityLabel = [&](entt::entity entity) -> std::string
@@ -562,21 +594,12 @@ private:
 
         ImGui::End();
 
-        const RenderStats& stats = render.GetRenderStats();
-        const std::vector<BLASStats>& blasStats = render.GetBLASStats();
-
         ImGui::Begin("Render Statistics", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
+        const RenderStats& stats = render.GetRenderStats();
         ImGui::Text("FPS: %.1f", stats.fps);
         ImGui::Text("Frame: %.3f ms", stats.frameTimeMs);
         ImGui::Separator();
         ImGui::Text("Objects: %u", stats.objectCount);
-        ImGui::Text("BLAS count: %u", stats.blasCount);
-        ImGui::Text("BLAS total: %.3f ms", stats.blasBuildTotalMs);
-        ImGui::Text("BLAS build: %.3f ms", stats.blasBuildTotalMs);
-        ImGui::Text("TLAS build: %.3f ms", stats.tlasBuildMs);
-        ImGui::Text("Ray dispatch: %.3f ms", stats.rayDispatchMs);
-        ImGui::Text("Upload: %.3f ms", stats.uploadMs);
-        ImGui::Text("Present: %.3f ms", stats.presentMs);
         ImGui::Separator();
 
         ImGui::TextUnformatted("Scene instances");
@@ -607,47 +630,6 @@ private:
             ImGui::EndTable();
         }
 
-        ImGui::Separator();
-
-        if (ImGui::BeginTable("BLASStatsTable", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
-        {
-            ImGui::TableSetupColumn("Name");
-            ImGui::TableSetupColumn("Tris");
-            ImGui::TableSetupColumn("Geom");
-            ImGui::TableSetupColumn("Result KB");
-            ImGui::TableSetupColumn("Scratch KB");
-            ImGui::TableSetupColumn("Build ms");
-            ImGui::TableSetupColumn("Flags");
-            ImGui::TableHeadersRow();
-
-            for (const auto& blas : blasStats)
-            {
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::TextUnformatted(blas.name.c_str());
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%u", blas.triangleCount);
-                ImGui::TableSetColumnIndex(2);
-                ImGui::Text("%u", blas.geometryCount);
-                ImGui::TableSetColumnIndex(3);
-                ImGui::Text("%.1f", static_cast<double>(blas.resultSizeBytes) / 1024.0);
-                ImGui::TableSetColumnIndex(4);
-                ImGui::Text("%.1f", static_cast<double>(blas.scratchSizeBytes) / 1024.0);
-                ImGui::TableSetColumnIndex(5);
-                ImGui::Text("%.3f", blas.buildTimeMs);
-                ImGui::TableSetColumnIndex(6);
-                std::string flagsText;
-                flagsText += blas.allowCompaction ? "C " : "";
-                flagsText += blas.allowUpdate ? "U " : "";
-                flagsText += blas.preferFastTrace ? "FT " : "";
-                flagsText += blas.preferFastBuild ? "FB " : "";
-                if (flagsText.empty())
-                    flagsText = "-";
-                ImGui::TextUnformatted(flagsText.c_str());
-            }
-            ImGui::EndTable();
-        }
-
         ImGui::End();
     }
 
@@ -668,42 +650,29 @@ private:
     }
     void Loop(entt::registry& registry, PhysicsSystem& physicsSystem, GameTime time)
     {
-        // 1. Crear frame ImGui en CPU.
-        // Esto NO graba comandos DX12 todavía.
         render.BeginImGuiFrame();
 
         BuildImGui(registry);
         physicsSystem.OnImGui(registry);
         UpdateMeshes(registry, time);
 
-        // 2. Render DXR.
-        // IMPORTANTE:
-        // No llamar render.Reset() aquí.
-        // RenderRaytracedScene ya resetea y abre la command list.
-        const bool rendered = render.RenderRaytracedScene(
-            m_SceneObjects,
-            triangle,
-            cuad,
-            pentagon,
-            hexagon,
-            circle,
-            cube,
-            sphere,
-            plane
-        );
+        render.Reset();
+        render.BeginFrame();
+        render.Clear();
 
-        if (!rendered)
+        if (render.BeginGame())
         {
-            // No llames render.RenderImGui() ni render.Loop()
-            // si RenderRaytracedScene falló, porque puede que la command list
-            // no esté abierta correctamente.
-            return;
+            triangle.Draw(render.commandList);
+            cuad.Draw(render.commandList);
+            pentagon.Draw(render.commandList);
+            hexagon.Draw(render.commandList);
+            circle.Draw(render.commandList);
+            cube.Draw(render.commandList);
+            sphere.Draw(render.commandList);
+            plane.Draw(render.commandList);
         }
 
-        // 3. Dibujar ImGui encima del resultado DXR.
         render.RenderImGui();
-
-        // 4. Present.
         render.Loop();
     }
 };

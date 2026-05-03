@@ -1,6 +1,6 @@
 struct InstanceData
 {
-    float4x4 worldMatrix;
+    row_major float4x4 worldMatrix;
     float4 baseColor;
     float4 material;
 };
@@ -39,9 +39,10 @@ PSInput VS(VSInput input)
     InstanceData instance = instanceBuffer[input.instanceID];
 
     float4 worldPos = mul(float4(input.position, 1.0f), instance.worldMatrix);
-    float3x3 normalMatrix = transpose(inverse((float3x3)instance.worldMatrix));
-    float3 worldNormal = normalize(mul(input.normal, normalMatrix));
-
+    float3x3 normalMatrix = transpose((float3x3)instance.worldMatrix);
+    //float3 worldNormal = normalize(mul(input.normal, normalMatrix));
+    float3 worldNormal = normalize(mul(input.normal, (float3x3) instance.worldMatrix));
+    
     output.position = mul(worldPos, viewProjMatrix);
     output.worldPosition = worldPos.xyz;
     output.uv = input.uv;
