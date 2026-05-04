@@ -55,5 +55,8 @@ struct RigidbodyComponent
     DirectX::XMFLOAT3 position = { 0.0f, 0.0f, 0.0f };
     DirectX::XMFLOAT3 linearVelocity = { 0.0f, 0.0f, 0.0f };
     DirectX::XMFLOAT3 linearAcceleration = { 0.0f, 0.0f, 0.0f };
+
+	float mass = 1.0f;
+	float invMass = 1.0f;
 };
 
