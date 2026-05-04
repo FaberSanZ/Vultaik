@@ -162,37 +162,7 @@ public:
     }
 
 public:
-    static inline DirectX::XMFLOAT3 LocalToWorldPoint(const TransformComponent& transform, const PhysicsBodyComponent& body, const DirectX::XMFLOAT3& localPoint)
-    {
-        using namespace DirectX;
 
-        XMVECTOR position = XMLoadFloat3(&transform.position);
-        XMVECTOR orientation = LoadQuat(body.orientation);
-        XMVECTOR local = XMLoadFloat3(&localPoint);
-        XMVECTOR rotated = XMVector3Rotate(local, orientation);
-        XMVECTOR world = XMVectorAdd(rotated, position);
-
-        return Store3(world);
-    }
-
-    static inline DirectX::XMFLOAT3 WorldToLocalPoint(const TransformComponent& transform, const PhysicsBodyComponent& body, const DirectX::XMFLOAT3& worldPoint)
-    {
-        using namespace DirectX;
-
-        XMVECTOR position = XMLoadFloat3(&transform.position);
-        XMVECTOR orientation = LoadQuat(body.orientation);
-        XMVECTOR inverseOrientation = XMQuaternionConjugate(orientation);
-        XMVECTOR world = XMLoadFloat3(&worldPoint);
-        XMVECTOR relative = XMVectorSubtract(world, position);
-        XMVECTOR local = XMVector3Rotate(relative, inverseOrientation);
-
-        return Store3(local);
-    }
-
-    static inline DirectX::XMFLOAT3 GetCenterOfMassWorld(const TransformComponent& transform, const PhysicsBodyComponent& body, const SphereColliderComponent& collider)
-    {
-        return LocalToWorldPoint(transform, body, collider.centerOfMassLocal);
-    }
 
 public:
     static inline float RandomFloat(float min, float max)

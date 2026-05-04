@@ -48,7 +48,6 @@ public:
         sphere.debugName = "Sphere";
         plane.debugName = "Plane";
 
-        //Scene3(registry);
         if (render.GetTextureCount() > 1)
             spawnTextureId = 1;
     }
@@ -276,16 +275,14 @@ private:
             {
                 auto& transform = registry.get<TransformComponent>(entity);
                 DirectX::XMMATRIX world{};
+                world = BuildWorldMatrix(transform.position, transform.rotation, transform.scale);
 
-                if (registry.all_of<PhysicsBodyComponent>(entity))
-                {
-                    auto& body = registry.get<PhysicsBodyComponent>(entity);
-                    world = BuildWorldMatrixQuat(transform.position, body.orientation, transform.scale);
-                }
-                else
-                {
-                    world = BuildWorldMatrix(transform.position, transform.rotation, transform.scale);
-                }
+                //if (registry.all_of<PhysicsBodyComponent>(entity))
+                //{
+                //    auto& body = registry.get<PhysicsBodyComponent>(entity);
+                //    world = BuildWorldMatrixQuat(transform.position, body.orientation, transform.scale);
+                //}
+
                 DirectX::XMFLOAT4X4 worldMatrix{};
                 DirectX::XMStoreFloat4x4(&worldMatrix, world);
 
@@ -302,16 +299,13 @@ private:
 
                     case ShapeType::Sphere:
                         sphereInstances.push_back({ worldMatrix, baseColor, material });
+						std::cout << "Sphere instance: " << " at position (" << transform.position.x << ", " << transform.position.y << ", " << transform.position.z << ")\n";
                         break;
 
                 default:
                     break;
                 }
 
-                const uint32_t shapeIndex = static_cast<uint32_t>(mesh.shapeType);
-                if (shapeIndex < renderStats.shapeInstanceCounts.size())
-                    ++renderStats.shapeInstanceCounts[shapeIndex];
-                ++renderStats.objectCount;
             }
         }
 
@@ -333,229 +327,17 @@ private:
     }
 
 
-    void SpawnShape(entt::registry& registry, ShapeType shape)
-    {
-        SpawnShapeInternal(
-            registry,
-            shape,
-            spawnPosition,
-            spawnScale,
-            spawnRotation,
-            spawnColor,
-            spawnMetallic,
-            spawnRoughness,
-            1.0f,
-            spawnTextureId);
-    }
 
-    void SpawnShapeInternal(
-        entt::registry& registry,
-        ShapeType shape,
-        const DirectX::XMFLOAT3& position,
-        const DirectX::XMFLOAT3& scale,
-        const DirectX::XMFLOAT3& rotation,
-        const DirectX::XMFLOAT3& baseColor,
-        float metallic,
-        float roughness,
-        float ao,
-        int textureId)
-    {
-        auto entity = registry.create();
 
-        TransformComponent transform{};
-        transform.position = position;
-        transform.scale = scale;
-        transform.rotation = rotation;
-        registry.emplace<TransformComponent>(entity, transform);
-
-        registry.emplace<MeshComponent>(entity, MeshComponent{ shape });
-
-        registry.emplace<MaterialComponent>(entity, MaterialComponent{ baseColor, metallic, roughness, ao, textureId });
-
-        PhysicsBodyComponent body{};
-        body.type = PhysicsBodyType::Dynamic;
-        body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
-
-        registry.emplace<PhysicsBodyComponent>(entity, body);
-
-        SphereColliderComponent sphereCollider{};
-        sphereCollider.radius = 1.0f;
-        sphereCollider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
-
-        registry.emplace<SphereColliderComponent>(entity, sphereCollider);
-    }
 
     void BuildImGui(entt::registry& registry)
     {
-        ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse;
-        ImGui::Begin("Vultaik", nullptr, flags);
-
-        auto textureLabel = [&](int index) -> std::string
-        {
-            std::string name = render.GetTextureName(static_cast<uint32_t>(index));
-            if (name.empty())
-                name = std::string("Texture ") + std::to_string(index);
-            return name;
-        };
-
-        auto drawTextureCombo = [&](const char* label, int& textureId)
-        {
-            const int textureCount = static_cast<int>(render.GetTextureCount());
-            if (textureCount <= 0)
-            {
-                ImGui::InputInt(label, &textureId);
-                return;
-            }
-
-            textureId = std::clamp(textureId, 0, textureCount - 1);
-            std::string preview = textureLabel(textureId);
-            if (ImGui::BeginCombo(label, preview.c_str()))
-            {
-                for (int i = 0; i < textureCount; ++i)
-                {
-                    const bool isSelected = (textureId == i);
-                    std::string itemLabel = textureLabel(i);
-                    if (ImGui::Selectable(itemLabel.c_str(), isSelected))
-                        textureId = i;
-                    if (isSelected)
-                        ImGui::SetItemDefaultFocus();
-                }
-                ImGui::EndCombo();
-            }
-        };
-
         ImGui::TextUnformatted("3D scene");
         ImGui::SliderFloat("Camera distance", &cameraDistance, 2.5f, 14.0f, "%.1f");
         ImGui::SliderFloat("Camera yaw", &cameraYaw, -DirectX::XM_PI, DirectX::XM_PI, "%.2f");
         ImGui::SliderFloat("Camera pitch", &cameraPitch, -1.25f, 1.25f, "%.2f");
-
-        if (ImGui::Button("Reset scene", ImVec2(-1.0f, 0.0f)))
-        {
-            ResetScene(registry);
-            selectedEntity = entt::null;
-        }
-
-        ImGui::Separator();
-        ImGui::TextUnformatted("Spawn");
-        ImGui::DragFloat3("Position", &spawnPosition.x, 0.05f);
-        ImGui::DragFloat3("Scale", &spawnScale.x, 0.05f, 0.1f, 10.0f);
-        ImGui::DragFloat3("Rotation", &spawnRotation.x, 0.02f, -DirectX::XM_PI, DirectX::XM_PI);
-        ImGui::SliderFloat("Metallic", &spawnMetallic, 0.0f, 1.0f);
-        ImGui::SliderFloat("Roughness", &spawnRoughness, 0.02f, 1.0f);
-        drawTextureCombo("Texture", spawnTextureId);
-        ImGui::Text("Textures loaded: %u", render.GetTextureCount());
-
-        if (ImGui::Button("Cube", ImVec2(-1.0f, 0.0f)))
-            SpawnShape(registry, ShapeType::Cube);
-        if (ImGui::Button("Sphere", ImVec2(-1.0f, 0.0f)))
-            SpawnShape(registry, ShapeType::Sphere);
-        if (ImGui::Button("Plane", ImVec2(-1.0f, 0.0f)))
-            SpawnShape(registry, ShapeType::Plane);
-
-        ImGui::Separator();
-        ImGui::TextUnformatted("Selected entity");
-        auto selectableView = registry.view<MeshComponent, TransformComponent>();
-        std::vector<entt::entity> selectableEntities;
-        selectableEntities.reserve(selectableView.size_hint());
-        for (auto [entity, mesh, transform] : selectableView.each())
-            selectableEntities.push_back(entity);
-
-        auto entityLabel = [&](entt::entity entity) -> std::string
-        {
-            const auto& mesh = registry.get<MeshComponent>(entity);
-            return std::string("Entity ") + std::to_string(static_cast<int>(entity)) + " - " + ShapeTypeName(mesh.shapeType);
-        };
-
-        if (selectedEntity == entt::null || !registry.valid(selectedEntity) || !registry.all_of<MeshComponent, TransformComponent>(selectedEntity))
-        {
-            selectedEntity = selectableEntities.empty() ? entt::null : selectableEntities.front();
-        }
-
-        const char* currentLabel = "None";
-        std::string currentLabelStorage;
-        if (selectedEntity != entt::null && registry.valid(selectedEntity) && registry.all_of<MeshComponent, TransformComponent>(selectedEntity))
-        {
-            currentLabelStorage = entityLabel(selectedEntity);
-            currentLabel = currentLabelStorage.c_str();
-        }
-
-        if (ImGui::BeginCombo("Active", currentLabel))
-        {
-            for (entt::entity entity : selectableEntities)
-            {
-                const bool isSelected = (entity == selectedEntity);
-                std::string label = entityLabel(entity);
-                if (ImGui::Selectable(label.c_str(), isSelected))
-                    selectedEntity = entity;
-                if (isSelected)
-                    ImGui::SetItemDefaultFocus();
-            }
-            ImGui::EndCombo();
-        }
-
-        if (selectedEntity != entt::null && registry.valid(selectedEntity) && registry.all_of<MeshComponent, TransformComponent>(selectedEntity))
-        {
-            auto& transform = registry.get<TransformComponent>(selectedEntity);
-            ImGui::DragFloat3("Entity Position", &transform.position.x, 0.05f);
-            ImGui::DragFloat3("Entity Scale", &transform.scale.x, 0.05f, 0.1f, 10.0f);
-            ImGui::DragFloat3("Entity Rotation", &transform.rotation.x, 0.02f, -DirectX::XM_PI, DirectX::XM_PI);
-
-            if (registry.all_of<MaterialComponent>(selectedEntity))
-            {
-                auto& mat = registry.get<MaterialComponent>(selectedEntity);
-                ImGui::ColorEdit3("Entity Color", &mat.baseColor.x);
-                ImGui::SliderFloat("Entity Metallic", &mat.metallic, 0.0f, 1.0f);
-                ImGui::SliderFloat("Entity Roughness", &mat.roughness, 0.02f, 1.0f);
-                drawTextureCombo("Entity Texture", mat.textureId);
-            }
-        }
-
-        ImGui::End();
-
-        ImGui::Begin("Render Statistics", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
-        const RenderStats& stats = render.GetRenderStats();
-        ImGui::Text("FPS: %.1f", stats.fps);
-        ImGui::Text("Frame: %.3f ms", stats.frameTimeMs);
-        ImGui::Separator();
-        ImGui::Text("Objects: %u", stats.objectCount);
-        ImGui::Separator();
-
-        ImGui::TextUnformatted("Scene instances");
-        if (ImGui::BeginTable("SceneInstanceTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
-        {
-            ImGui::TableSetupColumn("Shape");
-            ImGui::TableSetupColumn("Instances");
-            ImGui::TableHeadersRow();
-
-            auto drawShapeRow = [&](const char* name, uint32_t count)
-            {
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::TextUnformatted(name);
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%u", count);
-            };
-
-            const auto& counts = stats.shapeInstanceCounts;
-            drawShapeRow("Cube", counts[static_cast<uint32_t>(ShapeType::Cube)]);
-            drawShapeRow("Sphere", counts[static_cast<uint32_t>(ShapeType::Sphere)]);
-            drawShapeRow("Plane", counts[static_cast<uint32_t>(ShapeType::Plane)]);
-            ImGui::EndTable();
-        }
-
-        ImGui::End();
     }
 
-    const char* ShapeTypeName(ShapeType shape) const
-    {
-        switch (shape)
-        {
-        case ShapeType::Cube: return "Cube";
-        case ShapeType::Sphere: return "Sphere";
-        case ShapeType::Plane: return "Plane";
-        default: return "Null";
-        }
-    }
     void Loop(entt::registry& registry, PhysicsSystem& physicsSystem, GameTime time)
     {
         render.BeginImGuiFrame();

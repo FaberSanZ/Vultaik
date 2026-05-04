@@ -8,13 +8,9 @@
 
 struct TransformComponent
 {
-    uint32_t id = 0;
     DirectX::XMFLOAT3 position = { 0.0f, 0.0f, 0.0f };
     DirectX::XMFLOAT3 scale = { 1.0f, 1.0f, 1.0f };
     DirectX::XMFLOAT3 rotation = { 0.0f, 0.0f, 0.0f };
-
-    TransformComponent() = default;
-    TransformComponent(const TransformComponent&) = default;
 };
 
 
@@ -29,7 +25,6 @@ enum class ShapeType
 };
 
 
-
 struct MeshComponent
 {
     ShapeType shapeType = ShapeType::Null;
@@ -42,88 +37,6 @@ struct MaterialComponent
     float roughness = 0.5f;
     float ao = 1.0f;
     int32_t textureId = 0;
-
-    MaterialComponent() = default;
-    MaterialComponent(const DirectX::XMFLOAT3& baseColor, float metallic, float roughness, float ao, int32_t textureId = 0)
-        : baseColor(baseColor), metallic(metallic), roughness(roughness), ao(ao), textureId(textureId) {}
 };
 
 
-struct TagComponent
-{
-    std::string Tag;
-
-    TagComponent() = default;
-    TagComponent(const TagComponent&) = default;
-    TagComponent(const std::string& tag)
-        : Tag(tag) {
-    }
-};
-
-
-//  physics 
-
-enum class ColliderType
-{
-    Sphere,
-};
-
-struct SphereColliderComponent 
-{
-    float radius = 0.5f;
-
-    DirectX::XMFLOAT3 centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
-};
-
-struct BoxColliderComponent
-{
-    DirectX::XMFLOAT3 halfExtents = { 0.5f, 0.5f, 0.5f };
-    DirectX::XMFLOAT3 centerLocal = { 0.0f, 0.0f, 0.0f };
-};
-
-enum class PhysicsBodyType 
-{
-    Static,
-    Dynamic,
-    Kinematic
-};
-
-enum class PhysicsShapeType
-{
-    None,
-    Sphere,
-    Box,
-    Convex
-};
-
-struct PhysicsBodyComponent
-{
-    PhysicsBodyType type = PhysicsBodyType::Static;
-
-    DirectX::XMFLOAT4 orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
-    DirectX::XMFLOAT3 linearVelocity = { 0.0f, 0.0f, 0.0f };
-    DirectX::XMFLOAT3 angularVelocity = { 0.0f, 0.0f, 0.0f };
-    DirectX::XMFLOAT3 invInertiaLocal = { 1.0f, 1.0f, 1.0f };
-    DirectX::XMFLOAT3 previousPosition = { 0.0f, 0.0f, 0.0f };
-    DirectX::XMFLOAT3 targetPosition = { 0.0f, 0.0f, 0.0f };
-
-    float restitution = 0.4f;
-    float mass = 1.0f;
-    float invMass = 1.0f;
-    float friction = 0.5f;
-
-    bool useGravity = true;
-    bool enabled = true;
-    bool massPropertiesDirty = true;
-    bool enableCCD = true;
-
-};
-
-
-struct BoundsComponent
-{
-    DirectX::XMFLOAT3 mins = { 0.0f, 0.0f, 0.0f };
-    DirectX::XMFLOAT3 maxs = { 0.0f, 0.0f, 0.0f };
-    DirectX::XMFLOAT3 center = { 0.0f, 0.0f, 0.0f };
-    DirectX::XMFLOAT3 extents = { 0.0f, 0.0f, 0.0f };
-};
