@@ -71,6 +71,7 @@ public:
             body.restitution = 0.5f;
 			body.massPropertiesDirty = true;
             body.friction = 0.6f;
+            body.enableCCD = true;
 
             SphereColliderComponent collider{};
             collider.radius = 1.0f;
@@ -116,6 +117,7 @@ public:
             body.useGravity = false;
             body.restitution = 0.5f;
             body.friction = 0.6f;
+            body.enableCCD = true;
 
             SphereColliderComponent collider{};
             collider.radius = 6.0f;
@@ -134,11 +136,12 @@ public:
         const float dt = time.FixedDeltaTime();
 
         UpdateMassProperties(registry);
+        StorePreviousPositions(registry);
 
         ApplyGravityImpulse(registry, dt);
-
         IntegratePositions(registry, dt);
 
+        SolveCCD(registry);
         SolveContacts(registry);
 
         IntegrateOrientations(registry, dt);
@@ -356,28 +359,25 @@ public:
     }
 
 
-
-    bool IntersectSphereSphere(entt::entity entityA, entt::entity entityB, const TransformComponent& transformA, const SphereColliderComponent& sphereA, const TransformComponent& transformB, const SphereColliderComponent& sphereB, Contact& contact)
+    bool IntersectSphereSphere(entt::entity entityA, entt::entity entityB, const TransformComponent& transformA, const PhysicsBodyComponent& bodyA, const SphereColliderComponent& sphereA, const TransformComponent& transformB, const PhysicsBodyComponent& bodyB, const SphereColliderComponent& sphereB, Contact& contact)
     {
-        const DirectX::XMFLOAT3 ab = GameMath::Sub(transformB.position, transformA.position);
+        const DirectX::XMFLOAT3 centerA = GetSphereCenterWorld(transformA, bodyA, sphereA);
+        const DirectX::XMFLOAT3 centerB = GetSphereCenterWorld(transformB, bodyB, sphereB);
 
+        const DirectX::XMFLOAT3 ab = GameMath::Sub(centerB, centerA);
         const float distance = GameMath::Length(ab);
 
         const DirectX::XMFLOAT3 normal = distance > 0.00001f ? GameMath::Div(ab, distance) : DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
 
-        const float radiusA =  sphereA.radius;
+        const float radiusA = sphereA.radius;
         const float radiusB = sphereB.radius;
-
         const float radiusSum = radiusA + radiusB;
 
         contact.entityA = entityA;
         contact.entityB = entityB;
         contact.normal = normal;
-
-        contact.pointOnAWorld = GameMath::Add(transformA.position, GameMath::Mul(normal, radiusA));
-
-        contact.pointOnBWorld = GameMath::Sub(transformB.position, GameMath::Mul(normal, radiusB));
-
+        contact.pointOnAWorld = GameMath::Add(centerA, GameMath::Mul(normal, radiusA));
+        contact.pointOnBWorld = GameMath::Sub(centerB, GameMath::Mul(normal, radiusB));
         contact.separationDistance = distance - radiusSum;
 
         return contact.separationDistance <= 0.0f;
@@ -423,9 +423,9 @@ public:
 
     void SolveContacts(entt::registry& registry)
     {
-        constexpr int solverIterations = 4;
+        constexpr int projectionIterations = 4;
 
-        for (int iteration = 0; iteration < solverIterations; ++iteration)
+        for (int iteration = 0; iteration < projectionIterations; ++iteration)
         {
             std::vector<Contact> contacts;
             BuildContactList(registry, contacts);
@@ -434,11 +434,14 @@ public:
             {
                 ResolveContactProjection(registry, contact);
             }
+        }
 
-            for (const Contact& contact : contacts)
-            {
-                ResolveContactVelocity(registry, contact);
-            }
+        std::vector<Contact> contacts;
+        BuildContactList(registry, contacts);
+
+        for (const Contact& contact : contacts)
+        {
+            ResolveContactVelocity(registry, contact);
         }
     }
 
@@ -559,8 +562,7 @@ public:
                     continue;
 
                 Contact contact{};
-
-                if (IntersectSphereSphere(entityA, entityB, transformA, sphereA, transformB, sphereB, contact))
+                if (IntersectSphereSphere(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact))
                 {
                     contacts.push_back(contact);
                 }
@@ -892,6 +894,148 @@ public:
         }
     }
 
+    DirectX::XMFLOAT3 GetSphereCenterWorld(const TransformComponent& transform, const PhysicsBodyComponent& body, const SphereColliderComponent& sphere)
+    {
+        DirectX::XMVECTOR localCenter = DirectX::XMLoadFloat3(&sphere.centerOfMassLocal);
+        DirectX::XMVECTOR orientation = DirectX::XMLoadFloat4(&body.orientation);
+        orientation = DirectX::XMQuaternionNormalize(orientation);
+        DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&transform.position);
+        DirectX::XMVECTOR rotatedCenter = DirectX::XMVector3Rotate(localCenter, orientation);
+        DirectX::XMVECTOR worldCenter = DirectX::XMVectorAdd(position, rotatedCenter);
+        DirectX::XMFLOAT3 result{};
+        DirectX::XMStoreFloat3(&result, worldCenter);
+        return result;
+    }
+
+
+    void StorePreviousPositions(entt::registry& registry)
+    {
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent>();
+
+        for (auto [entity, transform, body] : view.each())
+        {
+            body.previousPosition = transform.position;
+        }
+    }
+
+
+    bool SweptSphereSphere(entt::entity entityA, entt::entity entityB, const TransformComponent& transformA, const PhysicsBodyComponent& bodyA, const SphereColliderComponent& sphereA, const TransformComponent& transformB, const PhysicsBodyComponent& bodyB, const SphereColliderComponent& sphereB, Contact& contact, float& toi)
+    {
+        const DirectX::XMFLOAT3 centerA0 = bodyA.previousPosition;
+        const DirectX::XMFLOAT3 centerB0 = bodyB.previousPosition;
+
+        const DirectX::XMFLOAT3 centerA1 = transformA.position;
+        const DirectX::XMFLOAT3 centerB1 = transformB.position;
+
+        const DirectX::XMFLOAT3 relativeStart = GameMath::Sub(centerA0, centerB0);
+        const DirectX::XMFLOAT3 moveA = GameMath::Sub(centerA1, centerA0);
+        const DirectX::XMFLOAT3 moveB = GameMath::Sub(centerB1, centerB0);
+        const DirectX::XMFLOAT3 relativeMove = GameMath::Sub(moveA, moveB);
+
+        const float radiusSum = sphereA.radius + sphereB.radius;
+
+        const float a = GameMath::Dot(relativeMove, relativeMove);
+        const float b = 2.0f * GameMath::Dot(relativeStart, relativeMove);
+        const float c = GameMath::Dot(relativeStart, relativeStart) - radiusSum * radiusSum;
+
+        if (c <= 0.0f)
+            return false;
+
+        if (a <= 0.000001f)
+            return false;
+
+        const float discriminant = b * b - 4.0f * a * c;
+
+        if (discriminant < 0.0f)
+            return false;
+
+        const float sqrtDiscriminant = std::sqrt(discriminant);
+        const float t = (-b - sqrtDiscriminant) / (2.0f * a);
+
+        if (t < 0.0f || t > 1.0f)
+            return false;
+
+        toi = t;
+
+        const DirectX::XMFLOAT3 hitCenterA = GameMath::Lerp(centerA0, centerA1, toi);
+        const DirectX::XMFLOAT3 hitCenterB = GameMath::Lerp(centerB0, centerB1, toi);
+
+        const DirectX::XMFLOAT3 ab = GameMath::Sub(hitCenterB, hitCenterA);
+        const float distance = GameMath::Length(ab);
+        const DirectX::XMFLOAT3 normal = distance > 0.00001f ? GameMath::Div(ab, distance) : DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
+
+        contact.entityA = entityA;
+        contact.entityB = entityB;
+        contact.normal = normal;
+        contact.pointOnAWorld = GameMath::Add(hitCenterA, GameMath::Mul(normal, sphereA.radius));
+        contact.pointOnBWorld = GameMath::Sub(hitCenterB, GameMath::Mul(normal, sphereB.radius));
+        contact.separationDistance = 0.0f;
+
+        return true;
+    }
+
+
+    void MoveBodiesToTOI(entt::registry& registry, const Contact& contact, float toi)
+    {
+        auto& transformA = registry.get<TransformComponent>(contact.entityA);
+        auto& bodyA = registry.get<PhysicsBodyComponent>(contact.entityA);
+
+        auto& transformB = registry.get<TransformComponent>(contact.entityB);
+        auto& bodyB = registry.get<PhysicsBodyComponent>(contact.entityB);
+
+        if (bodyA.type == PhysicsBodyType::Dynamic)
+            transformA.position = GameMath::Lerp(bodyA.previousPosition, transformA.position, toi);
+
+        if (bodyB.type == PhysicsBodyType::Dynamic)
+            transformB.position = GameMath::Lerp(bodyB.previousPosition, transformB.position, toi);
+    }
+
+
+    void SolveCCD(entt::registry& registry)
+    {
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
+
+        std::vector<entt::entity> entities;
+        entities.reserve(view.size_hint());
+
+        for (auto [entity, transform, body, sphere] : view.each())
+            entities.push_back(entity);
+
+        for (size_t i = 0; i < entities.size(); ++i)
+        {
+            for (size_t j = i + 1; j < entities.size(); ++j)
+            {
+                entt::entity entityA = entities[i];
+                entt::entity entityB = entities[j];
+
+                auto& transformA = registry.get<TransformComponent>(entityA);
+                auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
+                auto& sphereA = registry.get<SphereColliderComponent>(entityA);
+
+                auto& transformB = registry.get<TransformComponent>(entityB);
+                auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
+                auto& sphereB = registry.get<SphereColliderComponent>(entityB);
+
+                if (!bodyA.enabled || !bodyB.enabled)
+                    continue;
+
+                if (!bodyA.enableCCD && !bodyB.enableCCD)
+                    continue;
+
+                if (bodyA.invMass == 0.0f && bodyB.invMass == 0.0f)
+                    continue;
+
+                Contact contact{};
+                float toi = 1.0f;
+
+                if (SweptSphereSphere(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact, toi))
+                {
+                    MoveBodiesToTOI(registry, contact, toi);
+                    ResolveContactVelocity(registry, contact);
+                }
+            }
+        }
+    }
 
 
 	// TODO: move this to a config file or something
