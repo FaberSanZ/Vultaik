@@ -27,10 +27,8 @@ struct Contact
     DirectX::XMFLOAT3 pointOnAWorld = { 0.0f, 0.0f, 0.0f };
     DirectX::XMFLOAT3 pointOnBWorld = { 0.0f, 0.0f, 0.0f };
 
-    // Normal desde A hacia B
     DirectX::XMFLOAT3 normal = { 0.0f, 1.0f, 0.0f };
 
-    // Negativo cuando están penetrando
     float separationDistance = 0.0f;
 };
 
@@ -64,11 +62,11 @@ public:
 
             PhysicsBodyComponent body{};
             body.type = PhysicsBodyType::Dynamic;
-            body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+            body.orientation = { 0.0f, 0.0f, 0.0f, 0.0f };
             body.mass = 1.0f;
             body.invMass = 1.0f / body.mass;
             body.linearVelocity = { 0.0f, 0.0f, 0.0f };
-            body.angularVelocity = { 0.0f, 0.0f, 0.0f };
+            body.angularVelocity = { 0.0f, 0.0f, 1.0f };
             body.useGravity = true;
             body.restitution = 0.5f;
 			body.massPropertiesDirty = true;
@@ -77,7 +75,6 @@ public:
             collider.radius = 1.0f;
             collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
 
-            SetSphereInertia(body, collider);
 
             registry.emplace<TransformComponent>(entity, transform);
             registry.emplace<MeshComponent>(entity, mesh);
@@ -137,12 +134,12 @@ public:
 
         UpdateMassProperties(registry);
 
-
         ApplyGravityImpulse(registry, dt);
         IntegratePositions(registry, dt);
         IntegrateOrientations(registry, dt);
 
         SolveContacts(registry);
+
     }
 
     void OnImGui(entt::registry& registry)
@@ -386,64 +383,6 @@ public:
 
 
 
-    void DetectAndResolveCollisions(entt::registry& registry)
-    {
-        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
-
-        std::vector<entt::entity> entities;
-        entities.reserve(view.size_hint());
-
-        for (auto [entity, transform, body, sphere] : view.each())
-        {
-            entities.push_back(entity);
-        }
-
-        std::vector<Contact> contacts;
-
-        for (size_t i = 0; i < entities.size(); ++i)
-        {
-            for (size_t j = i + 1; j < entities.size(); ++j)
-            {
-                entt::entity entityA = entities[i];
-                entt::entity entityB = entities[j];
-
-                auto& transformA = registry.get<TransformComponent>(entityA);
-                auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
-                auto& sphereA = registry.get<SphereColliderComponent>(entityA);
-
-                auto& transformB = registry.get<TransformComponent>(entityB);
-                auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
-                auto& sphereB = registry.get<SphereColliderComponent>(entityB);
-
-                if (!bodyA.enabled || !bodyB.enabled)
-                    continue;
-
-                if (bodyA.invMass == 0.0f && bodyB.invMass == 0.0f)
-                    continue;
-
-                Contact contact{};
-
-                if (IntersectSphereSphere(
-                    entityA,
-                    entityB,
-                    transformA,
-                    sphereA,
-                    transformB,
-                    sphereB,
-                    contact))
-                {
-                    contacts.push_back(contact);
-                }
-            }
-        }
-
-        for (const Contact& contact : contacts)
-        {
-            ResolveContactProjection(registry, contact);
-        }
-    }
-
-
     void ResolveContactProjection(entt::registry& registry, const Contact& contact)
     {
         auto& transformA = registry.get<TransformComponent>(contact.entityA);
@@ -503,21 +442,33 @@ public:
 
     void ResolveContactVelocity(entt::registry& registry, const Contact& contact)
     {
+        auto& transformA = registry.get<TransformComponent>(contact.entityA);
         auto& bodyA = registry.get<PhysicsBodyComponent>(contact.entityA);
+        auto& sphereA = registry.get<SphereColliderComponent>(contact.entityA);
+
+        auto& transformB = registry.get<TransformComponent>(contact.entityB);
         auto& bodyB = registry.get<PhysicsBodyComponent>(contact.entityB);
+        auto& sphereB = registry.get<SphereColliderComponent>(contact.entityB);
 
         if (!bodyA.enabled || !bodyB.enabled)
             return;
 
         const float invMassA = bodyA.invMass;
         const float invMassB = bodyB.invMass;
-        const float invMassSum = invMassA + invMassB;
 
-        if (invMassSum <= 0.0f)
+        if (invMassA + invMassB <= 0.0f)
             return;
 
         const DirectX::XMFLOAT3 normal = contact.normal;
-        const DirectX::XMFLOAT3 relativeVelocity = GameMath::Sub(bodyB.linearVelocity, bodyA.linearVelocity);
+        const DirectX::XMFLOAT3 contactPoint = GetContactPoint(contact);
+        const DirectX::XMFLOAT3 centerA = GetCenterOfMassWorld(transformA, bodyA, sphereA);
+        const DirectX::XMFLOAT3 centerB = GetCenterOfMassWorld(transformB, bodyB, sphereB);
+        const DirectX::XMFLOAT3 rA = GameMath::Sub(contactPoint, centerA);
+        const DirectX::XMFLOAT3 rB = GameMath::Sub(contactPoint, centerB);
+        const DirectX::XMFLOAT3 velocityA = GetVelocityAtPoint(bodyA, centerA, contactPoint);
+        const DirectX::XMFLOAT3 velocityB = GetVelocityAtPoint(bodyB, centerB, contactPoint);
+        const DirectX::XMFLOAT3 relativeVelocity = GameMath::Sub(velocityB, velocityA);
+
         const float contactVelocity = GameMath::Dot(relativeVelocity, normal);
 
         if (contactVelocity > 0.0f)
@@ -530,26 +481,22 @@ public:
             restitution = 0.0f;
         }
 
-        const float impulseMagnitude = -(1.0f + restitution) * contactVelocity / invMassSum;
+        const float angularDenominator = ComputeAngularImpulseDenominator(bodyA, bodyB, rA, rB, normal);
+
+        const float denominator = invMassA + invMassB + angularDenominator;
+
+        if (denominator <= 0.00001f)
+            return;
+
+        const float impulseMagnitude = -(1.0f + restitution) * contactVelocity / denominator;
 
         const DirectX::XMFLOAT3 impulse = GameMath::Mul(normal, impulseMagnitude);
 
         if (bodyA.type == PhysicsBodyType::Dynamic)
-        {
-            const DirectX::XMFLOAT3 deltaVelocityA =
-                GameMath::Mul(impulse, invMassA);
-
-            bodyA.linearVelocity =
-                GameMath::Sub(bodyA.linearVelocity, deltaVelocityA);
-        }
+            ApplyImpulseAtPoint(bodyA, centerA, contactPoint, GameMath::Mul(impulse, -1.0f));
 
         if (bodyB.type == PhysicsBodyType::Dynamic)
-        {
-            const DirectX::XMFLOAT3 deltaVelocityB = GameMath::Mul(impulse, invMassB);
-
-            bodyB.linearVelocity = GameMath::Add(bodyB.linearVelocity, deltaVelocityB);
-        }
-
+            ApplyImpulseAtPoint(bodyB, centerB, contactPoint, impulse);
     }
 
 
@@ -678,14 +625,11 @@ public:
 
             const float angle = angularSpeed * dt;
 
-            XMVECTOR deltaRotation =
-                XMQuaternionRotationAxis(axis, angle);
+            XMVECTOR deltaRotation = XMQuaternionRotationAxis(axis, angle);
 
-            XMVECTOR orientation =
-                XMLoadFloat4(&body.orientation);
+            XMVECTOR orientation = XMLoadFloat4(&body.orientation);
 
-            orientation =
-                XMQuaternionNormalize(XMQuaternionMultiply(deltaRotation, orientation));
+            orientation = XMQuaternionNormalize(XMQuaternionMultiply(deltaRotation, orientation));
 
             XMStoreFloat4(&body.orientation, orientation);
         }
@@ -865,6 +809,50 @@ public:
     }
 
 
+    DirectX::XMFLOAT3 MulByInvInertia(const PhysicsBodyComponent& body, const DirectX::XMFLOAT3& v)
+    {
+        return
+        {
+            v.x * body.invInertiaLocal.x,
+            v.y * body.invInertiaLocal.y,
+            v.z * body.invInertiaLocal.z
+        };
+    }
+
+
+    DirectX::XMFLOAT3 GetVelocityAtPoint(const PhysicsBodyComponent& body, const DirectX::XMFLOAT3& centerOfMassWorld, const DirectX::XMFLOAT3& pointWorld)
+    {
+        const DirectX::XMFLOAT3 r = GameMath::Sub(pointWorld, centerOfMassWorld);
+        const DirectX::XMFLOAT3 angularVelocityAtPoint = GameMath::Cross(body.angularVelocity, r);
+
+        return GameMath::Add(body.linearVelocity, angularVelocityAtPoint);
+    }
+
+
+    DirectX::XMFLOAT3 GetContactPoint(const Contact& contact)
+    {
+        return GameMath::Mul(GameMath::Add(contact.pointOnAWorld, contact.pointOnBWorld), 0.5f);
+    }
+
+    float ComputeAngularImpulseDenominator(const PhysicsBodyComponent& bodyA, const PhysicsBodyComponent& bodyB, const DirectX::XMFLOAT3& rA, const DirectX::XMFLOAT3& rB, const DirectX::XMFLOAT3& normal)
+    {
+        // rA x n
+        const DirectX::XMFLOAT3 rAcrossN = GameMath::Cross(rA, normal);
+
+        // rB x n
+        const DirectX::XMFLOAT3 rBcrossN = GameMath::Cross(rB, normal);
+
+        // I^-1 * (r x n)
+        const DirectX::XMFLOAT3 invInertiaA_rAcrossN = MulByInvInertia(bodyA, rAcrossN);
+        const DirectX::XMFLOAT3 invInertiaB_rBcrossN = MulByInvInertia(bodyB, rBcrossN);
+
+        // (I^-1 * (r x n)) x r
+        const DirectX::XMFLOAT3 angularA = GameMath::Cross(invInertiaA_rAcrossN, rA);
+        const DirectX::XMFLOAT3 angularB = GameMath::Cross(invInertiaB_rBcrossN, rB);
+        const DirectX::XMFLOAT3 angularSum = GameMath::Add(angularA, angularB);
+
+        return GameMath::Dot(angularSum, normal);
+    }
 
 
 	// TODO: move this to a config file or something
