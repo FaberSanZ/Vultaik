@@ -40,3 +40,19 @@ struct MaterialComponent
 };
 
 
+
+enum class PhysicsBodyType
+{
+    Static,
+    Dynamic,
+    Kinematic
+};
+
+struct RigidbodyComponent
+{
+    PhysicsBodyType type = PhysicsBodyType::Static;
+
+    DirectX::XMFLOAT3 position = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 linearVelocity = { 0.0f, 0.0f, 0.0f };
+};
+

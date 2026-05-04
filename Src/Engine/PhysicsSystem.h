@@ -18,27 +18,6 @@
 #include <array>
 
 
-// TODO: move this to a collision system or something
-struct Contact
-{
-    entt::entity entityA = entt::null;
-    entt::entity entityB = entt::null;
-
-    DirectX::XMFLOAT3 pointOnAWorld = { 0.0f, 0.0f, 0.0f };
-    DirectX::XMFLOAT3 pointOnBWorld = { 0.0f, 0.0f, 0.0f };
-
-    DirectX::XMFLOAT3 normal = { 0.0f, 1.0f, 0.0f };
-
-    float separationDistance = 0.0f;
-};
-
-
-struct CollisionPair
-{
-    entt::entity entityA = entt::null;
-    entt::entity entityB = entt::null;
-};
-
 class PhysicsSystem
 {
 public:
@@ -64,15 +43,38 @@ public:
             material.ao = 1.0f;
             material.textureId = 1;
 
+            RigidbodyComponent body{};
+            body.type = PhysicsBodyType::Dynamic;
+            body.position = transform.position;
+            body.linearVelocity = { 1.0f, 0.0f, 0.0f };
+
             registry.emplace<TransformComponent>(entity, transform);
 			registry.emplace<MeshComponent>(entity, mesh);
 			registry.emplace<MaterialComponent>(entity, material);
+			registry.emplace<RigidbodyComponent>(entity, body);
         }
     }
 
     void OnUpdate(entt::registry& registry, const GameTime& time)
     {
         const float dt = time.FixedDeltaTime();
+
+		auto view = registry.view<TransformComponent, RigidbodyComponent>();
+
+        for(auto [entity, transform, body] : view.each())
+        {
+            if (body.type != PhysicsBodyType::Dynamic)
+                continue;
+
+
+            // Simple physics integration
+            body.position.x += body.linearVelocity.x * dt;
+            body.position.y += body.linearVelocity.y * dt;
+            body.position.z += body.linearVelocity.z * dt;
+
+            // Update the transform position to match the physics body
+            transform.position = body.position;
+		}
 
     }
 
