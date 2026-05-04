@@ -46,7 +46,7 @@ public:
             auto entity = registry.create();
 
             TransformComponent transform{};
-            transform.position = { 0.0f, 0.0f, 0.0f };
+            transform.position = { -3.0f, 0.0f, 2.0f };
             transform.scale = { 1.0f, 1.0f, 1.0f };
             transform.rotation = { 0.0f, 0.0f, 0.0f };
 
@@ -86,6 +86,51 @@ public:
 
         }
 
+
+        {
+            auto entity = registry.create();
+
+            TransformComponent transform{};
+            transform.position = { 0.0f, 0.0f, 2.0f };
+            transform.scale = { 1.0f, 1.0f, 1.0f };
+            transform.rotation = { 0.0f, 0.0f, 0.0f };
+
+            MeshComponent mesh{};
+            mesh.shapeType = ShapeType::Sphere;
+
+            MaterialComponent material{};
+            material.baseColor = { 255.0f, 80.0f, 80.0f };
+            material.metallic = 0.1f;
+            material.roughness = 0.5f;
+            material.ao = 1.0f;
+            material.textureId = 1;
+
+            PhysicsBodyComponent body{};
+            body.type = PhysicsBodyType::Dynamic;
+            body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+            body.mass = 1.0f;
+            body.invMass = 1.0f / body.mass;
+            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+            body.angularVelocity = { 0.0f, 0.0f, 0.0f };
+            body.useGravity = true;
+            body.restitution = 0.5f;
+            body.massPropertiesDirty = true;
+            body.friction = 0.6f;
+            body.enableCCD = true;
+
+            SphereColliderComponent collider{};
+            collider.radius = 1.0f;
+            collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
+
+
+            registry.emplace<TransformComponent>(entity, transform);
+            registry.emplace<MeshComponent>(entity, mesh);
+            registry.emplace<MaterialComponent>(entity, material);
+            registry.emplace<PhysicsBodyComponent>(entity, body);
+            registry.emplace<SphereColliderComponent>(entity, collider);
+
+        }
+
         // -------------------------
         // Big static sphere
         // -------------------------
@@ -93,8 +138,8 @@ public:
             auto entity = registry.create();
 
             TransformComponent transform{};
-            transform.position = { 0.0f, -10.5f, 0.0f };
-            transform.scale = { 6.0f, 6.0f, 6.0f };
+            transform.position = { 0.0f, -22.5f, 0.0f };
+            transform.scale = { 20.0f, 20.0f, 20.0f };
             transform.rotation = { 0.0f, 0.0f, 0.0f };
 
             MeshComponent mesh{};
@@ -120,7 +165,7 @@ public:
             body.enableCCD = true;
 
             SphereColliderComponent collider{};
-            collider.radius = 6.0f;
+            collider.radius = 20.0f;
             collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
 
             registry.emplace<TransformComponent>(entity, transform);
@@ -146,10 +191,18 @@ public:
         SolveContacts(registry);
 
         IntegrateOrientations(registry, dt);
+
+        UpdateBounds(registry);
     }
 
     void OnImGui(entt::registry& registry)
     {
+		// resets scene
+        if (ImGui::Button("Reset Scene"))
+        {
+            registry.clear();
+            OnInitialize(registry);
+		}
 
     }
 
@@ -1067,6 +1120,59 @@ public:
         IntegratePositionsForEntities(registry, bestContact.entityA, bestContact.entityB, remainingTime);
     }
 
+
+
+    BoundsComponent BuildSphereBounds(const TransformComponent& transform, const PhysicsBodyComponent& body, const SphereColliderComponent& sphere)
+    {
+        BoundsComponent bounds{};
+
+        const DirectX::XMFLOAT3 center = GetSphereCenterWorld(transform, body, sphere);
+        const float r = sphere.radius;
+
+        bounds.center = center;
+        bounds.extents = { r, r, r };
+
+        bounds.mins = { center.x - r, center.y - r, center.z - r };
+        bounds.maxs = { center.x + r, center.y + r, center.z + r };
+
+        return bounds;
+    }
+
+
+    void UpdateBounds(entt::registry& registry)
+    {
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
+
+        for (auto [entity, transform, body, sphere] : view.each())
+        {
+            BoundsComponent bounds = BuildSphereBounds(transform, body, sphere);
+
+            if (registry.all_of<BoundsComponent>(entity))
+            {
+                auto& existingBounds = registry.get<BoundsComponent>(entity);
+                existingBounds = bounds;
+            }
+            else
+            {
+                registry.emplace<BoundsComponent>(entity, bounds);
+            }
+        }
+    }
+
+
+    bool BoundsIntersect(const BoundsComponent& a, const BoundsComponent& b)
+    {
+        if (a.maxs.x < b.mins.x || a.mins.x > b.maxs.x)
+            return false;
+
+        if (a.maxs.y < b.mins.y || a.mins.y > b.maxs.y)
+            return false;
+
+        if (a.maxs.z < b.mins.z || a.mins.z > b.maxs.z)
+            return false;
+
+        return true;
+    }
 
 
 	// TODO: move this to a config file or something

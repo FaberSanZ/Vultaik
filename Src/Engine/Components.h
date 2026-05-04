@@ -104,3 +104,12 @@ struct PhysicsBodyComponent
     bool enableCCD = true;
 
 };
+
+
+struct BoundsComponent
+{
+    DirectX::XMFLOAT3 mins = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 maxs = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 center = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 extents = { 0.0f, 0.0f, 0.0f };
+};

@@ -41,7 +41,7 @@ public:
         render.Initialize(hwnd, m_Width, m_Height);
 
         cube = GenerateCubeMesh(1.0f);
-        sphere = GenerateSphereMesh(1.0f, 20, 24);
+        sphere = GenerateSphereMesh(1.0f, 30, 36);
         plane = GeneratePlaneMesh(1.0f);
 
         cube.debugName = "Cube";
@@ -68,7 +68,7 @@ public:
 private:
     entt::registry* m_Registry = nullptr;
     float cameraDistance = 25.0f;
-    float cameraYaw = 0.55f;
+    float cameraYaw = 1.5f;
     float cameraPitch = 0.1f;
     DirectX::XMFLOAT3 spawnPosition = { 0.0f, 0.0f, 0.0f };
     DirectX::XMFLOAT3 spawnScale = { 1.0f, 1.0f, 1.0f };
