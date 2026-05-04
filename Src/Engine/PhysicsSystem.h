@@ -47,6 +47,7 @@ public:
             body.type = PhysicsBodyType::Dynamic;
             body.position = transform.position;
             body.linearVelocity = { 1.0f, 0.0f, 0.0f };
+			body.linearAcceleration = { 0.0f, -0.75f, 0.0f };
 
             registry.emplace<TransformComponent>(entity, transform);
 			registry.emplace<MeshComponent>(entity, mesh);
@@ -67,12 +68,15 @@ public:
                 continue;
 
 
-            // Simple physics integration
-            body.position.x += body.linearVelocity.x * dt;
-            body.position.y += body.linearVelocity.y * dt;
-            body.position.z += body.linearVelocity.z * dt;
+            body.linearVelocity.x += body.linearAcceleration.x * dt;
+            body.linearVelocity.y += body.linearAcceleration.y * dt;
+            body.linearVelocity.z += body.linearAcceleration.z * dt;
 
-            // Update the transform position to match the physics body
+			body.position.x += body.linearVelocity.x * dt;
+			body.position.y += body.linearVelocity.y * dt;
+			body.position.z += body.linearVelocity.z * dt;
+
+
             transform.position = body.position;
 		}
 
