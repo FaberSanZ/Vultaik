@@ -91,6 +91,7 @@ struct PhysicsBodyComponent
     DirectX::XMFLOAT3 angularVelocity = { 0.0f, 0.0f, 0.0f };
     DirectX::XMFLOAT3 invInertiaLocal = { 1.0f, 1.0f, 1.0f };
     DirectX::XMFLOAT3 previousPosition = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 targetPosition = { 0.0f, 0.0f, 0.0f };
 
     float restitution = 0.4f;
     float mass = 1.0f;

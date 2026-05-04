@@ -140,8 +140,9 @@ public:
 
         ApplyGravityImpulse(registry, dt);
         IntegratePositions(registry, dt);
+        StoreTargetPositions(registry);
 
-        SolveCCD(registry);
+        SolveTOI(registry, dt);
         SolveContacts(registry);
 
         IntegrateOrientations(registry, dt);
@@ -149,81 +150,7 @@ public:
 
     void OnImGui(entt::registry& registry)
     {
-        ImGui::Begin("Physics Debug");
 
-        ImGui::DragFloat3("Gravity", &gravity.x, 0.05f, -50.0f, 50.0f);
-        ImGui::DragFloat("Rest Threshold", &restingVelocityThreshold, 0.01f, 0.0f, 5.0f);
-
-        ImGui::SeparatorText("Chapter 13 - General Impulses");
-
-        if (ImGui::Button("Apply Center Impulse"))
-        {
-            ApplyDebugCenterImpulse(registry);
-        }
-
-        if (ImGui::Button("Apply Side Impulse"))
-        {
-            ApplyDebugSideImpulse(registry);
-        }
-
-        ImGui::SeparatorText("First Dynamic Body");
-
-        entt::entity entity = FindFirstDynamicSphere(registry);
-
-        if (entity != entt::null)
-        {
-            auto& transform = registry.get<TransformComponent>(entity);
-            auto& body = registry.get<PhysicsBodyComponent>(entity);
-            auto& sphere = registry.get<SphereColliderComponent>(entity);
-
-            ImGui::Text(
-                "Position: %.3f %.3f %.3f",
-                transform.position.x,
-                transform.position.y,
-                transform.position.z
-            );
-
-            ImGui::Text(
-                "Linear Velocity: %.3f %.3f %.3f",
-                body.linearVelocity.x,
-                body.linearVelocity.y,
-                body.linearVelocity.z
-            );
-
-            ImGui::Text(
-                "Angular Velocity: %.3f %.3f %.3f",
-                body.angularVelocity.x,
-                body.angularVelocity.y,
-                body.angularVelocity.z
-            );
-
-            ImGui::Text(
-                "Inv Inertia: %.3f %.3f %.3f",
-                body.invInertiaLocal.x,
-                body.invInertiaLocal.y,
-                body.invInertiaLocal.z
-            );
-
-            ImGui::Text("Mass: %.3f", body.mass);
-            ImGui::Text("Inv Mass: %.3f", body.invMass);
-            ImGui::Text("Radius: %.3f", sphere.radius);
-
-            if (ImGui::Button("Stop Linear Velocity"))
-            {
-                body.linearVelocity = { 0.0f, 0.0f, 0.0f };
-            }
-
-            if (ImGui::Button("Stop Angular Velocity"))
-            {
-                body.angularVelocity = { 0.0f, 0.0f, 0.0f };
-            }
-        }
-        else
-        {
-            ImGui::TextUnformatted("No dynamic sphere found.");
-        }
-
-        ImGui::End();
     }
 
 
@@ -924,8 +851,8 @@ public:
         const DirectX::XMFLOAT3 centerA0 = bodyA.previousPosition;
         const DirectX::XMFLOAT3 centerB0 = bodyB.previousPosition;
 
-        const DirectX::XMFLOAT3 centerA1 = transformA.position;
-        const DirectX::XMFLOAT3 centerB1 = transformB.position;
+        const DirectX::XMFLOAT3 centerA1 = bodyA.targetPosition;
+        const DirectX::XMFLOAT3 centerB1 = bodyB.targetPosition;
 
         const DirectX::XMFLOAT3 relativeStart = GameMath::Sub(centerA0, centerB0);
         const DirectX::XMFLOAT3 moveA = GameMath::Sub(centerA1, centerA0);
@@ -975,6 +902,7 @@ public:
     }
 
 
+
     void MoveBodiesToTOI(entt::registry& registry, const Contact& contact, float toi)
     {
         auto& transformA = registry.get<TransformComponent>(contact.entityA);
@@ -989,6 +917,9 @@ public:
         if (bodyB.type == PhysicsBodyType::Dynamic)
             transformB.position = GameMath::Lerp(bodyB.previousPosition, transformB.position, toi);
     }
+
+
+
 
 
     void SolveCCD(entt::registry& registry)
@@ -1036,6 +967,106 @@ public:
             }
         }
     }
+
+    void StoreTargetPositions(entt::registry& registry)
+    {
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent>();
+
+        for (auto [entity, transform, body] : view.each())
+        {
+            body.targetPosition = transform.position;
+        }
+    }
+
+
+
+
+
+    void IntegratePositionsForEntities(entt::registry& registry, entt::entity entityA, entt::entity entityB, float dt)
+    {
+        if (registry.valid(entityA) && registry.all_of<TransformComponent, PhysicsBodyComponent>(entityA))
+        {
+            auto& transformA = registry.get<TransformComponent>(entityA);
+            auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
+
+            if (bodyA.enabled && bodyA.type == PhysicsBodyType::Dynamic)
+                transformA.position = GameMath::Add(transformA.position, GameMath::Mul(bodyA.linearVelocity, dt));
+        }
+
+        if (registry.valid(entityB) && registry.all_of<TransformComponent, PhysicsBodyComponent>(entityB))
+        {
+            auto& transformB = registry.get<TransformComponent>(entityB);
+            auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
+
+            if (bodyB.enabled && bodyB.type == PhysicsBodyType::Dynamic)
+                transformB.position = GameMath::Add(transformB.position, GameMath::Mul(bodyB.linearVelocity, dt));
+        }
+    }
+
+
+    void SolveTOI(entt::registry& registry, float dt)
+    {
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
+
+        std::vector<entt::entity> entities;
+        entities.reserve(view.size_hint());
+
+        for (auto [entity, transform, body, sphere] : view.each())
+            entities.push_back(entity);
+
+        float bestTOI = 1.0f;
+        Contact bestContact{};
+        bool foundHit = false;
+
+        for (size_t i = 0; i < entities.size(); ++i)
+        {
+            for (size_t j = i + 1; j < entities.size(); ++j)
+            {
+                entt::entity entityA = entities[i];
+                entt::entity entityB = entities[j];
+
+                auto& transformA = registry.get<TransformComponent>(entityA);
+                auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
+                auto& sphereA = registry.get<SphereColliderComponent>(entityA);
+
+                auto& transformB = registry.get<TransformComponent>(entityB);
+                auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
+                auto& sphereB = registry.get<SphereColliderComponent>(entityB);
+
+                if (!bodyA.enabled || !bodyB.enabled)
+                    continue;
+
+                if (!bodyA.enableCCD && !bodyB.enableCCD)
+                    continue;
+
+                if (bodyA.invMass == 0.0f && bodyB.invMass == 0.0f)
+                    continue;
+
+                Contact contact{};
+                float toi = 1.0f;
+
+                if (SweptSphereSphere(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact, toi))
+                {
+                    if (toi < bestTOI)
+                    {
+                        bestTOI = toi;
+                        bestContact = contact;
+                        foundHit = true;
+                    }
+                }
+            }
+        }
+
+        if (!foundHit)
+            return;
+
+        MoveBodiesToTOI(registry, bestContact, bestTOI);
+        ResolveContactVelocity(registry, bestContact);
+
+        const float remainingTime = dt * (1.0f - bestTOI);
+        IntegratePositionsForEntities(registry, bestContact.entityA, bestContact.entityB, remainingTime);
+    }
+
 
 
 	// TODO: move this to a config file or something
