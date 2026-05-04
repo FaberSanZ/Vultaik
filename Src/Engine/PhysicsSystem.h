@@ -15,7 +15,7 @@
 #include "GameTime.h"
 #include "GameMath.h"
 #include "entt.hpp"
-
+#include <array>
 
 
 // TODO: move this to a collision system or something
@@ -180,6 +180,49 @@ public:
             registry.emplace<PhysicsBodyComponent>(entity, body);
             registry.emplace<SphereColliderComponent>(entity, collider);
         }
+
+
+        {
+            auto entity = registry.create();
+
+            TransformComponent transform{};
+            transform.position = { 3.0f, 4.0f, 0.0f };
+            transform.scale = { 2.0f, 1.0f, 1.0f };
+            transform.rotation = { 0.0f, 0.0f, 0.0f };
+
+            MeshComponent mesh{};
+            mesh.shapeType = ShapeType::Cube;
+
+            MaterialComponent material{};
+            material.baseColor = { 80.0f, 180.0f, 255.0f };
+            material.metallic = 0.1f;
+            material.roughness = 0.5f;
+            material.ao = 1.0f;
+            material.textureId = 1;
+
+            PhysicsBodyComponent body{};
+            body.type = PhysicsBodyType::Dynamic;
+            body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+            body.mass = 2.0f;
+            body.invMass = 1.0f / body.mass;
+            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+            body.angularVelocity = { 0.0f, 1.0f, 0.0f };
+            body.useGravity = true;
+            body.restitution = 0.2f;
+            body.friction = 0.7f;
+            body.enableCCD = false;
+            body.massPropertiesDirty = true;
+
+            BoxColliderComponent box{};
+            box.halfExtents = { 1.0f, 0.5f, 0.5f };
+            box.centerLocal = { 0.0f, 0.0f, 0.0f };
+
+            registry.emplace<TransformComponent>(entity, transform);
+            registry.emplace<MeshComponent>(entity, mesh);
+            registry.emplace<MaterialComponent>(entity, material);
+            registry.emplace<PhysicsBodyComponent>(entity, body);
+            registry.emplace<BoxColliderComponent>(entity, box);
+        }
     }
 
     void OnUpdate(entt::registry& registry, const GameTime& time)
@@ -255,6 +298,16 @@ public:
                 registry.emplace<SphereColliderComponent>(entity, collider);
             }
         }
+
+
+        ImGui::SeparatorText("Physics Pipeline");
+        ImGui::Text("Potential pairs: %u", m_lastPotentialPairs);
+        ImGui::Text("Broadphase pairs: %u", m_lastBroadphasePairs);
+        ImGui::Text("Narrowphase contacts: %u", m_lastNarrowphaseContacts);
+        ImGui::Text("Narrowphase tests: %u", m_lastNarrowphaseTests);
+        ImGui::Text("Sphere/Sphere tests: %u", m_lastSphereSphereTests);
+        ImGui::Text("Generated contacts: %u", m_lastGeneratedContacts);
+
 
     }
 
@@ -491,13 +544,14 @@ public:
 
     void ResolveContactVelocity(entt::registry& registry, const Contact& contact)
     {
-        auto& transformA = registry.get<TransformComponent>(contact.entityA);
-        auto& bodyA = registry.get<PhysicsBodyComponent>(contact.entityA);
-        auto& sphereA = registry.get<SphereColliderComponent>(contact.entityA);
+        if (!registry.all_of<TransformComponent, PhysicsBodyComponent>(contact.entityA))
+            return;
 
-        auto& transformB = registry.get<TransformComponent>(contact.entityB);
+        if (!registry.all_of<TransformComponent, PhysicsBodyComponent>(contact.entityB))
+            return;
+
+        auto& bodyA = registry.get<PhysicsBodyComponent>(contact.entityA);
         auto& bodyB = registry.get<PhysicsBodyComponent>(contact.entityB);
-        auto& sphereB = registry.get<SphereColliderComponent>(contact.entityB);
 
         if (!bodyA.enabled || !bodyB.enabled)
             return;
@@ -505,14 +559,20 @@ public:
         if (bodyA.invMass + bodyB.invMass <= 0.0f)
             return;
 
+        DirectX::XMFLOAT3 centerA{};
+        DirectX::XMFLOAT3 centerB{};
+
+        if (!GetEntityCenterOfMassWorld(registry, contact.entityA, centerA))
+            return;
+
+        if (!GetEntityCenterOfMassWorld(registry, contact.entityB, centerB))
+            return;
+
         const DirectX::XMFLOAT3 normal = contact.normal;
         const DirectX::XMFLOAT3 contactPoint = GetContactPoint(contact);
-        const DirectX::XMFLOAT3 centerA = GetCenterOfMassWorld(transformA, bodyA, sphereA);
-        const DirectX::XMFLOAT3 centerB = GetCenterOfMassWorld(transformB, bodyB, sphereB);
         const DirectX::XMFLOAT3 rA = GameMath::Sub(contactPoint, centerA);
         const DirectX::XMFLOAT3 rB = GameMath::Sub(contactPoint, centerB);
 
-        // Normal impulse
         DirectX::XMFLOAT3 velocityA = GetVelocityAtPoint(bodyA, centerA, contactPoint);
         DirectX::XMFLOAT3 velocityB = GetVelocityAtPoint(bodyB, centerB, contactPoint);
         DirectX::XMFLOAT3 relativeVelocity = GameMath::Sub(velocityB, velocityA);
@@ -533,16 +593,12 @@ public:
             return;
 
         const float normalImpulseMagnitude = -(1.0f + restitution) * contactVelocity / normalDenominator;
-
         const DirectX::XMFLOAT3 normalImpulse = GameMath::Mul(normal, normalImpulseMagnitude);
 
         ApplyImpulsePairAtPoint(bodyA, bodyB, centerA, centerB, contactPoint, normalImpulse);
 
-
-        // Friction impulse
         velocityA = GetVelocityAtPoint(bodyA, centerA, contactPoint);
         velocityB = GetVelocityAtPoint(bodyB, centerB, contactPoint);
-
         relativeVelocity = GameMath::Sub(velocityB, velocityA);
 
         const float normalSpeed = GameMath::Dot(relativeVelocity, normal);
@@ -568,7 +624,6 @@ public:
 
         ApplyImpulsePairAtPoint(bodyA, bodyB, centerA, centerB, contactPoint, frictionImpulse);
     }
-
 
     void BuildContactList(entt::registry& registry, const std::vector<CollisionPair>& pairs, std::vector<Contact>& contacts)
     {
@@ -627,22 +682,14 @@ public:
         if (body.type != PhysicsBodyType::Dynamic)
             return;
 
-        DirectX::XMFLOAT3 deltaAngularVelocity =
-        {
-            angularImpulse.x * body.invInertiaLocal.x,
-            angularImpulse.y * body.invInertiaLocal.y,
-            angularImpulse.z * body.invInertiaLocal.z
-        };
-
+        DirectX::XMFLOAT3 deltaAngularVelocity = MulByInvInertia(body, angularImpulse);
         body.angularVelocity = GameMath::Add(body.angularVelocity, deltaAngularVelocity);
 
         const float maxAngularSpeed = 30.0f;
         const float speedSq = GameMath::LengthSq(body.angularVelocity);
 
         if (speedSq > maxAngularSpeed * maxAngularSpeed)
-        {
             body.angularVelocity = GameMath::Mul(GameMath::Normalize(body.angularVelocity), maxAngularSpeed);
-        }
     }
 
 
@@ -684,12 +731,14 @@ public:
 
     void UpdateMassProperties(entt::registry& registry)
     {
-        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent>();
 
-        for (auto [entity, transform, body, sphere] : view.each())
+        for (auto [entity, transform, body] : view.each())
         {
             if (!body.massPropertiesDirty)
                 continue;
+
+            PhysicsShapeType type = GetPhysicsShapeType(registry, entity);
 
             if (body.type == PhysicsBodyType::Static)
             {
@@ -702,23 +751,41 @@ public:
                 continue;
             }
 
-            body.mass = std::max(body.mass, 0.0001f);
-            body.invMass = 1.0f / body.mass;
-
-            const float radius = sphere.radius;
-            const float inertia = (2.0f / 5.0f) * body.mass * radius * radius;
-
-            if (inertia <= 0.00001f)
+            switch (type)
             {
-                body.invInertiaLocal = { 0.0f, 0.0f, 0.0f };
-            }
-            else
+            case PhysicsShapeType::Sphere:
             {
-                const float invI = 1.0f / inertia;
+                if (!registry.all_of<SphereColliderComponent>(entity))
+                    break;
+
+                auto& sphere = registry.get<SphereColliderComponent>(entity);
+
+                body.mass = std::max(body.mass, 0.0001f);
+                body.invMass = 1.0f / body.mass;
+
+                const float r = sphere.radius;
+                const float inertia = (2.0f / 5.0f) * body.mass * r * r;
+                const float invI = inertia > 0.00001f ? 1.0f / inertia : 0.0f;
+
                 body.invInertiaLocal = { invI, invI, invI };
+                body.massPropertiesDirty = false;
+                break;
             }
 
-            body.massPropertiesDirty = false;
+            case PhysicsShapeType::Box:
+            {
+                if (!registry.all_of<BoxColliderComponent>(entity))
+                    break;
+
+                auto& box = registry.get<BoxColliderComponent>(entity);
+                UpdateBoxMassProperties(body, box);
+                break;
+            }
+
+            default:
+                body.massPropertiesDirty = false;
+                break;
+            }
         }
     }
 
@@ -768,18 +835,18 @@ public:
         if (!registry.valid(entity))
             return;
 
-        if (!registry.all_of<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>(entity))
+        if (!registry.all_of<TransformComponent, PhysicsBodyComponent>(entity))
             return;
 
-        auto& transform = registry.get<TransformComponent>(entity);
         auto& body = registry.get<PhysicsBodyComponent>(entity);
-        auto& collider = registry.get<SphereColliderComponent>(entity);
 
-        const DirectX::XMFLOAT3 centerOfMassWorld =GetCenterOfMassWorld(transform, body, collider);
+        DirectX::XMFLOAT3 centerOfMassWorld{};
+
+        if (!GetEntityCenterOfMassWorld(registry, entity, centerOfMassWorld))
+            return;
 
         ApplyImpulseAtPoint(body, centerOfMassWorld, pointWorld, impulse);
     }
-
 
     entt::entity FindFirstDynamicSphere(entt::registry& registry)
     {
@@ -856,14 +923,22 @@ public:
     }
 
 
-    DirectX::XMFLOAT3 MulByInvInertia(const PhysicsBodyComponent& body, const DirectX::XMFLOAT3& v)
+    DirectX::XMFLOAT3 MulByInvInertia(const PhysicsBodyComponent& body, const DirectX::XMFLOAT3& vWorld)
     {
-        return
-        {
-            v.x * body.invInertiaLocal.x,
-            v.y * body.invInertiaLocal.y,
-            v.z * body.invInertiaLocal.z
-        };
+        using namespace DirectX;
+
+        XMVECTOR v = XMLoadFloat3(&vWorld);
+        XMVECTOR q = GameMath::LoadQuat(body.orientation);
+        XMVECTOR invQ = XMQuaternionConjugate(q);
+
+        XMVECTOR vLocal = XMVector3Rotate(v, invQ);
+        XMVECTOR invInertia = XMLoadFloat3(&body.invInertiaLocal);
+        XMVECTOR resultLocal = XMVectorMultiply(vLocal, invInertia);
+        XMVECTOR resultWorld = XMVector3Rotate(resultLocal, q);
+
+        DirectX::XMFLOAT3 result{};
+        XMStoreFloat3(&result, resultWorld);
+        return result;
     }
 
 
@@ -1112,13 +1187,11 @@ public:
             entt::entity entityA = pair.entityA;
             entt::entity entityB = pair.entityB;
 
-            auto& transformA = registry.get<TransformComponent>(entityA);
-            auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
-            auto& sphereA = registry.get<SphereColliderComponent>(entityA);
+            if (!registry.all_of<PhysicsBodyComponent>(entityA) || !registry.all_of<PhysicsBodyComponent>(entityB))
+                continue;
 
-            auto& transformB = registry.get<TransformComponent>(entityB);
+            auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
             auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
-            auto& sphereB = registry.get<SphereColliderComponent>(entityB);
 
             if (!bodyA.enableCCD && !bodyB.enableCCD)
                 continue;
@@ -1146,7 +1219,6 @@ public:
         const float remainingTime = dt * (1.0f - bestTOI);
         IntegratePositionsForEntities(registry, bestContact.entityA, bestContact.entityB, remainingTime);
     }
-
 
 
     BoundsComponent BuildSphereBounds(const TransformComponent& transform, const PhysicsBodyComponent& body, const SphereColliderComponent& sphere)
@@ -1208,12 +1280,12 @@ public:
     {
         pairs.clear();
 
-        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent, BoundsComponent>();
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent, BoundsComponent>();
 
         std::vector<entt::entity> entities;
         entities.reserve(view.size_hint());
 
-        for (auto [entity, transform, body, sphere, bounds] : view.each())
+        for (auto [entity, transform, body, bounds] : view.each())
             entities.push_back(entity);
 
         m_lastPotentialPairs = 0;
@@ -1248,7 +1320,6 @@ public:
             }
         }
     }
-
 
     bool GenerateContact(entt::registry& registry, entt::entity entityA, entt::entity entityB, Contact& contact)
     {
@@ -1353,10 +1424,7 @@ public:
             return SupportSphere(registry, entity, directionWorld, bias, outPoint);
 
         case PhysicsShapeType::Box:
-            return false;
-
-        case PhysicsShapeType::Convex:
-            return false;
+            return SupportBox(registry, entity, directionWorld, bias, outPoint);
 
         default:
             return false;
@@ -1391,22 +1459,15 @@ public:
         if (!registry.valid(entity))
             return 0.0f;
 
-        if (!registry.all_of<PhysicsBodyComponent>(entity))
-            return 0.0f;
-
-        auto& body = registry.get<PhysicsBodyComponent>(entity);
         PhysicsShapeType type = GetPhysicsShapeType(registry, entity);
 
         switch (type)
         {
         case PhysicsShapeType::Sphere:
-            return FastestLinearSpeedSphere(body, directionWorld);
+            return 0.0f;
 
         case PhysicsShapeType::Box:
-            return 0.0f;
-
-        case PhysicsShapeType::Convex:
-            return 0.0f;
+            return FastestLinearSpeedBox(registry, entity, directionWorld);
 
         default:
             return 0.0f;
@@ -1434,16 +1495,22 @@ public:
         }
 
         case PhysicsShapeType::Box:
-            return false;
+        {
+            if (!registry.all_of<TransformComponent, PhysicsBodyComponent, BoxColliderComponent>(entity))
+                return false;
 
-        case PhysicsShapeType::Convex:
-            return false;
+            auto& transform = registry.get<TransformComponent>(entity);
+            auto& body = registry.get<PhysicsBodyComponent>(entity);
+            auto& box = registry.get<BoxColliderComponent>(entity);
+
+            outBounds = BuildBoxBounds(transform, body, box);
+            return true;
+        }
 
         default:
             return false;
         }
     }
-
 
     bool GetEntityCenterOfMassWorld(entt::registry& registry, entt::entity entity, DirectX::XMFLOAT3& outCenter)
     {
@@ -1459,13 +1526,23 @@ public:
         {
         case PhysicsShapeType::Sphere:
         {
+            if (!registry.all_of<SphereColliderComponent>(entity))
+                return false;
+
             auto& sphere = registry.get<SphereColliderComponent>(entity);
             outCenter = GameMath::LocalToWorldPoint(transform, body, sphere.centerOfMassLocal);
             return true;
         }
 
         case PhysicsShapeType::Box:
-            return false;
+        {
+            if (!registry.all_of<BoxColliderComponent>(entity))
+                return false;
+
+            auto& box = registry.get<BoxColliderComponent>(entity);
+            outCenter = GameMath::LocalToWorldPoint(transform, body, box.centerLocal);
+            return true;
+        }
 
         case PhysicsShapeType::Convex:
             return false;
@@ -1473,6 +1550,167 @@ public:
         default:
             return false;
         }
+    }
+
+
+    std::array<DirectX::XMFLOAT3, 8> GetBoxLocalCorners(const BoxColliderComponent& box)
+    {
+        const float cx = box.centerLocal.x;
+        const float cy = box.centerLocal.y;
+        const float cz = box.centerLocal.z;
+
+        const float hx = box.halfExtents.x;
+        const float hy = box.halfExtents.y;
+        const float hz = box.halfExtents.z;
+
+        return
+        {
+            DirectX::XMFLOAT3{ cx - hx, cy - hy, cz - hz },
+            DirectX::XMFLOAT3{ cx + hx, cy - hy, cz - hz },
+            DirectX::XMFLOAT3{ cx - hx, cy + hy, cz - hz },
+            DirectX::XMFLOAT3{ cx + hx, cy + hy, cz - hz },
+            DirectX::XMFLOAT3{ cx - hx, cy - hy, cz + hz },
+            DirectX::XMFLOAT3{ cx + hx, cy - hy, cz + hz },
+            DirectX::XMFLOAT3{ cx - hx, cy + hy, cz + hz },
+            DirectX::XMFLOAT3{ cx + hx, cy + hy, cz + hz }
+        };
+    }
+
+
+    bool SupportBox(entt::registry& registry, entt::entity entity, const DirectX::XMFLOAT3& directionWorld, float bias, DirectX::XMFLOAT3& outPoint)
+    {
+        if (!registry.all_of<TransformComponent, PhysicsBodyComponent, BoxColliderComponent>(entity))
+            return false;
+
+        auto& transform = registry.get<TransformComponent>(entity);
+        auto& body = registry.get<PhysicsBodyComponent>(entity);
+        auto& box = registry.get<BoxColliderComponent>(entity);
+
+        DirectX::XMFLOAT3 dir = GameMath::Normalize(directionWorld);
+        auto corners = GetBoxLocalCorners(box);
+
+        DirectX::XMFLOAT3 bestPoint = GameMath::LocalToWorldPoint(transform, body, corners[0]);
+        float bestDistance = GameMath::Dot(bestPoint, dir);
+
+        for (int i = 1; i < 8; ++i)
+        {
+            DirectX::XMFLOAT3 point = GameMath::LocalToWorldPoint(transform, body, corners[i]);
+            float distance = GameMath::Dot(point, dir);
+
+            if (distance > bestDistance)
+            {
+                bestDistance = distance;
+                bestPoint = point;
+            }
+        }
+
+        if (bias != 0.0f)
+            bestPoint = GameMath::Add(bestPoint, GameMath::Mul(dir, bias));
+
+        outPoint = bestPoint;
+        return true;
+    }
+
+
+    BoundsComponent BuildBoxBounds(const TransformComponent& transform, const PhysicsBodyComponent& body, const BoxColliderComponent& box)
+    {
+        BoundsComponent bounds{};
+        auto corners = GetBoxLocalCorners(box);
+
+        DirectX::XMFLOAT3 first = GameMath::LocalToWorldPoint(transform, body, corners[0]);
+        bounds.center = first;
+        bounds.mins = first;
+        bounds.maxs = first;
+        bounds.extents = { 0.0f, 0.0f, 0.0f };
+
+        for (int i = 1; i < 8; ++i)
+        {
+            DirectX::XMFLOAT3 p = GameMath::LocalToWorldPoint(transform, body, corners[i]);
+
+            bounds.mins.x = std::min(bounds.mins.x, p.x);
+            bounds.mins.y = std::min(bounds.mins.y, p.y);
+            bounds.mins.z = std::min(bounds.mins.z, p.z);
+
+            bounds.maxs.x = std::max(bounds.maxs.x, p.x);
+            bounds.maxs.y = std::max(bounds.maxs.y, p.y);
+            bounds.maxs.z = std::max(bounds.maxs.z, p.z);
+        }
+
+        bounds.center = GameMath::Mul(GameMath::Add(bounds.mins, bounds.maxs), 0.5f);
+        bounds.extents = GameMath::Mul(GameMath::Sub(bounds.maxs, bounds.mins), 0.5f);
+
+        return bounds;
+    }
+
+
+    void UpdateBoxMassProperties(PhysicsBodyComponent& body, const BoxColliderComponent& box)
+    {
+        if (body.type == PhysicsBodyType::Static || body.invMass == 0.0f)
+        {
+            body.mass = 0.0f;
+            body.invMass = 0.0f;
+            body.invInertiaLocal = { 0.0f, 0.0f, 0.0f };
+            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+            body.angularVelocity = { 0.0f, 0.0f, 0.0f };
+            body.massPropertiesDirty = false;
+            return;
+        }
+
+        body.mass = std::max(body.mass, 0.0001f);
+        body.invMass = 1.0f / body.mass;
+
+        const float w = box.halfExtents.x * 2.0f;
+        const float h = box.halfExtents.y * 2.0f;
+        const float d = box.halfExtents.z * 2.0f;
+
+        const float ix = (1.0f / 12.0f) * body.mass * (h * h + d * d);
+        const float iy = (1.0f / 12.0f) * body.mass * (w * w + d * d);
+        const float iz = (1.0f / 12.0f) * body.mass * (w * w + h * h);
+
+        body.invInertiaLocal =
+        {
+            ix > 0.00001f ? 1.0f / ix : 0.0f,
+            iy > 0.00001f ? 1.0f / iy : 0.0f,
+            iz > 0.00001f ? 1.0f / iz : 0.0f
+        };
+        
+        body.massPropertiesDirty = false;
+    }
+
+
+    DirectX::XMFLOAT3 GetBoxCenterWorld(const TransformComponent& transform, const PhysicsBodyComponent& body, const BoxColliderComponent& box)
+    {
+        return GameMath::LocalToWorldPoint(transform, body, box.centerLocal);
+    }
+
+
+    float FastestLinearSpeedBox(entt::registry& registry, entt::entity entity, const DirectX::XMFLOAT3& directionWorld)
+    {
+        if (!registry.all_of<TransformComponent, PhysicsBodyComponent, BoxColliderComponent>(entity))
+            return 0.0f;
+
+        auto& transform = registry.get<TransformComponent>(entity);
+        auto& body = registry.get<PhysicsBodyComponent>(entity);
+        auto& box = registry.get<BoxColliderComponent>(entity);
+
+        auto corners = GetBoxLocalCorners(box);
+        DirectX::XMFLOAT3 centerWorld = GetBoxCenterWorld(transform, body, box);
+        DirectX::XMFLOAT3 dir = GameMath::Normalize(directionWorld);
+
+        float maxSpeed = 0.0f;
+
+        for (int i = 0; i < 8; ++i)
+        {
+            DirectX::XMFLOAT3 pointWorld = GameMath::LocalToWorldPoint(transform, body, corners[i]);
+            DirectX::XMFLOAT3 r = GameMath::Sub(pointWorld, centerWorld);
+            DirectX::XMFLOAT3 velocityAtPoint = GameMath::Cross(body.angularVelocity, r);
+            float speed = GameMath::Dot(velocityAtPoint, dir);
+
+            if (speed > maxSpeed)
+                maxSpeed = speed;
+        }
+        
+        return maxSpeed;
     }
 
 
