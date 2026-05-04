@@ -24,12 +24,11 @@ public:
 
     void OnInitialize(entt::registry& registry)
     {
-
         {
             auto entity = registry.create();
 
             TransformComponent transform{};
-            transform.position = { 0.0f, 4.0f, 0.0f };
+            transform.position = { -3.0f, 3.0f, 0.0f };
             transform.scale = { 1.0f, 1.0f, 1.0f };
             transform.rotation = { 0.0f, 0.0f, 0.0f };
 
@@ -46,15 +45,14 @@ public:
             RigidbodyComponent body{};
             body.type = PhysicsBodyType::Dynamic;
             body.position = transform.position;
-            body.linearVelocity = { 0.0f, 0.0f, 1.0f };
-			body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+            body.linearVelocity = { 1.0f, 0.0f, 0.0f };
+            body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
 
             registry.emplace<TransformComponent>(entity, transform);
-			registry.emplace<MeshComponent>(entity, mesh);
-			registry.emplace<MaterialComponent>(entity, material);
-			registry.emplace<RigidbodyComponent>(entity, body);
+            registry.emplace<MeshComponent>(entity, mesh);
+            registry.emplace<MaterialComponent>(entity, material);
+            registry.emplace<RigidbodyComponent>(entity, body);
         }
-
 
         {
             auto entity = registry.create();
@@ -72,7 +70,7 @@ public:
             material.metallic = 0.1f;
             material.roughness = 0.5f;
             material.ao = 1.0f;
-            material.textureId = 1;
+            material.textureId = 2;
 
             RigidbodyComponent body{};
             body.type = PhysicsBodyType::Static;
@@ -85,36 +83,73 @@ public:
             registry.emplace<MaterialComponent>(entity, material);
             registry.emplace<RigidbodyComponent>(entity, body);
         }
+
+        {
+            auto entity = registry.create();
+
+            TransformComponent transform{};
+            transform.position = { -3.0f, -1.5f, 0.0f };
+            transform.scale = { 1.0f, 1.0f, 1.0f };
+            transform.rotation = { 0.0f, 0.0f, 0.0f };
+
+            MeshComponent mesh{};
+            mesh.shapeType = ShapeType::Sphere;
+
+            MaterialComponent material{};
+            material.baseColor = { 80.0f, 120.0f, 255.0f };
+            material.metallic = 0.1f;
+            material.roughness = 0.5f;
+            material.ao = 1.0f;
+            material.textureId = 3;
+
+            RigidbodyComponent body{};
+            body.type = PhysicsBodyType::Kinematic;
+            body.position = transform.position;
+            body.linearVelocity = { 1.25f, 0.0f, 0.0f };
+            body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+
+            registry.emplace<TransformComponent>(entity, transform);
+            registry.emplace<MeshComponent>(entity, mesh);
+            registry.emplace<MaterialComponent>(entity, material);
+            registry.emplace<RigidbodyComponent>(entity, body);
+        }
     }
 
     void OnUpdate(entt::registry& registry, const GameTime& time)
     {
-        const float dt = time.FixedDeltaTime();
+        const float dt = static_cast<float>(time.FixedDeltaTime());
 
-		auto view = registry.view<TransformComponent, RigidbodyComponent>();
+        auto view = registry.view<TransformComponent, RigidbodyComponent>();
 
-        for(auto [entity, transform, body] : view.each())
+        for (auto [entity, transform, body] : view.each())
         {
-            if (body.type != PhysicsBodyType::Dynamic)
+            if (body.type == PhysicsBodyType::Static)
                 continue;
 
+            if (body.type == PhysicsBodyType::Dynamic)
+            {
+                body.linearVelocity.x += body.linearAcceleration.x * dt;
+                body.linearVelocity.y += body.linearAcceleration.y * dt;
+                body.linearVelocity.z += body.linearAcceleration.z * dt;
 
-            body.linearVelocity.x += body.linearAcceleration.x * dt;
-            body.linearVelocity.y += body.linearAcceleration.y * dt;
-            body.linearVelocity.z += body.linearAcceleration.z * dt;
+                body.linearVelocity.x += gravity.x * dt;
+                body.linearVelocity.y += gravity.y * dt;
+                body.linearVelocity.z += gravity.z * dt;
+            }
 
-			body.linearVelocity.x += gravity.x * dt;
-            body.linearVelocity.y += gravity.y * dt;
-			body.linearVelocity.z += gravity.z * dt;
+            if (body.type == PhysicsBodyType::Kinematic)
+            {
+                body.linearVelocity.x += body.linearAcceleration.x * dt;
+                body.linearVelocity.y += body.linearAcceleration.y * dt;
+                body.linearVelocity.z += body.linearAcceleration.z * dt;
+            }
 
-			body.position.x += body.linearVelocity.x * dt;
-			body.position.y += body.linearVelocity.y * dt;
-			body.position.z += body.linearVelocity.z * dt;
-
+            body.position.x += body.linearVelocity.x * dt;
+            body.position.y += body.linearVelocity.y * dt;
+            body.position.z += body.linearVelocity.z * dt;
 
             transform.position = body.position;
-		}
-
+        }
     }
 
     void OnImGui(entt::registry& registry)
