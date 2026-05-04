@@ -39,8 +39,9 @@ public:
             body.position = transform.position;
             body.mass = 1.0f;
             body.invMass = 1.0f / body.mass;
-            body.linearVelocity = { launchImpulse.x * body.invMass, launchImpulse.y * body.invMass, launchImpulse.z * body.invMass };
+            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
             body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+			body.linearImpulse = launchImpulse;
 
             MeshComponent mesh{};
             mesh.shapeType = ShapeType::Sphere;
@@ -71,8 +72,10 @@ public:
             body.position = transform.position;
             body.mass = 4.0f;
             body.invMass = 1.0f / body.mass;
-            body.linearVelocity = { launchImpulse.x * body.invMass, launchImpulse.y * body.invMass, launchImpulse.z * body.invMass };
+            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
             body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+            body.linearImpulse = launchImpulse;
+
 
             MeshComponent mesh{};
             mesh.shapeType = ShapeType::Sphere;
@@ -105,6 +108,7 @@ public:
             body.invMass = 0.0f;
             body.linearVelocity = { 0.0f, 0.0f, 0.0f };
             body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+            body.linearImpulse = { 0.0f, 0.0f, 0.0f };
 
             MeshComponent mesh{};
             mesh.shapeType = ShapeType::Sphere;
@@ -137,6 +141,7 @@ public:
             body.invMass = 0.0f;
             body.linearVelocity = { 1.25f, 0.0f, 0.0f };
             body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+            body.linearImpulse = { 0.0f, 0.0f, 0.0f };
 
             MeshComponent mesh{};
             mesh.shapeType = ShapeType::Sphere;
@@ -170,6 +175,12 @@ public:
             {
                 if (body.invMass <= 0.0f)
                     continue;
+
+				body.linearVelocity.x += body.linearImpulse.x * body.invMass;
+				body.linearVelocity.y += body.linearImpulse.y * body.invMass;
+				body.linearVelocity.z += body.linearImpulse.z * body.invMass;
+
+				body.linearImpulse = { 0.0f, 0.0f, 0.0f };
 
                 body.linearVelocity.x += body.linearAcceleration.x * dt;
                 body.linearVelocity.y += body.linearAcceleration.y * dt;
