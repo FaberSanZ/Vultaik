@@ -42,6 +42,7 @@ public:
             body.linearVelocity = { 0.0f, 0.0f, 0.0f };
             body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
 			body.linearImpulse = launchImpulse;
+            body.linearDamping = 0.0f;
 
             MeshComponent mesh{};
             mesh.shapeType = ShapeType::Sphere;
@@ -75,7 +76,7 @@ public:
             body.linearVelocity = { 0.0f, 0.0f, 0.0f };
             body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
             body.linearImpulse = launchImpulse;
-
+            body.linearDamping = 1.5f;
 
             MeshComponent mesh{};
             mesh.shapeType = ShapeType::Sphere;
@@ -189,6 +190,13 @@ public:
                 body.linearVelocity.x += gravity.x * dt;
                 body.linearVelocity.y += gravity.y * dt;
                 body.linearVelocity.z += gravity.z * dt;
+
+                const float dampingFactor = 1.0f / (1.0f + body.linearDamping * dt);
+
+                body.linearVelocity.x *= dampingFactor;
+                body.linearVelocity.y *= dampingFactor;
+                body.linearVelocity.z *= dampingFactor;
+
             }
 
             if (body.type == PhysicsBodyType::Kinematic)

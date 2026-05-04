@@ -59,5 +59,7 @@ struct RigidbodyComponent
 
 	float mass = 1.0f;
 	float invMass = 1.0f;
+    float linearDamping = 0.0f;
+
 };
 
