@@ -67,8 +67,8 @@ public:
 private:
     entt::registry* m_Registry = nullptr;
     float cameraDistance = 25.0f;
-    float cameraYaw = 1.5f;
-    float cameraPitch = 0.1f;
+    float cameraYaw = 0.5f;
+    float cameraPitch = 0.0f;
     DirectX::XMFLOAT3 spawnPosition = { 0.0f, 0.0f, 0.0f };
     DirectX::XMFLOAT3 spawnScale = { 1.0f, 1.0f, 1.0f };
     DirectX::XMFLOAT3 spawnRotation = { 0.0f, 0.0f, 0.0f };
@@ -299,7 +299,6 @@ private:
 
                     case ShapeType::Sphere:
                         sphereInstances.push_back({ worldMatrix, baseColor, material });
-						std::cout << "Sphere instance: " << " at position (" << transform.position.x << ", " << transform.position.y << ", " << transform.position.z << ")\n";
                         break;
 
                 default:

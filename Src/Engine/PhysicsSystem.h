@@ -46,13 +46,44 @@ public:
             RigidbodyComponent body{};
             body.type = PhysicsBodyType::Dynamic;
             body.position = transform.position;
-            body.linearVelocity = { 1.0f, 0.0f, 0.0f };
+            body.linearVelocity = { 0.0f, 0.0f, 1.0f };
 			body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
 
             registry.emplace<TransformComponent>(entity, transform);
 			registry.emplace<MeshComponent>(entity, mesh);
 			registry.emplace<MaterialComponent>(entity, material);
 			registry.emplace<RigidbodyComponent>(entity, body);
+        }
+
+
+        {
+            auto entity = registry.create();
+
+            TransformComponent transform{};
+            transform.position = { 3.0f, 0.0f, 0.0f };
+            transform.scale = { 1.0f, 1.0f, 1.0f };
+            transform.rotation = { 0.0f, 0.0f, 0.0f };
+
+            MeshComponent mesh{};
+            mesh.shapeType = ShapeType::Sphere;
+
+            MaterialComponent material{};
+            material.baseColor = { 80.0f, 255.0f, 120.0f };
+            material.metallic = 0.1f;
+            material.roughness = 0.5f;
+            material.ao = 1.0f;
+            material.textureId = 1;
+
+            RigidbodyComponent body{};
+            body.type = PhysicsBodyType::Static;
+            body.position = transform.position;
+            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+            body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+
+            registry.emplace<TransformComponent>(entity, transform);
+            registry.emplace<MeshComponent>(entity, mesh);
+            registry.emplace<MaterialComponent>(entity, material);
+            registry.emplace<RigidbodyComponent>(entity, body);
         }
     }
 
@@ -106,7 +137,7 @@ public:
 	}
 
 private:
-    DirectX::XMFLOAT3 gravity = { 0.0f, -9.8f, 0.0f };
+    DirectX::XMFLOAT3 gravity = { 0.0f, -0.8f, 0.0f };
 
 
 };
