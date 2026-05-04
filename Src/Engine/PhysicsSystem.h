@@ -229,7 +229,7 @@ public:
                 material.metallic = 0.1f;
                 material.roughness = 0.5f;
                 material.ao = 1.0f;
-                material.textureId = GameMath::RandomFloat(0.0f, 4.0f);
+                material.textureId = GameMath::RandomFloat(1.0f, 4.0f);
 
                 PhysicsBodyComponent body{};
                 body.type = PhysicsBodyType::Dynamic;
@@ -261,9 +261,11 @@ public:
 
     
 
-    void ApplyGravity(entt::registry& registry, float dt)
+    void ApplyGravityImpulse(entt::registry& registry, float dt)
     {
         auto view = registry.view<PhysicsBodyComponent>();
+
+        const DirectX::XMVECTOR gravityV = DirectX::XMLoadFloat3(&gravity);
 
         for (auto entity : view)
         {
@@ -278,10 +280,12 @@ public:
             if (!body.useGravity)
                 continue;
 
-            // dv = a * dt
-            const DirectX::XMFLOAT3 deltaVelocity = GameMath::Mul(gravity, dt);
+            DirectX::XMVECTOR velocity = DirectX::XMLoadFloat3(&body.linearVelocity);
+            DirectX::XMVECTOR deltaVelocity = DirectX::XMVectorScale(gravityV, dt);
 
-            body.linearVelocity = GameMath::Add(body.linearVelocity, deltaVelocity);
+            velocity = DirectX::XMVectorAdd(velocity, deltaVelocity);
+
+            DirectX::XMStoreFloat3(&body.linearVelocity, velocity);
         }
     }
 
@@ -298,10 +302,13 @@ public:
             if (body.type != PhysicsBodyType::Dynamic)
                 continue;
 
-            // dx = v * dt
-            const DirectX::XMFLOAT3 deltaPosition = GameMath::Mul(body.linearVelocity, dt);
+            DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&transform.position);
+            DirectX::XMVECTOR velocity = DirectX::XMLoadFloat3(&body.linearVelocity);
+            DirectX::XMVECTOR delta = DirectX::XMVectorScale(velocity, dt);
 
-            transform.position = GameMath::Add(transform.position, deltaPosition);
+            position = DirectX::XMVectorAdd(position, delta);
+
+            DirectX::XMStoreFloat3(&transform.position, position);
         }
     }
 
@@ -363,32 +370,34 @@ public:
     }
 
 
-    void ApplyGravityImpulse(entt::registry& registry, float dt)
-    {
-        auto view = registry.view<PhysicsBodyComponent>();
+    //void ApplyGravityImpulse(entt::registry& registry, float dt)
+    //{
+    //    auto view = registry.view<PhysicsBodyComponent>();
 
-        for (auto entity : view)
-        {
-            auto& body = view.get<PhysicsBodyComponent>(entity);
+    //    for (auto entity : view)
+    //    {
+    //        auto& body = view.get<PhysicsBodyComponent>(entity);
 
-            if (!body.enabled)
-                continue;
+    //        if (!body.enabled)
+    //            continue;
 
-            if (body.type != PhysicsBodyType::Dynamic)
-                continue;
+    //        if (body.type != PhysicsBodyType::Dynamic)
+    //            continue;
 
-            if (!body.useGravity)
-                continue;
+    //        if (!body.useGravity)
+    //            continue;
 
-            // F = m * g
-            const DirectX::XMFLOAT3 force = GameMath::Mul(gravity, body.mass);
+    //        // F = m * g
+    //        const DirectX::XMFLOAT3 force = GameMath::Mul(gravity, body.mass);
 
-            // J = F * dt
-            const DirectX::XMFLOAT3 impulse = GameMath::Mul(force, dt);
+    //        // J = F * dt
+    //        const DirectX::XMFLOAT3 impulse = GameMath::Mul(force, dt);
 
-            ApplyLinearImpulse(body, impulse);
-        }
-    }
+    //        ApplyLinearImpulse(body, impulse);
+    //    }
+    //}
+
+
 
 
     bool BuildSphereSphereContact(entt::entity entityA, entt::entity entityB, const TransformComponent& transformA, const PhysicsBodyComponent& bodyA, const SphereColliderComponent& sphereA, const TransformComponent& transformB, const PhysicsBodyComponent& bodyB, const SphereColliderComponent& sphereB, Contact& contact)
@@ -1159,11 +1168,14 @@ public:
 
     void UpdateBounds(entt::registry& registry)
     {
-        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent>();
 
-        for (auto [entity, transform, body, sphere] : view.each())
+        for (auto [entity, transform, body] : view.each())
         {
-            BoundsComponent bounds = BuildSphereBounds(transform, body, sphere);
+            BoundsComponent bounds{};
+
+            if (!BuildEntityBounds(registry, entity, bounds))
+                continue;
 
             if (registry.all_of<BoundsComponent>(entity))
             {
@@ -1297,6 +1309,171 @@ public:
         return false;
     }
 
+
+    PhysicsShapeType GetPhysicsShapeType(entt::registry& registry, entt::entity entity)
+    {
+        if (!registry.valid(entity))
+            return PhysicsShapeType::None;
+
+        if (registry.all_of<SphereColliderComponent>(entity))
+            return PhysicsShapeType::Sphere;
+
+        if (registry.all_of<BoxColliderComponent>(entity))
+            return PhysicsShapeType::Box;
+
+        return PhysicsShapeType::None;
+    }
+
+
+    bool SupportSphere(entt::registry& registry, entt::entity entity, const DirectX::XMFLOAT3& directionWorld, float bias, DirectX::XMFLOAT3& outPoint)
+    {
+        if (!registry.all_of<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>(entity))
+            return false;
+
+        auto& transform = registry.get<TransformComponent>(entity);
+        auto& body = registry.get<PhysicsBodyComponent>(entity);
+        auto& sphere = registry.get<SphereColliderComponent>(entity);
+
+        DirectX::XMFLOAT3 dir = GameMath::Normalize(directionWorld);
+        DirectX::XMFLOAT3 center = GetSphereCenterWorld(transform, body, sphere);
+        float radius = sphere.radius + bias;
+
+        outPoint = GameMath::Add(center, GameMath::Mul(dir, radius));
+        return true;
+    }
+
+
+    bool SupportPoint(entt::registry& registry, entt::entity entity, const DirectX::XMFLOAT3& directionWorld, float bias, DirectX::XMFLOAT3& outPoint)
+    {
+        PhysicsShapeType type = GetPhysicsShapeType(registry, entity);
+
+        switch (type)
+        {
+        case PhysicsShapeType::Sphere:
+            return SupportSphere(registry, entity, directionWorld, bias, outPoint);
+
+        case PhysicsShapeType::Box:
+            return false;
+
+        case PhysicsShapeType::Convex:
+            return false;
+
+        default:
+            return false;
+        }
+    }
+
+
+    bool SupportMinkowski(entt::registry& registry, entt::entity entityA, entt::entity entityB, const DirectX::XMFLOAT3& directionWorld, float bias, DirectX::XMFLOAT3& outPoint)
+    {
+        DirectX::XMFLOAT3 pointA{};
+        DirectX::XMFLOAT3 pointB{};
+        DirectX::XMFLOAT3 opposite = GameMath::Mul(directionWorld, -1.0f);
+
+        if (!SupportPoint(registry, entityA, directionWorld, bias, pointA))
+            return false;
+
+        if (!SupportPoint(registry, entityB, opposite, bias, pointB))
+            return false;
+
+        outPoint = GameMath::Sub(pointA, pointB);
+        return true;
+    }
+
+    float FastestLinearSpeedSphere(const PhysicsBodyComponent& body, const DirectX::XMFLOAT3& directionWorld)
+    {
+        return 0.0f;
+    }
+
+
+    float GetFastestLinearSpeed(entt::registry& registry, entt::entity entity, const DirectX::XMFLOAT3& directionWorld)
+    {
+        if (!registry.valid(entity))
+            return 0.0f;
+
+        if (!registry.all_of<PhysicsBodyComponent>(entity))
+            return 0.0f;
+
+        auto& body = registry.get<PhysicsBodyComponent>(entity);
+        PhysicsShapeType type = GetPhysicsShapeType(registry, entity);
+
+        switch (type)
+        {
+        case PhysicsShapeType::Sphere:
+            return FastestLinearSpeedSphere(body, directionWorld);
+
+        case PhysicsShapeType::Box:
+            return 0.0f;
+
+        case PhysicsShapeType::Convex:
+            return 0.0f;
+
+        default:
+            return 0.0f;
+        }
+    }
+
+
+    bool BuildEntityBounds(entt::registry& registry, entt::entity entity, BoundsComponent& outBounds)
+    {
+        PhysicsShapeType type = GetPhysicsShapeType(registry, entity);
+
+        switch (type)
+        {
+        case PhysicsShapeType::Sphere:
+        {
+            if (!registry.all_of<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>(entity))
+                return false;
+
+            auto& transform = registry.get<TransformComponent>(entity);
+            auto& body = registry.get<PhysicsBodyComponent>(entity);
+            auto& sphere = registry.get<SphereColliderComponent>(entity);
+
+            outBounds = BuildSphereBounds(transform, body, sphere);
+            return true;
+        }
+
+        case PhysicsShapeType::Box:
+            return false;
+
+        case PhysicsShapeType::Convex:
+            return false;
+
+        default:
+            return false;
+        }
+    }
+
+
+    bool GetEntityCenterOfMassWorld(entt::registry& registry, entt::entity entity, DirectX::XMFLOAT3& outCenter)
+    {
+        if (!registry.all_of<TransformComponent, PhysicsBodyComponent>(entity))
+            return false;
+
+        auto& transform = registry.get<TransformComponent>(entity);
+        auto& body = registry.get<PhysicsBodyComponent>(entity);
+
+        PhysicsShapeType type = GetPhysicsShapeType(registry, entity);
+
+        switch (type)
+        {
+        case PhysicsShapeType::Sphere:
+        {
+            auto& sphere = registry.get<SphereColliderComponent>(entity);
+            outCenter = GameMath::LocalToWorldPoint(transform, body, sphere.centerOfMassLocal);
+            return true;
+        }
+
+        case PhysicsShapeType::Box:
+            return false;
+
+        case PhysicsShapeType::Convex:
+            return false;
+
+        default:
+            return false;
+        }
+    }
 
 
 	// TODO: move this to a config file or something

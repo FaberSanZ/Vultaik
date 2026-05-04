@@ -75,11 +75,25 @@ struct SphereColliderComponent
     DirectX::XMFLOAT3 centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
 };
 
+struct BoxColliderComponent
+{
+    DirectX::XMFLOAT3 halfExtents = { 0.5f, 0.5f, 0.5f };
+    DirectX::XMFLOAT3 centerLocal = { 0.0f, 0.0f, 0.0f };
+};
+
 enum class PhysicsBodyType 
 {
     Static,
     Dynamic,
     Kinematic
+};
+
+enum class PhysicsShapeType
+{
+    None,
+    Sphere,
+    Box,
+    Convex
 };
 
 struct PhysicsBodyComponent
