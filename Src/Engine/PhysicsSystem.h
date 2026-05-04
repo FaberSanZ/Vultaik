@@ -185,7 +185,6 @@ public:
     void OnUpdate(entt::registry& registry, const GameTime& time)
     {
         const float dt = time.FixedDeltaTime();
-
         UpdateMassProperties(registry);
         StorePreviousPositions(registry);
 
@@ -210,6 +209,52 @@ public:
             registry.clear();
             OnInitialize(registry);
 		}
+
+		// generate random spheres
+        if (ImGui::Button("Generate Random Spheres"))
+        {
+            for (int i = 0; i < 15; ++i)
+            {
+                auto entity = registry.create();
+                TransformComponent transform{};
+                transform.position = { GameMath::RandomFloat(-5.0f, 5.0f), GameMath::RandomFloat(0.0f, 5.0f), GameMath::RandomFloat(-5.0f, 5.0f) };
+                transform.scale = { 1.0f, 1.0f, 1.0f };
+                transform.rotation = { 0.0f, 0.0f, 0.0f };
+
+                MeshComponent mesh{};
+                mesh.shapeType = ShapeType::Sphere;
+
+                MaterialComponent material{};
+                material.baseColor = { 255.0f, 80.0f, 80.0f };
+                material.metallic = 0.1f;
+                material.roughness = 0.5f;
+                material.ao = 1.0f;
+                material.textureId = GameMath::RandomFloat(0.0f, 4.0f);
+
+                PhysicsBodyComponent body{};
+                body.type = PhysicsBodyType::Dynamic;
+                body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
+                body.mass = 1.0f;
+                body.invMass = 1.0f / body.mass;
+                body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+                body.angularVelocity = { 0.0f, 0.0f, 0.0f };
+                body.useGravity = true;
+                body.restitution = 0.5f;
+                body.massPropertiesDirty = true;
+                body.friction = 0.6f;
+                body.enableCCD = false;
+
+                SphereColliderComponent collider{};
+                collider.radius = 1.0f;
+                collider.centerOfMassLocal = { 0.0f, 0.0f, 0.0f };
+
+                registry.emplace<TransformComponent>(entity, transform);
+                registry.emplace<MeshComponent>(entity, mesh);
+                registry.emplace<MaterialComponent>(entity, material);
+                registry.emplace<PhysicsBodyComponent>(entity, body);
+                registry.emplace<SphereColliderComponent>(entity, collider);
+            }
+        }
 
     }
 
@@ -346,7 +391,7 @@ public:
     }
 
 
-    bool IntersectSphereSphere(entt::entity entityA, entt::entity entityB, const TransformComponent& transformA, const PhysicsBodyComponent& bodyA, const SphereColliderComponent& sphereA, const TransformComponent& transformB, const PhysicsBodyComponent& bodyB, const SphereColliderComponent& sphereB, Contact& contact)
+    bool BuildSphereSphereContact(entt::entity entityA, entt::entity entityB, const TransformComponent& transformA, const PhysicsBodyComponent& bodyA, const SphereColliderComponent& sphereA, const TransformComponent& transformB, const PhysicsBodyComponent& bodyB, const SphereColliderComponent& sphereB, Contact& contact)
     {
         const DirectX::XMFLOAT3 centerA = GetSphereCenterWorld(transformA, bodyA, sphereA);
         const DirectX::XMFLOAT3 centerB = GetSphereCenterWorld(transformB, bodyB, sphereB);
@@ -354,22 +399,26 @@ public:
         const DirectX::XMFLOAT3 ab = GameMath::Sub(centerB, centerA);
         const float distance = GameMath::Length(ab);
 
-        const DirectX::XMFLOAT3 normal = distance > 0.00001f ? GameMath::Div(ab, distance) : DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
-
         const float radiusA = sphereA.radius;
         const float radiusB = sphereB.radius;
         const float radiusSum = radiusA + radiusB;
+
+        const float separation = distance - radiusSum;
+
+        if (separation > 0.0f)
+            return false;
+
+        const DirectX::XMFLOAT3 normal = distance > 0.00001f ? GameMath::Div(ab, distance) : DirectX::XMFLOAT3{ 0.0f, 1.0f, 0.0f };
 
         contact.entityA = entityA;
         contact.entityB = entityB;
         contact.normal = normal;
         contact.pointOnAWorld = GameMath::Add(centerA, GameMath::Mul(normal, radiusA));
         contact.pointOnBWorld = GameMath::Sub(centerB, GameMath::Mul(normal, radiusB));
-        contact.separationDistance = distance - radiusSum;
+        contact.separationDistance = separation;
 
-        return contact.separationDistance <= 0.0f;
+        return true;
     }
-
 
 
     void ResolveContactProjection(entt::registry& registry, const Contact& contact)
@@ -516,23 +565,19 @@ public:
     {
         contacts.clear();
 
+        m_lastNarrowphaseTests = 0;
+        m_lastSphereSphereTests = 0;
+        m_lastGeneratedContacts = 0;
+
         for (const CollisionPair& pair : pairs)
         {
-            entt::entity entityA = pair.entityA;
-            entt::entity entityB = pair.entityB;
-
-            auto& transformA = registry.get<TransformComponent>(entityA);
-            auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
-            auto& sphereA = registry.get<SphereColliderComponent>(entityA);
-
-            auto& transformB = registry.get<TransformComponent>(entityB);
-            auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
-            auto& sphereB = registry.get<SphereColliderComponent>(entityB);
-
             Contact contact{};
 
-            if (IntersectSphereSphere(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact))
+            if (GenerateContact(registry, pair.entityA, pair.entityB, contact))
+            {
                 contacts.push_back(contact);
+                ++m_lastGeneratedContacts;
+            }
         }
 
         m_lastNarrowphaseContacts = static_cast<uint32_t>(contacts.size());
@@ -953,12 +998,11 @@ public:
         auto& bodyB = registry.get<PhysicsBodyComponent>(contact.entityB);
 
         if (bodyA.type == PhysicsBodyType::Dynamic)
-            transformA.position = GameMath::Lerp(bodyA.previousPosition, transformA.position, toi);
+            transformA.position = GameMath::Lerp(bodyA.previousPosition, bodyA.targetPosition, toi);
 
         if (bodyB.type == PhysicsBodyType::Dynamic)
-            transformB.position = GameMath::Lerp(bodyB.previousPosition, transformB.position, toi);
+            transformB.position = GameMath::Lerp(bodyB.previousPosition, bodyB.targetPosition, toi);
     }
-
 
 
 
@@ -1073,7 +1117,7 @@ public:
             Contact contact{};
             float toi = 1.0f;
 
-            if (SweptSphereSphere(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact, toi))
+            if (GenerateSweptContact(registry, entityA, entityB, contact, toi))
             {
                 if (toi < bestTOI)
                 {
@@ -1194,6 +1238,66 @@ public:
     }
 
 
+    bool GenerateContact(entt::registry& registry, entt::entity entityA, entt::entity entityB, Contact& contact)
+    {
+        ++m_lastNarrowphaseTests;
+
+        if (!registry.valid(entityA) || !registry.valid(entityB))
+            return false;
+
+        if (!registry.all_of<TransformComponent, PhysicsBodyComponent>(entityA))
+            return false;
+
+        if (!registry.all_of<TransformComponent, PhysicsBodyComponent>(entityB))
+            return false;
+
+        const bool aIsSphere = registry.all_of<SphereColliderComponent>(entityA);
+        const bool bIsSphere = registry.all_of<SphereColliderComponent>(entityB);
+
+        if (aIsSphere && bIsSphere)
+        {
+            ++m_lastSphereSphereTests;
+
+            auto& transformA = registry.get<TransformComponent>(entityA);
+            auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
+            auto& sphereA = registry.get<SphereColliderComponent>(entityA);
+
+            auto& transformB = registry.get<TransformComponent>(entityB);
+            auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
+            auto& sphereB = registry.get<SphereColliderComponent>(entityB);
+
+            return BuildSphereSphereContact(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact);
+        }
+
+        return false;
+    }
+
+
+    bool GenerateSweptContact(entt::registry& registry, entt::entity entityA, entt::entity entityB, Contact& contact, float& toi)
+    {
+        if (!registry.valid(entityA) || !registry.valid(entityB))
+            return false;
+
+        const bool aIsSphere = registry.all_of<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>(entityA);
+        const bool bIsSphere = registry.all_of<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>(entityB);
+
+        if (aIsSphere && bIsSphere)
+        {
+            auto& transformA = registry.get<TransformComponent>(entityA);
+            auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
+            auto& sphereA = registry.get<SphereColliderComponent>(entityA);
+
+            auto& transformB = registry.get<TransformComponent>(entityB);
+            auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
+            auto& sphereB = registry.get<SphereColliderComponent>(entityB);
+
+            return SweptSphereSphere(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact, toi);
+        }
+
+        return false;
+    }
+
+
 
 	// TODO: move this to a config file or something
     DirectX::XMFLOAT3 gravity = { 0.0f, -1.0f, 0.0f };
@@ -1204,4 +1308,8 @@ public:
     uint32_t m_lastPotentialPairs = 0;
     uint32_t m_lastBroadphasePairs = 0;
     uint32_t m_lastNarrowphaseContacts = 0;
+
+    uint32_t m_lastNarrowphaseTests = 0;
+    uint32_t m_lastSphereSphereTests = 0;
+    uint32_t m_lastGeneratedContacts = 0;
 };

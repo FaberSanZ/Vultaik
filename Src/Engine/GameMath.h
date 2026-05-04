@@ -155,6 +155,11 @@ public:
         return { a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
     }
 
+    static inline float RandomFloat(float min, float max)
+    {
+        return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (max - min)));
+	}
+
 };
 
 
