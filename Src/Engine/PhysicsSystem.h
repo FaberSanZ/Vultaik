@@ -182,11 +182,15 @@ public:
                 if (body.invMass <= 0.0f)
                     continue;
 
-				body.linearVelocity.x += body.linearImpulse.x * body.invMass;
-				body.linearVelocity.y += body.linearImpulse.y * body.invMass;
-				body.linearVelocity.z += body.linearImpulse.z * body.invMass;
+                body.linearVelocity.x += body.linearImpulse.x * body.invMass;
+                body.linearVelocity.y += body.linearImpulse.y * body.invMass;
+                body.linearVelocity.z += body.linearImpulse.z * body.invMass;
 
-				body.linearImpulse = { 0.0f, 0.0f, 0.0f };
+                body.linearImpulse = { 0.0f, 0.0f, 0.0f };
+
+                body.linearForce.x += gravity.x * body.mass;
+                body.linearForce.y += gravity.y * body.mass;
+                body.linearForce.z += gravity.z * body.mass;
 
                 body.linearVelocity.x += body.linearForce.x * body.invMass * dt;
                 body.linearVelocity.y += body.linearForce.y * body.invMass * dt;
@@ -194,21 +198,15 @@ public:
 
                 body.linearForce = { 0.0f, 0.0f, 0.0f };
 
-
                 body.linearVelocity.x += body.linearAcceleration.x * dt;
                 body.linearVelocity.y += body.linearAcceleration.y * dt;
                 body.linearVelocity.z += body.linearAcceleration.z * dt;
-
-                body.linearVelocity.x += gravity.x * dt;
-                body.linearVelocity.y += gravity.y * dt;
-                body.linearVelocity.z += gravity.z * dt;
 
                 const float dampingFactor = 1.0f / (1.0f + body.linearDamping * dt);
 
                 body.linearVelocity.x *= dampingFactor;
                 body.linearVelocity.y *= dampingFactor;
                 body.linearVelocity.z *= dampingFactor;
-
             }
 
             if (body.type == PhysicsBodyType::Kinematic)
