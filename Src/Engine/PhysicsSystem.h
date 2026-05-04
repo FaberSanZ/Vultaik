@@ -25,6 +25,7 @@ public:
     void OnInitialize(entt::registry& registry)
     {
         const DirectX::XMFLOAT3 launchImpulse = { 4.0f, 0.0f, 0.0f };
+        const DirectX::XMFLOAT3 constantForce = { 12.0f, 0.0f, 0.0f };
 
         {
             auto entity = registry.create();
@@ -43,6 +44,8 @@ public:
             body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
 			body.linearImpulse = launchImpulse;
             body.linearDamping = 0.0f;
+            body.linearForce = constantForce;
+
 
             MeshComponent mesh{};
             mesh.shapeType = ShapeType::Sphere;
@@ -77,6 +80,8 @@ public:
             body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
             body.linearImpulse = launchImpulse;
             body.linearDamping = 1.5f;
+            body.linearForce = constantForce;
+
 
             MeshComponent mesh{};
             mesh.shapeType = ShapeType::Sphere;
@@ -182,6 +187,10 @@ public:
 				body.linearVelocity.z += body.linearImpulse.z * body.invMass;
 
 				body.linearImpulse = { 0.0f, 0.0f, 0.0f };
+
+                body.linearVelocity.x += body.linearForce.x * body.invMass * dt;
+                body.linearVelocity.y += body.linearForce.y * body.invMass * dt;
+                body.linearVelocity.z += body.linearForce.z * body.invMass * dt;
 
                 body.linearVelocity.x += body.linearAcceleration.x * dt;
                 body.linearVelocity.y += body.linearAcceleration.y * dt;
