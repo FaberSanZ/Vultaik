@@ -95,6 +95,7 @@ struct PhysicsBodyComponent
     float restitution = 0.4f;
     float mass = 1.0f;
     float invMass = 1.0f;
+    float friction = 0.5f;
 
     bool useGravity = true;
     bool enabled = true;

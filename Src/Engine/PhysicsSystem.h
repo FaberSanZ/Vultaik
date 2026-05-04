@@ -62,14 +62,15 @@ public:
 
             PhysicsBodyComponent body{};
             body.type = PhysicsBodyType::Dynamic;
-            body.orientation = { 0.0f, 0.0f, 0.0f, 0.0f };
+            body.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
             body.mass = 1.0f;
             body.invMass = 1.0f / body.mass;
             body.linearVelocity = { 0.0f, 0.0f, 0.0f };
-            body.angularVelocity = { 0.0f, 0.0f, 1.0f };
+            body.angularVelocity = { 0.0f, 0.0f, 0.0f };
             body.useGravity = true;
             body.restitution = 0.5f;
 			body.massPropertiesDirty = true;
+            body.friction = 0.6f;
 
             SphereColliderComponent collider{};
             collider.radius = 1.0f;
@@ -114,7 +115,7 @@ public:
             body.angularVelocity = { 0.0f, 0.0f, 0.0f };
             body.useGravity = false;
             body.restitution = 0.5f;
-
+            body.friction = 0.6f;
 
             SphereColliderComponent collider{};
             collider.radius = 6.0f;
@@ -135,11 +136,12 @@ public:
         UpdateMassProperties(registry);
 
         ApplyGravityImpulse(registry, dt);
+
         IntegratePositions(registry, dt);
-        IntegrateOrientations(registry, dt);
 
         SolveContacts(registry);
 
+        IntegrateOrientations(registry, dt);
     }
 
     void OnImGui(entt::registry& registry)
@@ -222,7 +224,7 @@ public:
     }
 
 
-
+    
 
     void ApplyGravity(entt::registry& registry, float dt)
     {
@@ -453,10 +455,7 @@ public:
         if (!bodyA.enabled || !bodyB.enabled)
             return;
 
-        const float invMassA = bodyA.invMass;
-        const float invMassB = bodyB.invMass;
-
-        if (invMassA + invMassB <= 0.0f)
+        if (bodyA.invMass + bodyB.invMass <= 0.0f)
             return;
 
         const DirectX::XMFLOAT3 normal = contact.normal;
@@ -465,11 +464,13 @@ public:
         const DirectX::XMFLOAT3 centerB = GetCenterOfMassWorld(transformB, bodyB, sphereB);
         const DirectX::XMFLOAT3 rA = GameMath::Sub(contactPoint, centerA);
         const DirectX::XMFLOAT3 rB = GameMath::Sub(contactPoint, centerB);
-        const DirectX::XMFLOAT3 velocityA = GetVelocityAtPoint(bodyA, centerA, contactPoint);
-        const DirectX::XMFLOAT3 velocityB = GetVelocityAtPoint(bodyB, centerB, contactPoint);
-        const DirectX::XMFLOAT3 relativeVelocity = GameMath::Sub(velocityB, velocityA);
 
-        const float contactVelocity = GameMath::Dot(relativeVelocity, normal);
+        // Normal impulse
+        DirectX::XMFLOAT3 velocityA = GetVelocityAtPoint(bodyA, centerA, contactPoint);
+        DirectX::XMFLOAT3 velocityB = GetVelocityAtPoint(bodyB, centerB, contactPoint);
+        DirectX::XMFLOAT3 relativeVelocity = GameMath::Sub(velocityB, velocityA);
+
+        float contactVelocity = GameMath::Dot(relativeVelocity, normal);
 
         if (contactVelocity > 0.0f)
             return;
@@ -477,26 +478,48 @@ public:
         float restitution = CombineRestitution(bodyA, bodyB);
 
         if (std::abs(contactVelocity) < restingVelocityThreshold)
-        {
             restitution = 0.0f;
-        }
 
-        const float angularDenominator = ComputeAngularImpulseDenominator(bodyA, bodyB, rA, rB, normal);
+        const float normalDenominator = ComputeImpulseDenominator(bodyA, bodyB, rA, rB, normal);
 
-        const float denominator = invMassA + invMassB + angularDenominator;
-
-        if (denominator <= 0.00001f)
+        if (normalDenominator <= 0.00001f)
             return;
 
-        const float impulseMagnitude = -(1.0f + restitution) * contactVelocity / denominator;
+        const float normalImpulseMagnitude = -(1.0f + restitution) * contactVelocity / normalDenominator;
 
-        const DirectX::XMFLOAT3 impulse = GameMath::Mul(normal, impulseMagnitude);
+        const DirectX::XMFLOAT3 normalImpulse = GameMath::Mul(normal, normalImpulseMagnitude);
 
-        if (bodyA.type == PhysicsBodyType::Dynamic)
-            ApplyImpulseAtPoint(bodyA, centerA, contactPoint, GameMath::Mul(impulse, -1.0f));
+        ApplyImpulsePairAtPoint(bodyA, bodyB, centerA, centerB, contactPoint, normalImpulse);
 
-        if (bodyB.type == PhysicsBodyType::Dynamic)
-            ApplyImpulseAtPoint(bodyB, centerB, contactPoint, impulse);
+
+        // Friction impulse
+        velocityA = GetVelocityAtPoint(bodyA, centerA, contactPoint);
+        velocityB = GetVelocityAtPoint(bodyB, centerB, contactPoint);
+
+        relativeVelocity = GameMath::Sub(velocityB, velocityA);
+
+        const float normalSpeed = GameMath::Dot(relativeVelocity, normal);
+        DirectX::XMFLOAT3 tangentVelocity = GameMath::Sub(relativeVelocity, GameMath::Mul(normal, normalSpeed));
+        const float tangentSpeedSq = GameMath::LengthSq(tangentVelocity);
+
+        if (tangentSpeedSq <= 0.000001f)
+            return;
+
+        const DirectX::XMFLOAT3 tangent = GameMath::Normalize(tangentVelocity);
+        const float tangentDenominator = ComputeImpulseDenominator(bodyA, bodyB, rA, rB, tangent);
+
+        if (tangentDenominator <= 0.00001f)
+            return;
+
+        float tangentImpulseMagnitude = -GameMath::Dot(relativeVelocity, tangent) / tangentDenominator;
+        const float friction = CombineFriction(bodyA, bodyB);
+        const float maxFrictionImpulse = normalImpulseMagnitude * friction;
+
+        tangentImpulseMagnitude = std::clamp(tangentImpulseMagnitude, -maxFrictionImpulse, maxFrictionImpulse);
+
+        const DirectX::XMFLOAT3 frictionImpulse = GameMath::Mul(tangent, tangentImpulseMagnitude);
+
+        ApplyImpulsePairAtPoint(bodyA, bodyB, centerA, centerB, contactPoint, frictionImpulse);
     }
 
 
@@ -834,25 +857,41 @@ public:
         return GameMath::Mul(GameMath::Add(contact.pointOnAWorld, contact.pointOnBWorld), 0.5f);
     }
 
-    float ComputeAngularImpulseDenominator(const PhysicsBodyComponent& bodyA, const PhysicsBodyComponent& bodyB, const DirectX::XMFLOAT3& rA, const DirectX::XMFLOAT3& rB, const DirectX::XMFLOAT3& normal)
+
+
+    float CombineFriction(const PhysicsBodyComponent& bodyA,const PhysicsBodyComponent& bodyB)
     {
-        // rA x n
-        const DirectX::XMFLOAT3 rAcrossN = GameMath::Cross(rA, normal);
+        return std::min(bodyA.friction, bodyB.friction);
+    }
 
-        // rB x n
-        const DirectX::XMFLOAT3 rBcrossN = GameMath::Cross(rB, normal);
 
-        // I^-1 * (r x n)
-        const DirectX::XMFLOAT3 invInertiaA_rAcrossN = MulByInvInertia(bodyA, rAcrossN);
-        const DirectX::XMFLOAT3 invInertiaB_rBcrossN = MulByInvInertia(bodyB, rBcrossN);
-
-        // (I^-1 * (r x n)) x r
-        const DirectX::XMFLOAT3 angularA = GameMath::Cross(invInertiaA_rAcrossN, rA);
-        const DirectX::XMFLOAT3 angularB = GameMath::Cross(invInertiaB_rBcrossN, rB);
+    float ComputeImpulseDenominator(const PhysicsBodyComponent& bodyA, const PhysicsBodyComponent& bodyB, const DirectX::XMFLOAT3& rA, const DirectX::XMFLOAT3& rB, const DirectX::XMFLOAT3& direction)
+    {
+        const DirectX::XMFLOAT3 rAcrossDir = GameMath::Cross(rA, direction);
+        const DirectX::XMFLOAT3 rBcrossDir = GameMath::Cross(rB, direction);
+        const DirectX::XMFLOAT3 invInertiaA = MulByInvInertia(bodyA, rAcrossDir);
+        const DirectX::XMFLOAT3 invInertiaB = MulByInvInertia(bodyB, rBcrossDir);
+        const DirectX::XMFLOAT3 angularA = GameMath::Cross(invInertiaA, rA);
+        const DirectX::XMFLOAT3 angularB = GameMath::Cross(invInertiaB, rB);
         const DirectX::XMFLOAT3 angularSum = GameMath::Add(angularA, angularB);
 
-        return GameMath::Dot(angularSum, normal);
+        return bodyA.invMass + bodyB.invMass + GameMath::Dot(angularSum, direction);
     }
+
+
+    void ApplyImpulsePairAtPoint(PhysicsBodyComponent& bodyA, PhysicsBodyComponent& bodyB, const DirectX::XMFLOAT3& centerA, const DirectX::XMFLOAT3& centerB, const DirectX::XMFLOAT3& contactPoint, const DirectX::XMFLOAT3& impulse)
+    {
+        if (bodyA.type == PhysicsBodyType::Dynamic)
+        {
+            ApplyImpulseAtPoint(bodyA, centerA, contactPoint, GameMath::Mul(impulse, -1.0f));;
+        }
+
+        if (bodyB.type == PhysicsBodyType::Dynamic)
+        {
+            ApplyImpulseAtPoint(bodyB, centerB, contactPoint, impulse);
+        }
+    }
+
 
 
 	// TODO: move this to a config file or something
