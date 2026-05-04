@@ -33,6 +33,12 @@ struct Contact
 };
 
 
+struct CollisionPair
+{
+    entt::entity entityA = entt::null;
+    entt::entity entityB = entt::null;
+};
+
 class PhysicsSystem
 {
 public:
@@ -187,11 +193,12 @@ public:
         IntegratePositions(registry, dt);
         StoreTargetPositions(registry);
 
+        UpdateBounds(registry);
+
         SolveTOI(registry, dt);
         SolveContacts(registry);
 
         IntegrateOrientations(registry, dt);
-
         UpdateBounds(registry);
     }
 
@@ -405,24 +412,23 @@ public:
     {
         constexpr int projectionIterations = 4;
 
+        std::vector<CollisionPair> pairs;
+        BuildBroadphasePairs(registry, pairs);
+
         for (int iteration = 0; iteration < projectionIterations; ++iteration)
         {
             std::vector<Contact> contacts;
-            BuildContactList(registry, contacts);
+            BuildContactList(registry, pairs, contacts);
 
             for (const Contact& contact : contacts)
-            {
                 ResolveContactProjection(registry, contact);
-            }
         }
 
         std::vector<Contact> contacts;
-        BuildContactList(registry, contacts);
+        BuildContactList(registry, pairs, contacts);
 
         for (const Contact& contact : contacts)
-        {
             ResolveContactVelocity(registry, contact);
-        }
     }
 
     void ResolveContactVelocity(entt::registry& registry, const Contact& contact)
@@ -506,48 +512,30 @@ public:
     }
 
 
-    void BuildContactList(entt::registry& registry, std::vector<Contact>& contacts)
+    void BuildContactList(entt::registry& registry, const std::vector<CollisionPair>& pairs, std::vector<Contact>& contacts)
     {
         contacts.clear();
 
-        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
-
-        std::vector<entt::entity> entities;
-        entities.reserve(view.size_hint());
-
-        for (auto [entity, transform, body, sphere] : view.each())
+        for (const CollisionPair& pair : pairs)
         {
-            entities.push_back(entity);
+            entt::entity entityA = pair.entityA;
+            entt::entity entityB = pair.entityB;
+
+            auto& transformA = registry.get<TransformComponent>(entityA);
+            auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
+            auto& sphereA = registry.get<SphereColliderComponent>(entityA);
+
+            auto& transformB = registry.get<TransformComponent>(entityB);
+            auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
+            auto& sphereB = registry.get<SphereColliderComponent>(entityB);
+
+            Contact contact{};
+
+            if (IntersectSphereSphere(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact))
+                contacts.push_back(contact);
         }
 
-        for (size_t i = 0; i < entities.size(); ++i)
-        {
-            for (size_t j = i + 1; j < entities.size(); ++j)
-            {
-                entt::entity entityA = entities[i];
-                entt::entity entityB = entities[j];
-
-                auto& transformA = registry.get<TransformComponent>(entityA);
-                auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
-                auto& sphereA = registry.get<SphereColliderComponent>(entityA);
-
-                auto& transformB = registry.get<TransformComponent>(entityB);
-                auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
-                auto& sphereB = registry.get<SphereColliderComponent>(entityB);
-
-                if (!bodyA.enabled || !bodyB.enabled)
-                    continue;
-
-                if (bodyA.invMass == 0.0f && bodyB.invMass == 0.0f)
-                    continue;
-
-                Contact contact{};
-                if (IntersectSphereSphere(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact))
-                {
-                    contacts.push_back(contact);
-                }
-            }
-        }
+        m_lastNarrowphaseContacts = static_cast<uint32_t>(contacts.size());
     }
 
     float CombineRestitution(const PhysicsBodyComponent& bodyA, const PhysicsBodyComponent& bodyB)
@@ -1059,53 +1047,39 @@ public:
 
     void SolveTOI(entt::registry& registry, float dt)
     {
-        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent>();
-
-        std::vector<entt::entity> entities;
-        entities.reserve(view.size_hint());
-
-        for (auto [entity, transform, body, sphere] : view.each())
-            entities.push_back(entity);
+        std::vector<CollisionPair> pairs;
+        BuildBroadphasePairs(registry, pairs);
 
         float bestTOI = 1.0f;
         Contact bestContact{};
         bool foundHit = false;
 
-        for (size_t i = 0; i < entities.size(); ++i)
+        for (const CollisionPair& pair : pairs)
         {
-            for (size_t j = i + 1; j < entities.size(); ++j)
+            entt::entity entityA = pair.entityA;
+            entt::entity entityB = pair.entityB;
+
+            auto& transformA = registry.get<TransformComponent>(entityA);
+            auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
+            auto& sphereA = registry.get<SphereColliderComponent>(entityA);
+
+            auto& transformB = registry.get<TransformComponent>(entityB);
+            auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
+            auto& sphereB = registry.get<SphereColliderComponent>(entityB);
+
+            if (!bodyA.enableCCD && !bodyB.enableCCD)
+                continue;
+
+            Contact contact{};
+            float toi = 1.0f;
+
+            if (SweptSphereSphere(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact, toi))
             {
-                entt::entity entityA = entities[i];
-                entt::entity entityB = entities[j];
-
-                auto& transformA = registry.get<TransformComponent>(entityA);
-                auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
-                auto& sphereA = registry.get<SphereColliderComponent>(entityA);
-
-                auto& transformB = registry.get<TransformComponent>(entityB);
-                auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
-                auto& sphereB = registry.get<SphereColliderComponent>(entityB);
-
-                if (!bodyA.enabled || !bodyB.enabled)
-                    continue;
-
-                if (!bodyA.enableCCD && !bodyB.enableCCD)
-                    continue;
-
-                if (bodyA.invMass == 0.0f && bodyB.invMass == 0.0f)
-                    continue;
-
-                Contact contact{};
-                float toi = 1.0f;
-
-                if (SweptSphereSphere(entityA, entityB, transformA, bodyA, sphereA, transformB, bodyB, sphereB, contact, toi))
+                if (toi < bestTOI)
                 {
-                    if (toi < bestTOI)
-                    {
-                        bestTOI = toi;
-                        bestContact = contact;
-                        foundHit = true;
-                    }
+                    bestTOI = toi;
+                    bestContact = contact;
+                    foundHit = true;
                 }
             }
         }
@@ -1174,9 +1148,60 @@ public:
         return true;
     }
 
+    void BuildBroadphasePairs(entt::registry& registry, std::vector<CollisionPair>& pairs)
+    {
+        pairs.clear();
+
+        auto view = registry.view<TransformComponent, PhysicsBodyComponent, SphereColliderComponent, BoundsComponent>();
+
+        std::vector<entt::entity> entities;
+        entities.reserve(view.size_hint());
+
+        for (auto [entity, transform, body, sphere, bounds] : view.each())
+            entities.push_back(entity);
+
+        m_lastPotentialPairs = 0;
+        m_lastBroadphasePairs = 0;
+
+        for (size_t i = 0; i < entities.size(); ++i)
+        {
+            for (size_t j = i + 1; j < entities.size(); ++j)
+            {
+                ++m_lastPotentialPairs;
+
+                entt::entity entityA = entities[i];
+                entt::entity entityB = entities[j];
+
+                auto& bodyA = registry.get<PhysicsBodyComponent>(entityA);
+                auto& bodyB = registry.get<PhysicsBodyComponent>(entityB);
+
+                if (!bodyA.enabled || !bodyB.enabled)
+                    continue;
+
+                if (bodyA.invMass == 0.0f && bodyB.invMass == 0.0f)
+                    continue;
+
+                auto& boundsA = registry.get<BoundsComponent>(entityA);
+                auto& boundsB = registry.get<BoundsComponent>(entityB);
+
+                if (!BoundsIntersect(boundsA, boundsB))
+                    continue;
+
+                pairs.push_back(CollisionPair{ entityA, entityB });
+                ++m_lastBroadphasePairs;
+            }
+        }
+    }
+
+
 
 	// TODO: move this to a config file or something
     DirectX::XMFLOAT3 gravity = { 0.0f, -1.0f, 0.0f };
 
     float restingVelocityThreshold = 0.5f;
+
+	// counters
+    uint32_t m_lastPotentialPairs = 0;
+    uint32_t m_lastBroadphasePairs = 0;
+    uint32_t m_lastNarrowphaseContacts = 0;
 };
