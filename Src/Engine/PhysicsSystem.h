@@ -192,6 +192,9 @@ public:
                 body.linearVelocity.y += body.linearForce.y * body.invMass * dt;
                 body.linearVelocity.z += body.linearForce.z * body.invMass * dt;
 
+                body.linearForce = { 0.0f, 0.0f, 0.0f };
+
+
                 body.linearVelocity.x += body.linearAcceleration.x * dt;
                 body.linearVelocity.y += body.linearAcceleration.y * dt;
                 body.linearVelocity.z += body.linearAcceleration.z * dt;
