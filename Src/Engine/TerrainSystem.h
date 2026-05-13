@@ -332,6 +332,33 @@ public:
 
 
 
+    void SetCellWalkable(uint32_t x, uint32_t z, bool walkable)
+    {
+        if (!IsValidCell(x, z))
+            return;
+
+        GetCell(x, z).walkable = walkable;
+    }
+
+    bool IsCellWalkable(uint32_t x, uint32_t z) const
+    {
+        if (!IsValidCell(x, z))
+            return false;
+
+        return GetCell(x, z).walkable;
+    }
+
+    void ToggleCellWalkable(uint32_t x, uint32_t z)
+    {
+        if (!IsValidCell(x, z))
+            return;
+
+        TerrainCell& cell = GetCell(x, z);
+        cell.walkable = !cell.walkable;
+    }
+
+
+
 private:
     int m_ChunkX = 0;
     int m_ChunkZ = 0;

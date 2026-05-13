@@ -37,6 +37,7 @@ public:
     TerrainChunk testChunk;
     Mesh cellHighlightMesh{};
     Mesh cellHoverMesh{};
+    Mesh blockedCellMesh{};
 
     bool terrainMouseHit = false;
     DirectX::XMFLOAT3 terrainMouseWorld = { 0.0f, 0.0f, 0.0f };
@@ -79,6 +80,10 @@ public:
         cellHoverMesh = GenerateSphereMesh(0.18f, 12, 24);
         cellHoverMesh.debugName = "Cell Hover";
 
+        blockedCellMesh = GenerateCubeMesh(1.0f);
+        blockedCellMesh.debugName = "Blocked Cells";
+
+
     }
 
     void OnUpdate(entt::registry& registry, PhysicsSystem& physicsSystem, const GameTime& time)
@@ -89,20 +94,6 @@ public:
     }
 
 
-    void OnShutdown()
-    {
-        cellHoverMesh.Destroy();
-        cellHighlightMesh.Destroy();
-        terrainMesh.Destroy();
-
-        cube.Destroy();
-        sphere.Destroy();
-        plane.Destroy();
-
-        render.Cleanup();
-    }
-
-private:
     entt::registry* m_Registry = nullptr;
     float cameraDistance = 25.0f;
     float cameraYaw = 0.0f;
@@ -413,6 +404,57 @@ private:
         {
             testChunk.SelectCell(cellX, cellZ);
         }
+
+        if (GameInput::IsMouseButtonPressed(GameInput::MouseButton::Right))
+        {
+            testChunk.ToggleCellWalkable(cellX, cellZ);
+        }
+    }
+
+
+    void UpdateBlockedCellInstances()
+    {
+        std::vector<InstanceData> instances;
+        instances.reserve(testChunk.GetCellCount());
+
+        for (uint32_t z = 0; z < testChunk.GetCellsPerSide(); ++z)
+        {
+            for (uint32_t x = 0; x < testChunk.GetCellsPerSide(); ++x)
+            {
+                if (testChunk.IsCellWalkable(x, z))
+                    continue;
+
+                DirectX::XMFLOAT3 center = testChunk.GetCellCenter(x, z);
+
+                center.y += 0.15f;
+
+                const float scale = testChunk.GetCellSize() * 0.55f;
+
+                DirectX::XMMATRIX world =
+                    DirectX::XMMatrixScaling(scale, 0.25f, scale) *
+                    DirectX::XMMatrixTranslation(center.x, center.y, center.z);
+
+                DirectX::XMFLOAT4X4 worldMatrix{};
+                DirectX::XMStoreFloat4x4(&worldMatrix, world);
+
+                InstanceData instance{};
+                instance.worldMatrix = worldMatrix;
+
+                // Rojo/naranja para celda bloqueada.
+                instance.baseColor = { 0.85f, 0.18f, 0.08f, 1.0f };
+
+                // metallic, roughness, ao, textureId
+                instance.material = { 0.0f, 0.65f, 1.0f, 0.0f };
+
+                instances.push_back(instance);
+            }
+        }
+
+        render.UpdateInstanceBuffer(
+            blockedCellMesh,
+            instances.empty() ? nullptr : instances.data(),
+            static_cast<uint32_t>(instances.size())
+        );
     }
 
 
@@ -544,6 +586,7 @@ private:
         UpdateRenderInstance();
         UpdateCellHighlightInstance();
         UpdateCellHoverInstance();
+        UpdateBlockedCellInstances();
     }
 
 
@@ -678,10 +721,28 @@ private:
 			terrainMesh.Draw(render.commandList);
 			cellHighlightMesh.Draw(render.commandList);
             cellHoverMesh.Draw(render.commandList);
+            blockedCellMesh.Draw(render.commandList);
         }
 
         render.RenderImGui();
         render.Loop();
+    }
+
+
+
+
+    void OnShutdown()
+    {
+        cellHoverMesh.Destroy();
+        cellHighlightMesh.Destroy();
+        terrainMesh.Destroy();
+		blockedCellMesh.Destroy();
+
+        cube.Destroy();
+        sphere.Destroy();
+        plane.Destroy();
+
+        render.Cleanup();
     }
 };
 
