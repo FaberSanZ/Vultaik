@@ -36,6 +36,7 @@ public:
 
     TerrainChunk testChunk;
     Mesh cellHighlightMesh{};
+    Mesh cellHoverMesh{};
 
     bool terrainMouseHit = false;
     DirectX::XMFLOAT3 terrainMouseWorld = { 0.0f, 0.0f, 0.0f };
@@ -71,6 +72,13 @@ public:
         cellHighlightMesh = GenerateSphereMesh(0.3f, 12, 36);
         cellHighlightMesh.debugName = "Cell Highlight";
 
+
+        cellHighlightMesh = GenerateSphereMesh(0.3f, 12, 36);
+        cellHighlightMesh.debugName = "Cell Highlight";
+
+        cellHoverMesh = GenerateSphereMesh(0.18f, 12, 24);
+        cellHoverMesh.debugName = "Cell Hover";
+
     }
 
     void OnUpdate(entt::registry& registry, PhysicsSystem& physicsSystem, const GameTime& time)
@@ -80,8 +88,17 @@ public:
         Loop(registry, physicsSystem, time);
     }
 
+
     void OnShutdown()
     {
+        cellHoverMesh.Destroy();
+        cellHighlightMesh.Destroy();
+        terrainMesh.Destroy();
+
+        cube.Destroy();
+        sphere.Destroy();
+        plane.Destroy();
+
         render.Cleanup();
     }
 
@@ -323,6 +340,47 @@ private:
         return true;
     }
 
+
+    void UpdateCellHoverInstance()
+    {
+        if (!hasHoveredCell)
+        {
+            render.UpdateInstanceBuffer(cellHoverMesh, nullptr, 0);
+            return;
+        }
+
+        if (testChunk.HasSelectedCell())
+        {
+            if (hoveredCellX == testChunk.GetSelectedCellX() &&
+                hoveredCellZ == testChunk.GetSelectedCellZ())
+            {
+                render.UpdateInstanceBuffer(cellHoverMesh, nullptr, 0);
+                return;
+            }
+        }
+
+        DirectX::XMFLOAT3 center = testChunk.GetCellCenter(hoveredCellX, hoveredCellZ);
+
+        center.y += 0.08f;
+
+        DirectX::XMMATRIX world =
+            DirectX::XMMatrixTranslation(center.x, center.y, center.z);
+
+        DirectX::XMFLOAT4X4 worldMatrix{};
+        DirectX::XMStoreFloat4x4(&worldMatrix, world);
+
+        InstanceData instance{};
+        instance.worldMatrix = worldMatrix;
+
+        // Azul suave para hover.
+        instance.baseColor = { 0.20f, 0.55f, 1.0f, 1.0f };
+
+        // metallic, roughness, ao, textureId
+        instance.material = { 0.0f, 0.30f, 1.0f, 0.0f };
+
+        render.UpdateInstanceBuffer(cellHoverMesh, &instance, 1);
+    }
+
     void UpdateTerrainMousePicking()
     {
         terrainMouseHit = false;
@@ -484,7 +542,8 @@ private:
         render.UpdateInstanceBuffer(plane, planeInstances.empty() ? nullptr : planeInstances.data(), static_cast<uint32_t>(planeInstances.size()));
 
         UpdateRenderInstance();
-		UpdateCellHighlightInstance();
+        UpdateCellHighlightInstance();
+        UpdateCellHoverInstance();
     }
 
 
@@ -618,6 +677,7 @@ private:
             plane.Draw(render.commandList);
 			terrainMesh.Draw(render.commandList);
 			cellHighlightMesh.Draw(render.commandList);
+            cellHoverMesh.Draw(render.commandList);
         }
 
         render.RenderImGui();
