@@ -24,146 +24,146 @@ public:
 
     void OnInitialize(entt::registry& registry)
     {
-        const DirectX::XMFLOAT3 launchImpulse = { 4.0f, 0.0f, 0.0f };
-        const DirectX::XMFLOAT3 constantForce = { 12.0f, 0.0f, 0.0f };
+   //     const DirectX::XMFLOAT3 launchImpulse = { 4.0f, 0.0f, 0.0f };
+   //     const DirectX::XMFLOAT3 constantForce = { 12.0f, 0.0f, 0.0f };
 
-        {
-            auto entity = registry.create();
+   //     {
+   //         auto entity = registry.create();
 
-            TransformComponent transform{};
-            transform.position = { -4.0f, 4.0f, 0.0f };
-            transform.scale = { 1.0f, 1.0f, 1.0f };
-            transform.rotation = { 0.0f, 0.0f, 0.0f };
+   //         TransformComponent transform{};
+   //         transform.position = { -4.0f, 4.0f, 0.0f };
+   //         transform.scale = { 1.0f, 1.0f, 1.0f };
+   //         transform.rotation = { 0.0f, 0.0f, 0.0f };
 
-            RigidbodyComponent body{};
-            body.type = PhysicsBodyType::Dynamic;
-            body.position = transform.position;
-            body.mass = 1.0f;
-            body.invMass = 1.0f / body.mass;
-            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
-            body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
-			body.linearImpulse = launchImpulse;
-            body.linearDamping = 0.0f;
-            body.linearForce = constantForce;
-
-
-            MeshComponent mesh{};
-            mesh.shapeType = ShapeType::Sphere;
-
-            MaterialComponent material{};
-            material.baseColor = { 255.0f, 80.0f, 80.0f };
-            material.metallic = 0.1f;
-            material.roughness = 0.5f;
-            material.ao = 1.0f;
-            material.textureId = 1;
-
-            registry.emplace<TransformComponent>(entity, transform);
-            registry.emplace<MeshComponent>(entity, mesh);
-            registry.emplace<MaterialComponent>(entity, material);
-            registry.emplace<RigidbodyComponent>(entity, body);
-        }
-
-        {
-            auto entity = registry.create();
-
-            TransformComponent transform{};
-            transform.position = { -4.0f, 2.0f, 0.0f };
-            transform.scale = { 1.0f, 1.0f, 1.0f };
-            transform.rotation = { 0.0f, 0.0f, 0.0f };
-
-            RigidbodyComponent body{};
-            body.type = PhysicsBodyType::Dynamic;
-            body.position = transform.position;
-            body.mass = 4.0f;
-            body.invMass = 1.0f / body.mass;
-            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
-            body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
-            body.linearImpulse = launchImpulse;
-            body.linearDamping = 1.5f;
-            body.linearForce = constantForce;
+   //         RigidbodyComponent body{};
+   //         body.type = PhysicsBodyType::Dynamic;
+   //         body.position = transform.position;
+   //         body.mass = 1.0f;
+   //         body.invMass = 1.0f / body.mass;
+   //         body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+   //         body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+			//body.linearImpulse = launchImpulse;
+   //         body.linearDamping = 0.0f;
+   //         body.linearForce = constantForce;
 
 
-            MeshComponent mesh{};
-            mesh.shapeType = ShapeType::Sphere;
+   //         MeshComponent mesh{};
+   //         mesh.shapeType = ShapeType::Sphere;
 
-            MaterialComponent material{};
-            material.baseColor = { 255.0f, 220.0f, 80.0f };
-            material.metallic = 0.1f;
-            material.roughness = 0.5f;
-            material.ao = 1.0f;
-            material.textureId = 1;
+   //         MaterialComponent material{};
+   //         material.baseColor = { 255.0f, 80.0f, 80.0f };
+   //         material.metallic = 0.1f;
+   //         material.roughness = 0.5f;
+   //         material.ao = 1.0f;
+   //         material.textureId = 1;
 
-            registry.emplace<TransformComponent>(entity, transform);
-            registry.emplace<MeshComponent>(entity, mesh);
-            registry.emplace<MaterialComponent>(entity, material);
-            registry.emplace<RigidbodyComponent>(entity, body);
-        }
+   //         registry.emplace<TransformComponent>(entity, transform);
+   //         registry.emplace<MeshComponent>(entity, mesh);
+   //         registry.emplace<MaterialComponent>(entity, material);
+   //         registry.emplace<RigidbodyComponent>(entity, body);
+   //     }
 
-        {
-            auto entity = registry.create();
+   //     {
+   //         auto entity = registry.create();
 
-            TransformComponent transform{};
-            transform.position = { 3.0f, 0.0f, 0.0f };
-            transform.scale = { 1.0f, 1.0f, 1.0f };
-            transform.rotation = { 0.0f, 0.0f, 0.0f };
+   //         TransformComponent transform{};
+   //         transform.position = { -4.0f, 2.0f, 0.0f };
+   //         transform.scale = { 1.0f, 1.0f, 1.0f };
+   //         transform.rotation = { 0.0f, 0.0f, 0.0f };
 
-            RigidbodyComponent body{};
-            body.type = PhysicsBodyType::Static;
-            body.position = transform.position;
-            body.mass = 0.0f;
-            body.invMass = 0.0f;
-            body.linearVelocity = { 0.0f, 0.0f, 0.0f };
-            body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
-            body.linearImpulse = { 0.0f, 0.0f, 0.0f };
+   //         RigidbodyComponent body{};
+   //         body.type = PhysicsBodyType::Dynamic;
+   //         body.position = transform.position;
+   //         body.mass = 4.0f;
+   //         body.invMass = 1.0f / body.mass;
+   //         body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+   //         body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+   //         body.linearImpulse = launchImpulse;
+   //         body.linearDamping = 1.5f;
+   //         body.linearForce = constantForce;
 
-            MeshComponent mesh{};
-            mesh.shapeType = ShapeType::Sphere;
 
-            MaterialComponent material{};
-            material.baseColor = { 80.0f, 255.0f, 120.0f };
-            material.metallic = 0.1f;
-            material.roughness = 0.5f;
-            material.ao = 1.0f;
-            material.textureId = 2;
+   //         MeshComponent mesh{};
+   //         mesh.shapeType = ShapeType::Sphere;
 
-            registry.emplace<TransformComponent>(entity, transform);
-            registry.emplace<MeshComponent>(entity, mesh);
-            registry.emplace<MaterialComponent>(entity, material);
-            registry.emplace<RigidbodyComponent>(entity, body);
-        }
+   //         MaterialComponent material{};
+   //         material.baseColor = { 255.0f, 220.0f, 80.0f };
+   //         material.metallic = 0.1f;
+   //         material.roughness = 0.5f;
+   //         material.ao = 1.0f;
+   //         material.textureId = 1;
 
-        {
-            auto entity = registry.create();
+   //         registry.emplace<TransformComponent>(entity, transform);
+   //         registry.emplace<MeshComponent>(entity, mesh);
+   //         registry.emplace<MaterialComponent>(entity, material);
+   //         registry.emplace<RigidbodyComponent>(entity, body);
+   //     }
 
-            TransformComponent transform{};
-            transform.position = { -4.0f, -1.5f, 0.0f };
-            transform.scale = { 1.0f, 1.0f, 1.0f };
-            transform.rotation = { 0.0f, 0.0f, 0.0f };
+   //     {
+   //         auto entity = registry.create();
 
-            RigidbodyComponent body{};
-            body.type = PhysicsBodyType::Kinematic;
-            body.position = transform.position;
-            body.mass = 0.0f;
-            body.invMass = 0.0f;
-            body.linearVelocity = { 1.25f, 0.0f, 0.0f };
-            body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
-            body.linearImpulse = { 0.0f, 0.0f, 0.0f };
+   //         TransformComponent transform{};
+   //         transform.position = { 3.0f, 0.0f, 0.0f };
+   //         transform.scale = { 1.0f, 1.0f, 1.0f };
+   //         transform.rotation = { 0.0f, 0.0f, 0.0f };
 
-            MeshComponent mesh{};
-            mesh.shapeType = ShapeType::Sphere;
+   //         RigidbodyComponent body{};
+   //         body.type = PhysicsBodyType::Static;
+   //         body.position = transform.position;
+   //         body.mass = 0.0f;
+   //         body.invMass = 0.0f;
+   //         body.linearVelocity = { 0.0f, 0.0f, 0.0f };
+   //         body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+   //         body.linearImpulse = { 0.0f, 0.0f, 0.0f };
 
-            MaterialComponent material{};
-            material.baseColor = { 80.0f, 120.0f, 255.0f };
-            material.metallic = 0.1f;
-            material.roughness = 0.5f;
-            material.ao = 1.0f;
-            material.textureId = 3;
+   //         MeshComponent mesh{};
+   //         mesh.shapeType = ShapeType::Sphere;
 
-            registry.emplace<TransformComponent>(entity, transform);
-            registry.emplace<MeshComponent>(entity, mesh);
-            registry.emplace<MaterialComponent>(entity, material);
-            registry.emplace<RigidbodyComponent>(entity, body);
-        }
+   //         MaterialComponent material{};
+   //         material.baseColor = { 80.0f, 255.0f, 120.0f };
+   //         material.metallic = 0.1f;
+   //         material.roughness = 0.5f;
+   //         material.ao = 1.0f;
+   //         material.textureId = 2;
+
+   //         registry.emplace<TransformComponent>(entity, transform);
+   //         registry.emplace<MeshComponent>(entity, mesh);
+   //         registry.emplace<MaterialComponent>(entity, material);
+   //         registry.emplace<RigidbodyComponent>(entity, body);
+   //     }
+
+   //     {
+   //         auto entity = registry.create();
+
+   //         TransformComponent transform{};
+   //         transform.position = { -4.0f, -1.5f, 0.0f };
+   //         transform.scale = { 1.0f, 1.0f, 1.0f };
+   //         transform.rotation = { 0.0f, 0.0f, 0.0f };
+
+   //         RigidbodyComponent body{};
+   //         body.type = PhysicsBodyType::Kinematic;
+   //         body.position = transform.position;
+   //         body.mass = 0.0f;
+   //         body.invMass = 0.0f;
+   //         body.linearVelocity = { 1.25f, 0.0f, 0.0f };
+   //         body.linearAcceleration = { 0.0f, 0.0f, 0.0f };
+   //         body.linearImpulse = { 0.0f, 0.0f, 0.0f };
+
+   //         MeshComponent mesh{};
+   //         mesh.shapeType = ShapeType::Sphere;
+
+   //         MaterialComponent material{};
+   //         material.baseColor = { 80.0f, 120.0f, 255.0f };
+   //         material.metallic = 0.1f;
+   //         material.roughness = 0.5f;
+   //         material.ao = 1.0f;
+   //         material.textureId = 3;
+
+   //         registry.emplace<TransformComponent>(entity, transform);
+   //         registry.emplace<MeshComponent>(entity, mesh);
+   //         registry.emplace<MaterialComponent>(entity, material);
+   //         registry.emplace<RigidbodyComponent>(entity, body);
+   //     }
     }
 
     void OnUpdate(entt::registry& registry, const GameTime& time)

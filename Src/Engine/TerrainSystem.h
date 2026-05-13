@@ -107,12 +107,10 @@ public:
                 const uint32_t bottomLeft = (z + 1) * m_VerticesPerSide + x;
                 const uint32_t bottomRight = bottomLeft + 1;
 
-                // Triángulo 1
                 m_Indices.push_back(topLeft);
                 m_Indices.push_back(bottomLeft);
                 m_Indices.push_back(topRight);
 
-                // Triángulo 2
                 m_Indices.push_back(topRight);
                 m_Indices.push_back(bottomLeft);
                 m_Indices.push_back(bottomRight);

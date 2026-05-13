@@ -37,6 +37,14 @@ public:
     TerrainChunk testChunk;
     Mesh cellHighlightMesh{};
 
+    bool terrainMouseHit = false;
+    DirectX::XMFLOAT3 terrainMouseWorld = { 0.0f, 0.0f, 0.0f };
+
+    bool hasHoveredCell = false;
+    uint32_t hoveredCellX = 0;
+    uint32_t hoveredCellZ = 0;
+
+
 
 
     void OnInitialize(entt::registry& registry, HWND hwnd, uint32_t width, uint32_t height)
@@ -60,7 +68,7 @@ public:
 
 
 		terrainMesh = BuildMeshFromTerrain();
-        cellHighlightMesh = GeneratePlaneMesh(1.0f);
+        cellHighlightMesh = GenerateSphereMesh(0.3f, 12, 36);
         cellHighlightMesh.debugName = "Cell Highlight";
 
     }
@@ -80,7 +88,7 @@ public:
 private:
     entt::registry* m_Registry = nullptr;
     float cameraDistance = 25.0f;
-    float cameraYaw = 1.5f;
+    float cameraYaw = 0.0f;
     float cameraPitch = 0.0f;
     DirectX::XMFLOAT3 spawnPosition = { 0.0f, 0.0f, 0.0f };
     DirectX::XMFLOAT3 spawnScale = { 1.0f, 1.0f, 1.0f };
@@ -202,7 +210,7 @@ private:
 
     Mesh BuildMeshFromTerrain()
     {
-        testChunk.Initialize(0, 0, 16, 1.0f, { -8.0f, 0.0f, -8.0f });
+        testChunk.Initialize(0, 0, 8, 1.0f, { -8.0f, 0.0f, -8.0f });
 
 
         std::vector<Vertex> vertices;
@@ -231,7 +239,7 @@ private:
         // material.y = roughness
         // material.z = ao
         // material.w = textureId
-        instance.material = { 0.0f, 0.85f, 1.0f, 0.0f };
+        instance.material = { 0.0f, 0.85f, 1.0f, 1.0f };
 
         render.UpdateInstanceBuffer(terrainMesh, &instance, 1);
     }
@@ -250,14 +258,11 @@ private:
 
         DirectX::XMFLOAT3 center = testChunk.GetCellCenter(cellX, cellZ);
 
-        // Subimos un poquito el highlight para evitar z-fighting con el terrain.
         center.y += 0.03f;
 
         const float scale = testChunk.GetCellSize() * 0.92f;
 
-        DirectX::XMMATRIX world =
-            DirectX::XMMatrixScaling(scale, 1.0f, scale) *
-            DirectX::XMMatrixTranslation(center.x, center.y, center.z);
+        DirectX::XMMATRIX world = DirectX::XMMatrixScaling(scale, 1.0f, scale) * DirectX::XMMatrixTranslation(center.x, center.y, center.z);
 
         DirectX::XMFLOAT4X4 worldMatrix{};
         DirectX::XMStoreFloat4x4(&worldMatrix, world);
@@ -265,14 +270,93 @@ private:
         InstanceData instance{};
         instance.worldMatrix = worldMatrix;
 
-        // Amarillo/verde visual para selección.
         instance.baseColor = { 0.95f, 0.85f, 0.15f, 1.0f };
 
-        // metallic, roughness, ao, textureId
-        instance.material = { 0.0f, 0.35f, 1.0f, 0.0f };
+        instance.material = { 0.0f, 0.35f, 1.0f, 2.0f };
 
         render.UpdateInstanceBuffer(cellHighlightMesh, &instance, 1);
     }
+
+
+    bool ScreenPointToTerrain(int mouseX, int mouseY, DirectX::XMFLOAT3& outWorldPosition) const
+    {
+        if (m_Width == 0 || m_Height == 0)
+            return false;
+
+        const float ndcX = (2.0f * static_cast<float>(mouseX) / static_cast<float>(m_Width)) - 1.0f;
+        const float ndcY = 1.0f - (2.0f * static_cast<float>(mouseY) / static_cast<float>(m_Height));
+
+        DirectX::XMVECTOR nearPoint = DirectX::XMVectorSet(ndcX, ndcY, 0.0f, 1.0f);
+        DirectX::XMVECTOR farPoint = DirectX::XMVectorSet(ndcX, ndcY, 1.0f, 1.0f);
+
+        DirectX::XMMATRIX viewProj = BuildViewProjection();
+
+        DirectX::XMVECTOR determinant{};
+        DirectX::XMMATRIX invViewProj = DirectX::XMMatrixInverse(&determinant, viewProj);
+
+        DirectX::XMVECTOR nearWorld = DirectX::XMVector3TransformCoord(nearPoint, invViewProj);
+        DirectX::XMVECTOR farWorld = DirectX::XMVector3TransformCoord(farPoint, invViewProj);
+
+        DirectX::XMVECTOR rayOrigin = nearWorld;
+        DirectX::XMVECTOR rayDirection = DirectX::XMVector3Normalize(
+            DirectX::XMVectorSubtract(farWorld, nearWorld)
+        );
+
+        const float originY = DirectX::XMVectorGetY(rayOrigin);
+        const float dirY = DirectX::XMVectorGetY(rayDirection);
+
+        if (std::abs(dirY) < 0.00001f)
+            return false;
+
+        const float terrainPlaneY = testChunk.GetWorldPosition().y;
+        const float t = (terrainPlaneY - originY) / dirY;
+
+        if (t < 0.0f)
+            return false;
+
+        DirectX::XMVECTOR hitPoint = DirectX::XMVectorAdd(
+            rayOrigin,
+            DirectX::XMVectorScale(rayDirection, t)
+        );
+
+        DirectX::XMStoreFloat3(&outWorldPosition, hitPoint);
+        return true;
+    }
+
+    void UpdateTerrainMousePicking()
+    {
+        terrainMouseHit = false;
+        hasHoveredCell = false;
+
+        ImGuiIO& io = ImGui::GetIO();
+
+        if (io.WantCaptureMouse)
+            return;
+
+        DirectX::XMFLOAT3 hitPosition{};
+
+        if (!ScreenPointToTerrain(GameInput::GetMouseX(), GameInput::GetMouseY(), hitPosition))
+            return;
+
+        terrainMouseWorld = hitPosition;
+        terrainMouseHit = true;
+
+        uint32_t cellX = 0;
+        uint32_t cellZ = 0;
+
+        if (!testChunk.WorldToCell(hitPosition.x, hitPosition.z, cellX, cellZ))
+            return;
+
+        hoveredCellX = cellX;
+        hoveredCellZ = cellZ;
+        hasHoveredCell = true;
+
+        if (GameInput::IsMouseButtonPressed(GameInput::MouseButton::Left))
+        {
+            testChunk.SelectCell(cellX, cellZ);
+        }
+    }
+
 
 
 
@@ -468,6 +552,50 @@ private:
         {
             ImGui::TextUnformatted("Selected cell: none");
         }
+
+
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("Terrain Mouse Picking");
+
+        ImGui::Text("Mouse: %d, %d", GameInput::GetMouseX(), GameInput::GetMouseY());
+
+        if (terrainMouseHit)
+        {
+            ImGui::Text(
+                "World hit: %.2f, %.2f, %.2f",
+                terrainMouseWorld.x,
+                terrainMouseWorld.y,
+                terrainMouseWorld.z
+            );
+        }
+        else
+        {
+            ImGui::TextUnformatted("World hit: none");
+        }
+
+        if (hasHoveredCell)
+        {
+            ImGui::Text("Hovered cell: %u, %u", hoveredCellX, hoveredCellZ);
+        }
+        else
+        {
+            ImGui::TextUnformatted("Hovered cell: none");
+        }
+
+        if (testChunk.HasSelectedCell())
+        {
+            ImGui::Text(
+                "Selected cell: %u, %u",
+                testChunk.GetSelectedCellX(),
+                testChunk.GetSelectedCellZ()
+            );
+        }
+        else
+        {
+            ImGui::TextUnformatted("Selected cell: none");
+        }
+
     }
 
     void Loop(entt::registry& registry, PhysicsSystem& physicsSystem, GameTime time)
@@ -476,6 +604,7 @@ private:
 
         BuildImGui(registry);
         physicsSystem.OnImGui(registry);
+        UpdateTerrainMousePicking();
         UpdateMeshes(registry, time);
 
         render.Reset();
@@ -485,7 +614,7 @@ private:
         if (render.BeginGame())
         {
             cube.Draw(render.commandList);
-            //sphere.Draw(render.commandList);
+            sphere.Draw(render.commandList);
             plane.Draw(render.commandList);
 			terrainMesh.Draw(render.commandList);
 			cellHighlightMesh.Draw(render.commandList);
