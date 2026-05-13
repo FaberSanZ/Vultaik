@@ -22,6 +22,16 @@
 #pragma comment(lib, "D3DCompiler.lib")
 
 
+struct RTSUnit
+{
+    DirectX::XMFLOAT3 position = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 targetPosition = { 0.0f, 0.0f, 0.0f };
+
+    bool hasTarget = false;
+    float moveSpeed = 4.0f;
+};
+
+
 class RenderSystem
 {
 public:
@@ -38,6 +48,14 @@ public:
     Mesh cellHighlightMesh{};
     Mesh cellHoverMesh{};
     Mesh blockedCellMesh{};
+
+    Mesh rtsUnitMesh{};
+    RTSUnit testUnit{};
+    bool terrainEditMode = true;
+
+    Mesh unitTargetMesh{};
+    Mesh unitMoveLineMesh{};
+
 
     bool terrainMouseHit = false;
     DirectX::XMFLOAT3 terrainMouseWorld = { 0.0f, 0.0f, 0.0f };
@@ -84,6 +102,25 @@ public:
         blockedCellMesh.debugName = "Blocked Cells";
 
 
+
+        rtsUnitMesh = GenerateSphereMesh(0.35f, 12, 24);
+        rtsUnitMesh.debugName = "RTS Unit";
+
+        DirectX::XMFLOAT3 unitStart = testChunk.GetCellCenter(0, 0);
+        testUnit.position = unitStart;
+        testUnit.targetPosition = unitStart;
+        testUnit.hasTarget = false;
+        testUnit.moveSpeed = 4.0f;
+
+
+
+        unitTargetMesh = GenerateSphereMesh(0.18f, 12, 24);
+        unitTargetMesh.debugName = "Unit Target";
+
+        unitMoveLineMesh = GenerateCubeMesh(1.0f);
+        unitMoveLineMesh.debugName = "Unit Move Line";
+
+
     }
 
     void OnUpdate(entt::registry& registry, PhysicsSystem& physicsSystem, const GameTime& time)
@@ -92,6 +129,159 @@ public:
         render.UpdateFrameStats(time.DeltaTime());
         Loop(registry, physicsSystem, time);
     }
+
+
+    void UpdateRTSUnit(double deltaTime)
+    {
+        if (!testUnit.hasTarget)
+            return;
+
+        DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&testUnit.position);
+        DirectX::XMVECTOR target = DirectX::XMLoadFloat3(&testUnit.targetPosition);
+
+        DirectX::XMVECTOR toTarget = DirectX::XMVectorSubtract(target, position);
+
+        // Movimiento solo en XZ por ahora.
+        toTarget = DirectX::XMVectorSetY(toTarget, 0.0f);
+
+        const float distance = DirectX::XMVectorGetX(
+            DirectX::XMVector3Length(toTarget)
+        );
+
+        if (distance < 0.05f)
+        {
+            testUnit.position = testUnit.targetPosition;
+            testUnit.hasTarget = false;
+            return;
+        }
+
+        DirectX::XMVECTOR direction = DirectX::XMVector3Normalize(toTarget);
+
+        const float moveAmount = testUnit.moveSpeed * static_cast<float>(deltaTime);
+
+        if (moveAmount >= distance)
+        {
+            testUnit.position = testUnit.targetPosition;
+            testUnit.hasTarget = false;
+            return;
+        }
+
+        position = DirectX::XMVectorAdd(
+            position,
+            DirectX::XMVectorScale(direction, moveAmount)
+        );
+
+        DirectX::XMStoreFloat3(&testUnit.position, position);
+    }
+
+
+
+    void UpdateRTSUnitInstance()
+    {
+        DirectX::XMFLOAT3 visualPosition = testUnit.position;
+
+        // La esfera queda sobre el terreno.
+        visualPosition.y += 0.35f;
+
+        DirectX::XMMATRIX world =
+            DirectX::XMMatrixTranslation(
+                visualPosition.x,
+                visualPosition.y,
+                visualPosition.z
+            );
+
+        DirectX::XMFLOAT4X4 worldMatrix{};
+        DirectX::XMStoreFloat4x4(&worldMatrix, world);
+
+        InstanceData instance{};
+        instance.worldMatrix = worldMatrix;
+
+        // Azul/morado para unidad.
+        instance.baseColor = { 0.25f, 0.25f, 1.0f, 1.0f };
+        instance.material = { 0.0f, 0.45f, 1.0f, 0.0f };
+
+        render.UpdateInstanceBuffer(rtsUnitMesh, &instance, 1);
+    }
+
+
+    void UpdateUnitTargetInstance()
+    {
+        if (!testUnit.hasTarget)
+        {
+            render.UpdateInstanceBuffer(unitTargetMesh, nullptr, 0);
+            return;
+        }
+
+        DirectX::XMFLOAT3 position = testUnit.targetPosition;
+        position.y += 0.16f;
+
+        DirectX::XMMATRIX world =
+            DirectX::XMMatrixTranslation(position.x, position.y, position.z);
+
+        DirectX::XMFLOAT4X4 worldMatrix{};
+        DirectX::XMStoreFloat4x4(&worldMatrix, world);
+
+        InstanceData instance{};
+        instance.worldMatrix = worldMatrix;
+
+        // Verde destino.
+        instance.baseColor = { 0.15f, 0.95f, 0.25f, 1.0f };
+        instance.material = { 0.0f, 0.35f, 1.0f, 0.0f };
+
+        render.UpdateInstanceBuffer(unitTargetMesh, &instance, 1);
+    }
+
+
+    void UpdateUnitMoveLineInstance()
+    {
+        if (!testUnit.hasTarget)
+        {
+            render.UpdateInstanceBuffer(unitMoveLineMesh, nullptr, 0);
+            return;
+        }
+
+        DirectX::XMFLOAT3 start = testUnit.position;
+        DirectX::XMFLOAT3 end = testUnit.targetPosition;
+
+        start.y += 0.05f;
+        end.y += 0.05f;
+
+        const float dx = end.x - start.x;
+        const float dz = end.z - start.z;
+
+        const float length = std::sqrt(dx * dx + dz * dz);
+
+        if (length < 0.05f)
+        {
+            render.UpdateInstanceBuffer(unitMoveLineMesh, nullptr, 0);
+            return;
+        }
+
+        const float midX = (start.x + end.x) * 0.5f;
+        const float midY = (start.y + end.y) * 0.5f;
+        const float midZ = (start.z + end.z) * 0.5f;
+
+        // El cubo se estira en Z local.
+        const float yaw = std::atan2(dx, dz);
+
+        DirectX::XMMATRIX world =
+            DirectX::XMMatrixScaling(0.08f, 0.04f, length) *
+            DirectX::XMMatrixRotationY(yaw) *
+            DirectX::XMMatrixTranslation(midX, midY, midZ);
+
+        DirectX::XMFLOAT4X4 worldMatrix{};
+        DirectX::XMStoreFloat4x4(&worldMatrix, world);
+
+        InstanceData instance{};
+        instance.worldMatrix = worldMatrix;
+
+        // Línea azul/cyan.
+        instance.baseColor = { 0.10f, 0.85f, 1.0f, 1.0f };
+        instance.material = { 0.0f, 0.25f, 1.0f, 0.0f };
+
+        render.UpdateInstanceBuffer(unitMoveLineMesh, &instance, 1);
+    }
+
 
 
     entt::registry* m_Registry = nullptr;
@@ -405,10 +595,28 @@ public:
             testChunk.SelectCell(cellX, cellZ);
         }
 
+        //if (GameInput::IsMouseButtonPressed(GameInput::MouseButton::Right))
+        //{
+        //    testChunk.ToggleCellWalkable(cellX, cellZ);
+        //}
+
         if (GameInput::IsMouseButtonPressed(GameInput::MouseButton::Right))
         {
-            testChunk.ToggleCellWalkable(cellX, cellZ);
+            if (terrainEditMode)
+            {
+                testChunk.ToggleCellWalkable(cellX, cellZ);
+            }
+            else
+            {
+                if (testChunk.IsCellWalkable(cellX, cellZ))
+                {
+                    DirectX::XMFLOAT3 target = testChunk.GetCellCenter(cellX, cellZ);
+                    testUnit.targetPosition = target;
+                    testUnit.hasTarget = true;
+                }
+            }
         }
+
     }
 
 
@@ -587,6 +795,9 @@ public:
         UpdateCellHighlightInstance();
         UpdateCellHoverInstance();
         UpdateBlockedCellInstances();
+        UpdateRTSUnitInstance();
+        UpdateUnitTargetInstance();
+        UpdateUnitMoveLineInstance();
     }
 
 
@@ -698,6 +909,38 @@ public:
             ImGui::TextUnformatted("Selected cell: none");
         }
 
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("RTS Unit");
+
+        ImGui::Checkbox("Terrain Edit Mode", &terrainEditMode);
+
+        if (terrainEditMode)
+        {
+            ImGui::TextUnformatted("Right click: toggle blocked cell");
+        }
+        else
+        {
+            ImGui::TextUnformatted("Right click: move unit");
+        }
+
+        ImGui::Text(
+            "Unit position: %.2f, %.2f, %.2f",
+            testUnit.position.x,
+            testUnit.position.y,
+            testUnit.position.z
+        );
+
+        ImGui::Text(
+            "Unit target: %.2f, %.2f, %.2f",
+            testUnit.targetPosition.x,
+            testUnit.targetPosition.y,
+            testUnit.targetPosition.z
+        );
+
+        ImGui::Text("Has target: %s", testUnit.hasTarget ? "true" : "false");
+        ImGui::SliderFloat("Unit speed", &testUnit.moveSpeed, 0.5f, 12.0f, "%.2f");
+
     }
 
     void Loop(entt::registry& registry, PhysicsSystem& physicsSystem, GameTime time)
@@ -707,6 +950,8 @@ public:
         BuildImGui(registry);
         physicsSystem.OnImGui(registry);
         UpdateTerrainMousePicking();
+        UpdateRTSUnit(time.DeltaTime());
+        UpdateMeshes(registry, time);
         UpdateMeshes(registry, time);
 
         render.Reset();
@@ -722,6 +967,9 @@ public:
 			cellHighlightMesh.Draw(render.commandList);
             cellHoverMesh.Draw(render.commandList);
             blockedCellMesh.Draw(render.commandList);
+            rtsUnitMesh.Draw(render.commandList);
+            unitMoveLineMesh.Draw(render.commandList);
+            unitTargetMesh.Draw(render.commandList);
         }
 
         render.RenderImGui();
