@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 #include <DirectXMath.h>
+#include <cmath>
 
 
 struct VertexTerrain
@@ -10,6 +11,19 @@ struct VertexTerrain
     float position[3];
     float uv[2];
     float normal[3];
+};
+
+
+struct TerrainCell
+{
+    uint32_t x = 0;
+    uint32_t z = 0;
+
+    bool walkable = true;
+    bool selected = false;
+    bool hovered = false;
+
+    DirectX::XMFLOAT3 center = { 0.0f, 0.0f, 0.0f };
 };
 
 
@@ -34,6 +48,7 @@ public:
 
         BuildVertices();
         BuildIndices();
+		BuildCells();
     }
 
 
@@ -104,6 +119,39 @@ public:
             }
         }
     }
+
+
+
+    void BuildCells()
+    {
+        m_Cells.clear();
+
+        const uint32_t cellCount = m_CellsPerSide * m_CellsPerSide;
+        m_Cells.reserve(cellCount);
+
+        for (uint32_t z = 0; z < m_CellsPerSide; ++z)
+        {
+            for (uint32_t x = 0; x < m_CellsPerSide; ++x)
+            {
+                TerrainCell cell{};
+
+                cell.x = x;
+                cell.z = z;
+
+                cell.walkable = true;
+                cell.selected = false;
+                cell.hovered = false;
+
+                cell.center.x = m_WorldPosition.x + (static_cast<float>(x) + 0.5f) * m_CellSize;
+                cell.center.y = m_WorldPosition.y;
+                cell.center.z = m_WorldPosition.z + (static_cast<float>(z) + 0.5f) * m_CellSize;
+
+                m_Cells.push_back(cell);
+            }
+        }
+    }
+
+
 
     int GetChunkX() const
     {
@@ -182,6 +230,109 @@ public:
         return static_cast<uint32_t>(m_Indices.size());
     }
 
+    uint32_t GetCellIndex(uint32_t x, uint32_t z) const
+    {
+        return z * m_CellsPerSide + x;
+    }
+
+
+    bool IsValidCell(uint32_t x, uint32_t z) const
+    {
+        return x < m_CellsPerSide && z < m_CellsPerSide;
+    }
+
+
+    TerrainCell& GetCell(uint32_t x, uint32_t z)
+    {
+        return m_Cells[GetCellIndex(x, z)];
+    }
+
+    const TerrainCell& GetCell(uint32_t x, uint32_t z) const
+    {
+        return m_Cells[GetCellIndex(x, z)];
+    }
+
+
+    uint32_t GetCellCount() const
+    {
+        return static_cast<uint32_t>(m_Cells.size());
+    }
+
+
+
+    void ClearSelection()
+    {
+        if (m_HasSelectedCell && IsValidCell(m_SelectedCellX, m_SelectedCellZ))
+        {
+            GetCell(m_SelectedCellX, m_SelectedCellZ).selected = false;
+        }
+
+        m_HasSelectedCell = false;
+        m_SelectedCellX = 0;
+        m_SelectedCellZ = 0;
+    }
+
+
+    void SelectCell(uint32_t x, uint32_t z)
+    {
+        if (!IsValidCell(x, z))
+            return;
+
+        ClearSelection();
+
+        TerrainCell& cell = GetCell(x, z);
+        cell.selected = true;
+
+        m_HasSelectedCell = true;
+        m_SelectedCellX = x;
+        m_SelectedCellZ = z;
+    }
+
+
+    bool HasSelectedCell() const
+    {
+        return m_HasSelectedCell;
+    }
+
+    uint32_t GetSelectedCellX() const
+    {
+        return m_SelectedCellX;
+    }
+
+    uint32_t GetSelectedCellZ() const
+    {
+        return m_SelectedCellZ;
+    }
+
+    bool WorldToCell(float worldX, float worldZ, uint32_t& outCellX, uint32_t& outCellZ) const
+    {
+        const float localX = worldX - m_WorldPosition.x;
+        const float localZ = worldZ - m_WorldPosition.z;
+
+        if (localX < 0.0f || localZ < 0.0f)
+            return false;
+
+        const float worldSize = GetWorldSize();
+
+        if (localX >= worldSize || localZ >= worldSize)
+            return false;
+
+        outCellX = static_cast<uint32_t>(std::floor(localX / m_CellSize));
+        outCellZ = static_cast<uint32_t>(std::floor(localZ / m_CellSize));
+
+        return IsValidCell(outCellX, outCellZ);
+    }
+
+
+    DirectX::XMFLOAT3 GetCellCenter(uint32_t x, uint32_t z) const
+    {
+        if (!IsValidCell(x, z))
+            return { 0.0f, 0.0f, 0.0f };
+
+        return GetCell(x, z).center;
+    }
+
+
 
 private:
     int m_ChunkX = 0;
@@ -192,9 +343,16 @@ private:
 
     float m_CellSize = 1.0f;
 
+    bool m_HasSelectedCell = false;
+    uint32_t m_SelectedCellX = 0;
+    uint32_t m_SelectedCellZ = 0;
+
+
+
     DirectX::XMFLOAT3 m_WorldPosition = { 0.0f, 0.0f, 0.0f };
 
     std::vector<float> m_Heights;
     std::vector<VertexTerrain> m_Vertices;
     std::vector<uint32_t> m_Indices;
+    std::vector<TerrainCell> m_Cells;
 };

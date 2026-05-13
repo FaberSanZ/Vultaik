@@ -35,6 +35,9 @@ public:
 	Mesh terrainMesh{};
 
     TerrainChunk testChunk;
+    Mesh cellHighlightMesh{};
+
+
 
     void OnInitialize(entt::registry& registry, HWND hwnd, uint32_t width, uint32_t height)
     {
@@ -57,7 +60,8 @@ public:
 
 
 		terrainMesh = BuildMeshFromTerrain();
-
+        cellHighlightMesh = GeneratePlaneMesh(1.0f);
+        cellHighlightMesh.debugName = "Cell Highlight";
 
     }
 
@@ -233,6 +237,44 @@ private:
     }
 
 
+    void UpdateCellHighlightInstance()
+    {
+        if (!testChunk.HasSelectedCell())
+        {
+            render.UpdateInstanceBuffer(cellHighlightMesh, nullptr, 0);
+            return;
+        }
+
+        const uint32_t cellX = testChunk.GetSelectedCellX();
+        const uint32_t cellZ = testChunk.GetSelectedCellZ();
+
+        DirectX::XMFLOAT3 center = testChunk.GetCellCenter(cellX, cellZ);
+
+        // Subimos un poquito el highlight para evitar z-fighting con el terrain.
+        center.y += 0.03f;
+
+        const float scale = testChunk.GetCellSize() * 0.92f;
+
+        DirectX::XMMATRIX world =
+            DirectX::XMMatrixScaling(scale, 1.0f, scale) *
+            DirectX::XMMatrixTranslation(center.x, center.y, center.z);
+
+        DirectX::XMFLOAT4X4 worldMatrix{};
+        DirectX::XMStoreFloat4x4(&worldMatrix, world);
+
+        InstanceData instance{};
+        instance.worldMatrix = worldMatrix;
+
+        // Amarillo/verde visual para selección.
+        instance.baseColor = { 0.95f, 0.85f, 0.15f, 1.0f };
+
+        // metallic, roughness, ao, textureId
+        instance.material = { 0.0f, 0.35f, 1.0f, 0.0f };
+
+        render.UpdateInstanceBuffer(cellHighlightMesh, &instance, 1);
+    }
+
+
 
     void ResetScene(entt::registry& registry)
     {
@@ -358,6 +400,7 @@ private:
         render.UpdateInstanceBuffer(plane, planeInstances.empty() ? nullptr : planeInstances.data(), static_cast<uint32_t>(planeInstances.size()));
 
         UpdateRenderInstance();
+		UpdateCellHighlightInstance();
     }
 
 
@@ -382,6 +425,49 @@ private:
         ImGui::SliderFloat("Camera distance", &cameraDistance, 2.5f, 14.0f, "%.1f");
         ImGui::SliderFloat("Camera yaw", &cameraYaw, -DirectX::XM_PI, DirectX::XM_PI, "%.2f");
         ImGui::SliderFloat("Camera pitch", &cameraPitch, -1.25f, 1.25f, "%.2f");
+
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("Terrain Cells");
+
+        ImGui::Text("Cell count: %u", testChunk.GetCellCount());
+
+        static int debugCellX = 0;
+        static int debugCellZ = 0;
+
+        ImGui::InputInt("Cell X", &debugCellX);
+        ImGui::InputInt("Cell Z", &debugCellZ);
+
+        debugCellX = std::clamp(debugCellX, 0, static_cast<int>(testChunk.GetCellsPerSide()) - 1);
+        debugCellZ = std::clamp(debugCellZ, 0, static_cast<int>(testChunk.GetCellsPerSide()) - 1);
+
+        if (ImGui::Button("Select Cell"))
+        {
+            testChunk.SelectCell(
+                static_cast<uint32_t>(debugCellX),
+                static_cast<uint32_t>(debugCellZ)
+            );
+        }
+
+        if (ImGui::Button("Clear Cell Selection"))
+        {
+            testChunk.ClearSelection();
+        }
+
+        if (testChunk.HasSelectedCell())
+        {
+            const uint32_t selectedX = testChunk.GetSelectedCellX();
+            const uint32_t selectedZ = testChunk.GetSelectedCellZ();
+
+            const DirectX::XMFLOAT3 center = testChunk.GetCellCenter(selectedX, selectedZ);
+
+            ImGui::Text("Selected cell: %u, %u", selectedX, selectedZ);
+            ImGui::Text("Center: %.2f, %.2f, %.2f", center.x, center.y, center.z);
+        }
+        else
+        {
+            ImGui::TextUnformatted("Selected cell: none");
+        }
     }
 
     void Loop(entt::registry& registry, PhysicsSystem& physicsSystem, GameTime time)
@@ -399,9 +485,10 @@ private:
         if (render.BeginGame())
         {
             cube.Draw(render.commandList);
-            sphere.Draw(render.commandList);
+            //sphere.Draw(render.commandList);
             plane.Draw(render.commandList);
 			terrainMesh.Draw(render.commandList);
+			cellHighlightMesh.Draw(render.commandList);
         }
 
         render.RenderImGui();
