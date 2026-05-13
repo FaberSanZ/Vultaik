@@ -148,8 +148,13 @@
     <ClInclude Include="RenderingDevice.h" />
     <ClInclude Include="RenderSystem.h" />
     <ClInclude Include="ShaderCompiler.h" />
+    <ClInclude Include="TerrainSystem.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\Deps\tinygltf\models\Cube\Cube.gltf" />
+    <None Include="..\..\Deps\tinygltf\models\Cube\Cube.bin" />
+    <None Include="..\..\Deps\tinygltf\models\Cube\Cube_BaseColor.png" />
+    <None Include="..\..\Deps\tinygltf\models\Cube\Cube_MetallicRoughness.png" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

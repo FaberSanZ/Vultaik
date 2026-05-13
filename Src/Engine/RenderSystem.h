@@ -15,6 +15,7 @@
 #include "GameWindows.h"
 #include "RenderingDevice.h"
 #include "PhysicsSystem.h"
+#include "TerrainSystem.h"
 #include "entt.hpp"
 
 #pragma comment(lib, "d3d11.lib")
@@ -31,6 +32,9 @@ public:
     Mesh cube{};
     Mesh sphere{};
     Mesh plane{};
+	Mesh terrainMesh{};
+
+    TerrainChunk testChunk;
 
     void OnInitialize(entt::registry& registry, HWND hwnd, uint32_t width, uint32_t height)
     {
@@ -50,6 +54,11 @@ public:
 
         if (render.GetTextureCount() > 1)
             spawnTextureId = 1;
+
+
+		terrainMesh = BuildMeshFromTerrain();
+
+
     }
 
     void OnUpdate(entt::registry& registry, PhysicsSystem& physicsSystem, const GameTime& time)
@@ -187,6 +196,42 @@ private:
         return render.CreateMesh(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size());
     }
 
+    Mesh BuildMeshFromTerrain()
+    {
+        testChunk.Initialize(0, 0, 16, 1.0f, { -8.0f, 0.0f, -8.0f });
+
+
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+
+
+        return render.CreateMesh((Vertex*)testChunk.GetVertices().data(), static_cast<uint32_t>(testChunk.GetVertices().size()), (uint32_t*)testChunk.GetIndices().data(), static_cast<uint32_t>(testChunk.GetIndices().size()));
+    
+	}
+
+
+    void UpdateRenderInstance()
+    {
+        DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
+
+        DirectX::XMFLOAT4X4 worldMatrix{};
+        DirectX::XMStoreFloat4x4(&worldMatrix, world);
+
+        InstanceData instance{};
+        instance.worldMatrix = worldMatrix;
+
+        // Verde terreno
+        instance.baseColor = { 0.25f, 0.55f, 0.22f, 1.0f };
+
+        // material.x = metallic
+        // material.y = roughness
+        // material.z = ao
+        // material.w = textureId
+        instance.material = { 0.0f, 0.85f, 1.0f, 0.0f };
+
+        render.UpdateInstanceBuffer(terrainMesh, &instance, 1);
+    }
+
 
 
     void ResetScene(entt::registry& registry)
@@ -311,6 +356,8 @@ private:
         render.UpdateInstanceBuffer(cube, cubeInstances.empty() ? nullptr : cubeInstances.data(), static_cast<uint32_t>(cubeInstances.size()));
         render.UpdateInstanceBuffer(sphere, sphereInstances.empty() ? nullptr : sphereInstances.data(), static_cast<uint32_t>(sphereInstances.size()));
         render.UpdateInstanceBuffer(plane, planeInstances.empty() ? nullptr : planeInstances.data(), static_cast<uint32_t>(planeInstances.size()));
+
+        UpdateRenderInstance();
     }
 
 
@@ -354,6 +401,7 @@ private:
             cube.Draw(render.commandList);
             sphere.Draw(render.commandList);
             plane.Draw(render.commandList);
+			terrainMesh.Draw(render.commandList);
         }
 
         render.RenderImGui();

@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="gltf">
+      <UniqueIdentifier>{6C2B9B11-8B33-4A67-8C1D-0D04B9DA9D31}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Engine.cpp">
@@ -62,8 +65,26 @@
     <ClInclude Include="ShaderCompiler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PhysicsSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\Deps\tinygltf\models\Cube\Cube.gltf">
+      <Filter>gltf</Filter>
+    </None>
+    <None Include="..\..\Deps\tinygltf\models\Cube\Cube.bin">
+      <Filter>gltf</Filter>
+    </None>
+    <None Include="..\..\Deps\tinygltf\models\Cube\Cube_BaseColor.png">
+      <Filter>gltf</Filter>
+    </None>
+    <None Include="..\..\Deps\tinygltf\models\Cube\Cube_MetallicRoughness.png">
+      <Filter>gltf</Filter>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
 </Project>
