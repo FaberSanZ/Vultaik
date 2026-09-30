@@ -1,0 +1,119 @@
+{
+  "Scene": "Main",
+  "Entities": [
+    {
+      "Components": {
+        "ID": {
+          "Id": 1
+        },
+        "Name": {
+          "Name": "Knight"
+        },
+        "Transform": {
+          "Position": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "Rotation": {
+            "X": 0.0,
+            "Y": 0.70710677,
+            "Z": 0.0,
+            "W": 0.70710677
+          },
+          "Scale": {
+            "X": 1.0,
+            "Y": 1.0,
+            "Z": 1.0
+          }
+        },
+        "Model": {
+          "AssetPath": "KnightCharacter.glb",
+          "Color": {
+            "X": 1.0,
+            "Y": 1.0,
+            "Z": 1.0,
+            "W": 1.0
+          }
+        },
+        "Animation": {},
+        "Skeleton": {},
+        "Player": {}
+      }
+    },
+    {
+      "Components": {
+        "ID": {
+          "Id": 2
+        },
+        "Name": {
+          "Name": "Spider"
+        },
+        "Transform": {
+          "Position": {
+            "X": 6.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "Rotation": {
+            "X": 0.0,
+            "Y": -0.70710677,
+            "Z": 0.0,
+            "W": 0.70710677
+          },
+          "Scale": {
+            "X": 1.0,
+            "Y": 1.0,
+            "Z": 1.0
+          }
+        },
+        "Model": {
+          "AssetPath": "Spider.glb",
+          "Color": {
+            "X": 1.0,
+            "Y": 0.2,
+            "Z": 0.15,
+            "W": 1.0
+          }
+        },
+        "Animation": {},
+        "Skeleton": {},
+        "Boss": {}
+      }
+    },
+    {
+      "Components": {
+        "ID": {
+          "Id": 3
+        },
+        "Name": {
+          "Name": "Camera"
+        },
+        "Transform": {
+          "Position": {
+            "X": -10.0,
+            "Y": 3.0,
+            "Z": 0.0
+          },
+          "Rotation": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0,
+            "W": 1.0
+          },
+          "Scale": {
+            "X": 1.0,
+            "Y": 1.0,
+            "Z": 1.0
+          }
+        },
+        "Camera": {
+          "FieldOfView": 60.0,
+          "NearPlane": 0.1,
+          "FarPlane": 1000.0
+        },
+        "Primary Camera": {}
+      }
+    }
+  ]
+}
